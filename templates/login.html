@@ -1,0 +1,989 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="login-container">
+    <!-- الأيقونات المتحركة في الخلفية -->
+    <div class="floating-icons" id="floatingIcons">
+        <!-- سيتم إضافة الأيقونات هنا عبر JavaScript -->
+    </div>
+    
+    <div class="initial-card">
+        <h1>
+            <span class="emoji">🎮</span>
+            مرحباً بك في Es-Gift
+        </h1>
+        <p style="color: #ccc; margin-bottom: 30px;">سجل دخولك للوصول إلى حسابك والاستمتاع بأفضل العروض</p>
+        
+        <!-- عرض الرسائل من الخادم -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash-message flash-{{ category }}">
+                        <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' }}"></i>
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <form id="loginForm" method="POST">
+            <div class="input-group">
+                <i class="fas fa-envelope input-icon"></i>
+                <input type="email" id="email" name="email" placeholder="البريد الإلكتروني" required>
+            </div>
+            
+            <div class="input-group">
+                <i class="fas fa-lock input-icon"></i>
+                <input type="password" id="password" name="password" placeholder="كلمة المرور" required>
+                <i class="fas fa-eye toggle-password" onclick="togglePassword()"></i>
+            </div>
+            
+            <div class="form-options">
+                <label class="remember-me">
+                    <input type="checkbox" name="remember_me">
+                    <span class="checkmark"></span>
+                    تذكرني
+                </label>
+                <a href="#" class="forgot-password">نسيت كلمة المرور؟</a>
+            </div>
+            
+            <button type="submit" class="initial-login-btn">
+                <i class="fas fa-sign-in-alt"></i>
+                <span class="btn-text">تسجيل الدخول</span>
+            </button>
+        </form>
+        
+        <div id="loginMessage" class="message-container"></div>
+        
+        <div class="divider">
+            <span>أو</span>
+        </div>
+        
+        <div class="footer">
+            <p>ليس لديك حساب؟</p>
+            <a href="{{ url_for('main.register') }}" class="register-link">إنشاء حساب جديد</a>
+        </div>
+        
+        <!-- رابط العودة للرئيسية -->
+        <div class="back-home">
+            <a href="{{ url_for('main.index') }}">
+                <i class="fas fa-arrow-right"></i>
+                العودة للرئيسية
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* تحسينات إضافية لصفحة تسجيل الدخول */
+.login-container {
+    background: #000;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    padding: 20px;
+}
+
+/* خلفية متحركة مع الأيقونات */
+.floating-icons {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+    overflow: hidden;
+}
+
+.floating-icon {
+    position: absolute;
+    opacity: 0.7;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+}
+
+.floating-icon img {
+    width: 100%;
+    height: 100%;
+    filter: brightness(2) contrast(1) invert(1) drop-shadow(0 0 15px rgba(255, 255, 255, 0.5));
+    transition: all 0.3s ease;
+}
+
+.floating-icon:hover img {
+    filter: brightness(2.5) contrast(1.2) invert(1) drop-shadow(0 0 25px rgba(255, 255, 255, 0.8));
+    transform: scale(1.2);
+}
+
+/* أحجام مختلفة للأيقونات */
+.icon-small {
+    width: 30px;
+    height: 30px;
+}
+
+.icon-medium {
+    width: 50px;
+    height: 50px;
+}
+
+.icon-large {
+    width: 70px;
+    height: 70px;
+}
+
+/* حركات مختلفة للأيقونات */
+.float-up {
+    animation-name: floatUp;
+}
+
+.float-diagonal {
+    animation-name: floatDiagonal;
+}
+
+.float-horizontal {
+    animation-name: floatHorizontal;
+}
+
+.float-rotate {
+    animation-name: floatRotate;
+}
+
+@keyframes floatUp {
+    0% {
+        transform: translateY(100vh) rotate(0deg);
+        opacity: 0;
+    }
+    10% {
+        opacity: 0.7;
+    }
+    90% {
+        opacity: 0.7;
+    }
+    100% {
+        transform: translateY(-100px) rotate(360deg);
+        opacity: 0;
+    }
+}
+
+@keyframes floatDiagonal {
+    0% {
+        transform: translate(100vw, 100vh) rotate(0deg);
+        opacity: 0;
+    }
+    10% {
+        opacity: 0.6;
+    }
+    90% {
+        opacity: 0.6;
+    }
+    100% {
+        transform: translate(-100px, -100px) rotate(-360deg);
+        opacity: 0;
+    }
+}
+
+@keyframes floatHorizontal {
+    0% {
+        transform: translateX(-100px) rotate(0deg);
+        opacity: 0;
+    }
+    10% {
+        opacity: 0.8;
+    }
+    90% {
+        opacity: 0.8;
+    }
+    100% {
+        transform: translateX(100vw) rotate(180deg);
+        opacity: 0;
+    }
+}
+
+@keyframes floatRotate {
+    0% {
+        transform: translate(100vw, 0) rotate(0deg) scale(0.5);
+        opacity: 0;
+    }
+    10% {
+        opacity: 0.5;
+    }
+    50% {
+        transform: translate(50vw, 50vh) rotate(180deg) scale(1);
+        opacity: 0.8;
+    }
+    90% {
+        opacity: 0.5;
+    }
+    100% {
+        transform: translate(-100px, 100vh) rotate(360deg) scale(0.5);
+        opacity: 0;
+    }
+}
+
+.login-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle at 50% 50%, rgba(255, 0, 51, 0.03) 0%, transparent 50%);
+    z-index: 0;
+}
+
+.initial-card {
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 40px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    width: 100%;
+    max-width: 420px;
+    position: relative;
+    z-index: 2;
+    animation: slideInUp 0.8s ease-out;
+}
+
+.initial-card h1 {
+    text-align: center;
+    color: #fff;
+    margin-bottom: 10px;
+    font-size: 28px;
+    font-weight: 700;
+}
+
+.emoji {
+    font-size: 1.2em;
+    margin-left: 10px;
+}
+
+/* Flash Messages */
+.flash-message {
+    padding: 12px 15px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    animation: slideDown 0.3s ease-out;
+}
+
+.flash-success {
+    background: rgba(40, 167, 69, 0.15);
+    color: #28a745;
+    border: 1px solid rgba(40, 167, 69, 0.3);
+}
+
+.flash-error {
+    background: rgba(220, 53, 69, 0.15);
+    color: #dc3545;
+    border: 1px solid rgba(220, 53, 69, 0.3);
+}
+
+.flash-warning {
+    background: rgba(255, 193, 7, 0.15);
+    color: #ffc107;
+    border: 1px solid rgba(255, 193, 7, 0.3);
+}
+
+/* Input Groups */
+.input-group {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.input-icon {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #999;
+    font-size: 16px;
+    z-index: 3;
+}
+
+.input-group input {
+    width: 100%;
+    padding: 15px 50px 15px 15px;
+    border-radius: 10px;
+    border: 2px solid transparent;
+    outline: none;
+    font-size: 16px;
+    color: #333;
+    background: #fff;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    box-sizing: border-box;
+}
+
+.input-group input:focus {
+    border-color: #ff0033;
+    box-shadow: 0 0 0 3px rgba(255, 0, 51, 0.2);
+    transform: translateY(-2px);
+}
+
+.input-group input:focus + .input-icon {
+    color: #ff0033;
+}
+
+.toggle-password {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #999;
+    cursor: pointer;
+    font-size: 16px;
+    transition: color 0.3s ease;
+}
+
+.toggle-password:hover {
+    color: #ff0033;
+}
+
+/* Form Options */
+.form-options {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 25px 0;
+    font-size: 14px;
+}
+
+.remember-me {
+    display: flex;
+    align-items: center;
+    color: #ccc;
+    cursor: pointer;
+    user-select: none;
+}
+
+.remember-me input[type="checkbox"] {
+    display: none;
+}
+
+.checkmark {
+    width: 20px;
+    height: 20px;
+    border: 2px solid #ff0033;
+    border-radius: 4px;
+    margin-left: 8px;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.remember-me input:checked + .checkmark {
+    background: #ff0033;
+}
+
+.remember-me input:checked + .checkmark::after {
+    content: '✓';
+    position: absolute;
+    color: white;
+    font-size: 12px;
+    top: -2px;
+    left: 4px;
+}
+
+.forgot-password {
+    color: #ff6600;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.forgot-password:hover {
+    color: #ff8533;
+}
+
+/* Login Button */
+.initial-login-btn {
+    width: 100%;
+    padding: 15px;
+    background: linear-gradient(135deg, #ff0033, #ff6600);
+    border: none;
+    border-radius: 10px;
+    color: white;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.initial-login-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s;
+}
+
+.initial-login-btn:hover::before {
+    left: 100%;
+}
+
+.initial-login-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(255, 0, 51, 0.4);
+}
+
+.initial-login-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Message Container */
+.message-container {
+    margin-top: 20px;
+    padding: 12px;
+    border-radius: 8px;
+    text-align: center;
+    display: none;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.message-success {
+    background: rgba(40, 167, 69, 0.15);
+    color: #28a745;
+    border: 1px solid rgba(40, 167, 69, 0.3);
+}
+
+.message-error {
+    background: rgba(220, 53, 69, 0.15);
+    color: #dc3545;
+    border: 1px solid rgba(220, 53, 69, 0.3);
+}
+
+/* Divider */
+.divider {
+    text-align: center;
+    margin: 30px 0 20px;
+    position: relative;
+    color: #999;
+}
+
+.divider::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.divider span {
+    background: rgba(0, 0, 0, 0.8);
+    padding: 0 15px;
+    position: relative;
+}
+
+/* Footer */
+.footer {
+    text-align: center;
+    color: #ccc;
+    font-size: 14px;
+}
+
+.footer p {
+    margin-bottom: 10px;
+}
+
+.register-link {
+    color: #ff6600;
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.3s ease;
+}
+
+.register-link:hover {
+    color: #ff8533;
+}
+
+/* Back Home */
+.back-home {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+}
+
+.back-home a {
+    color: #ccc;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    transition: color 0.3s ease;
+}
+
+.back-home a:hover {
+    color: #ff6600;
+}
+
+/* Animations */
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Loading State */
+.loading {
+    opacity: 0.8;
+    pointer-events: none;
+}
+
+.loading .btn-text {
+    margin-left: 10px;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 480px) {
+    .login-container {
+        padding: 10px;
+    }
+    
+    .initial-card {
+        width: 100%;
+        padding: 30px 20px;
+        margin: 10px 0;
+    }
+    
+    .initial-card h1 {
+        font-size: 24px;
+    }
+    
+    .input-group input {
+        padding: 12px 45px 12px 12px;
+        font-size: 16px;
+    }
+    
+    .back-home {
+        position: static;
+        text-align: center;
+        margin-top: 20px;
+    }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Toggle Password Visibility
+function togglePassword() {
+    const passwordInput = document.getElementById('password');
+    const toggleIcon = document.querySelector('.toggle-password');
+    
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        toggleIcon.classList.remove('fa-eye');
+        toggleIcon.classList.add('fa-eye-slash');
+    } else {
+        passwordInput.type = 'password';
+        toggleIcon.classList.remove('fa-eye-slash');
+        toggleIcon.classList.add('fa-eye');
+    }
+}
+
+// Login Form Submission
+document.getElementById('loginForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const form = this;
+    const messageContainer = document.getElementById('loginMessage');
+    const loginBtn = document.querySelector('.initial-login-btn');
+    const btnIcon = loginBtn.querySelector('i');
+    const btnText = loginBtn.querySelector('.btn-text');
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    
+    // تنظيف الرسائل السابقة
+    hideMessage();
+    clearFlashMessages();
+    
+    // التحقق من صحة البيانات
+    if (!emailInput.value.trim()) {
+        showMessage('يرجى إدخال البريد الإلكتروني', 'error');
+        emailInput.focus();
+        return;
+    }
+    
+    if (!passwordInput.value.trim()) {
+        showMessage('يرجى إدخال كلمة المرور', 'error');
+        passwordInput.focus();
+        return;
+    }
+    
+    if (!isValidEmail(emailInput.value)) {
+        showMessage('البريد الإلكتروني غير صحيح', 'error');
+        emailInput.focus();
+        return;
+    }
+    
+    // إظهار حالة التحميل
+    setLoadingState(true);
+    
+    // إرسال البيانات
+    fetch('/login', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({
+            email: emailInput.value.trim(),
+            password: passwordInput.value
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('خطأ في الشبكة');
+        }
+        return response.json();
+    })
+    .then(data => {
+        setLoadingState(false);
+        
+        if (data.success) {
+            showMessage(data.message, 'success');
+            
+            // تأثير النجاح
+            btnIcon.className = 'fas fa-check';
+            btnText.textContent = 'تم بنجاح!';
+            loginBtn.style.background = 'linear-gradient(135deg, #28a745, #20c997)';
+            
+            // التوجيه بعد ثانيتين
+            setTimeout(() => {
+                window.location.href = data.redirect;
+            }, 1500);
+        } else {
+            showMessage(data.message, 'error');
+            
+            // تأثير خطأ
+            loginBtn.style.animation = 'shake 0.5s';
+            setTimeout(() => {
+                loginBtn.style.animation = '';
+            }, 500);
+        }
+    })
+    .catch(error => {
+        setLoadingState(false);
+        console.error('خطأ:', error);
+        showMessage('حدث خطأ في الاتصال. يرجى المحاولة مرة أخرى.', 'error');
+        
+        // تأثير خطأ
+        loginBtn.style.animation = 'shake 0.5s';
+        setTimeout(() => {
+            loginBtn.style.animation = '';
+        }, 500);
+    });
+});
+
+// Helper Functions
+function setLoadingState(loading) {
+    const loginBtn = document.querySelector('.initial-login-btn');
+    const btnIcon = loginBtn.querySelector('i');
+    const btnText = loginBtn.querySelector('.btn-text');
+    
+    if (loading) {
+        loginBtn.disabled = true;
+        loginBtn.classList.add('loading');
+        btnIcon.className = 'fas fa-spinner fa-spin';
+        btnText.textContent = 'جاري تسجيل الدخول...';
+    } else {
+        loginBtn.disabled = false;
+        loginBtn.classList.remove('loading');
+        btnIcon.className = 'fas fa-sign-in-alt';
+        btnText.textContent = 'تسجيل الدخول';
+        loginBtn.style.background = 'linear-gradient(135deg, #ff0033, #ff6600)';
+    }
+}
+
+function showMessage(message, type) {
+    const messageContainer = document.getElementById('loginMessage');
+    messageContainer.textContent = message;
+    messageContainer.className = `message-container message-${type}`;
+    messageContainer.style.display = 'block';
+    
+    // إخفاء الرسالة بعد 5 ثوان إذا كانت خطأ
+    if (type === 'error') {
+        setTimeout(() => {
+            hideMessage();
+        }, 5000);
+    }
+}
+
+function hideMessage() {
+    const messageContainer = document.getElementById('loginMessage');
+    messageContainer.style.display = 'none';
+}
+
+function clearFlashMessages() {
+    const flashMessages = document.querySelectorAll('.flash-message');
+    flashMessages.forEach(msg => {
+        msg.style.opacity = '0';
+        setTimeout(() => {
+            msg.remove();
+        }, 300);
+    });
+}
+
+function isValidEmail(email) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+}
+
+// Enhanced Input Effects
+document.addEventListener('DOMContentLoaded', function() {
+    // إنشاء الأيقونات المتحركة
+    createFloatingIcons();
+    
+    const inputs = document.querySelectorAll('.input-group input');
+    
+    inputs.forEach(input => {
+        // Focus effects
+        input.addEventListener('focus', function() {
+            this.parentElement.style.transform = 'scale(1.02)';
+            this.style.background = '#f8f9fa';
+        });
+        
+        input.addEventListener('blur', function() {
+            this.parentElement.style.transform = 'scale(1)';
+            if (!this.value) {
+                this.style.background = '#fff';
+            }
+        });
+        
+        // Typing effects
+        input.addEventListener('input', function() {
+            if (this.value.length > 0) {
+                this.style.background = '#f0f8ff';
+                this.style.borderColor = '#ff0033';
+            } else {
+                this.style.background = '#fff';
+                this.style.borderColor = 'transparent';
+            }
+            
+            // تنظيف الرسائل عند البدء في الكتابة
+            hideMessage();
+        });
+    });
+    
+    // Auto-hide flash messages after 5 seconds
+    setTimeout(() => {
+        clearFlashMessages();
+    }, 5000);
+    
+    // Link hover effects
+    const links = document.querySelectorAll('a');
+    links.forEach(link => {
+        link.addEventListener('mousedown', function() {
+            this.style.transform = 'scale(0.95)';
+        });
+        
+        link.addEventListener('mouseup', function() {
+            this.style.transform = 'scale(1)';
+        });
+        
+        link.addEventListener('mouseleave', function() {
+            this.style.transform = 'scale(1)';
+        });
+    });
+    
+    // Pre-fill email if provided in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const emailParam = urlParams.get('email');
+    if (emailParam) {
+        document.getElementById('email').value = emailParam;
+        document.getElementById('password').focus();
+    }
+    
+    // Enter key navigation
+    document.getElementById('email').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            document.getElementById('password').focus();
+        }
+    });
+});
+
+// Prevent multiple form submissions
+let formSubmitted = false;
+document.getElementById('loginForm').addEventListener('submit', function(e) {
+    if (formSubmitted) {
+        e.preventDefault();
+        return false;
+    }
+    formSubmitted = true;
+    
+    // Reset after 3 seconds
+    setTimeout(() => {
+        formSubmitted = false;
+    }, 3000);
+});
+
+// إنشاء الأيقونات المتحركة
+function createFloatingIcons() {
+    const floatingContainer = document.getElementById('floatingIcons');
+    
+    // قائمة الأيقونات المتاحة
+    const icons = [
+        '/static/images/assets/icons/icons8-joystick-30.png',
+        '/static/images/assets/icons/icons8-joystick-90.png',
+        '/static/images/assets/icons/icons8-minecraft-creeper-30.png',
+        '/static/images/assets/icons/icons8-minecraft-creeper-90.png',
+        '/static/images/assets/icons/icons8-pubg-32.png',
+        '/static/images/assets/icons/icons8-pubg-96.png',
+        '/static/images/assets/icons/icons8-xbox-controller-30.png',
+        '/static/images/assets/icons/icons8-xbox-controller-90.png',
+        '/static/images/assets/icons/icons8-xbox-cross-30.png',
+        '/static/images/assets/icons/icons8-xbox-cross-90.png'
+    ];
+    
+    // ألوان بيضاء للأيقونات
+    const iconColors = [
+        'brightness(2) invert(1)',
+        'brightness(2.2) invert(1)',
+        'brightness(1.8) invert(1)',
+        'brightness(2.4) invert(1)',
+        'brightness(2.1) invert(1)',
+        'brightness(1.9) invert(1)'
+    ];
+    
+    // أنواع الحركة
+    const animations = ['float-up', 'float-diagonal', 'float-horizontal', 'float-rotate'];
+    
+    // أحجام الأيقونات
+    const sizes = ['icon-small', 'icon-medium', 'icon-large'];
+    
+    // إنشاء أيقونات أولية
+    function createIcon() {
+        const icon = document.createElement('div');
+        icon.className = 'floating-icon';
+        
+        // اختيار أيقونة عشوائية
+        const randomIcon = icons[Math.floor(Math.random() * icons.length)];
+        
+        // اختيار حجم عشوائي
+        const randomSize = sizes[Math.floor(Math.random() * sizes.length)];
+        icon.classList.add(randomSize);
+        
+        // اختيار حركة عشوائية
+        const randomAnimation = animations[Math.floor(Math.random() * animations.length)];
+        icon.classList.add(randomAnimation);
+        
+        // إنشاء صورة
+        const img = document.createElement('img');
+        img.src = randomIcon;
+        img.alt = 'Gaming Icon';
+        
+        // إضافة لون أبيض
+        const randomColor = iconColors[Math.floor(Math.random() * iconColors.length)];
+        img.style.filter = randomColor + ' drop-shadow(0 0 15px rgba(255, 255, 255, 0.6))';
+        
+        // إضافة تأثير hover
+        img.style.transition = 'all 0.3s ease';
+        
+        icon.appendChild(img);
+        
+        // موضع بداية عشوائي
+        if (randomAnimation === 'float-up') {
+            icon.style.left = Math.random() * 100 + '%';
+            icon.style.bottom = '-100px';
+        } else if (randomAnimation === 'float-diagonal') {
+            icon.style.right = '-100px';
+            icon.style.bottom = '-100px';
+        } else if (randomAnimation === 'float-horizontal') {
+            icon.style.left = '-100px';
+            icon.style.top = Math.random() * 100 + '%';
+        } else if (randomAnimation === 'float-rotate') {
+            icon.style.right = '-100px';
+            icon.style.top = Math.random() * 50 + '%';
+        }
+        
+        // مدة الحركة العشوائية (بين 15-30 ثانية)
+        const duration = 15 + Math.random() * 15;
+        icon.style.animationDuration = duration + 's';
+        
+        // تأخير عشوائي في البداية
+        const delay = Math.random() * 5;
+        icon.style.animationDelay = delay + 's';
+        
+        floatingContainer.appendChild(icon);
+        
+        // إزالة الأيقونة بعد انتهاء الحركة
+        setTimeout(() => {
+            if (icon.parentNode) {
+                icon.parentNode.removeChild(icon);
+            }
+        }, (duration + delay) * 1000);
+    }
+    
+    // إنشاء أيقونات بشكل متتالي
+    function generateIcons() {
+        createIcon();
+        
+        // إنشاء أيقونة جديدة كل 1-2 ثانية
+        const nextIconDelay = 1000 + Math.random() * 1000;
+        setTimeout(generateIcons, nextIconDelay);
+    }
+    
+    // بدء إنشاء الأيقونات
+    generateIcons();
+    
+    // إنشاء مجموعة أولية من الأيقونات مع تأخير متدرج
+    for (let i = 0; i < 10; i++) {
+        setTimeout(() => {
+            createIcon();
+        }, i * 500);
+    }
+}
+</script>
+{% endblock %}

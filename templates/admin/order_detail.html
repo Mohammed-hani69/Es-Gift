@@ -1,0 +1,188 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}تفاصيل الطلب{% endblock %}
+
+{% block content %}
+<div class="content-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2>
+            <i class="fas fa-shopping-cart"></i>
+            تفاصيل الطلب #{{ order.order_number }}
+        </h2>
+        <a href="{{ url_for('admin.orders') }}" class="btn btn-primary">
+            <i class="fas fa-arrow-right"></i>
+            العودة للطلبات
+        </a>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px;">
+        <div class="content-card">
+            <h3>معلومات الطلب</h3>
+            <table style="width: 100%; margin-top: 15px;">
+                <tr>
+                    <td><strong>رقم الطلب:</strong></td>
+                    <td>{{ order.order_number }}</td>
+                </tr>
+                <tr>
+                    <td><strong>تاريخ الطلب:</strong></td>
+                    <td>{{ order.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                </tr>
+                <tr>
+                    <td><strong>المبلغ الإجمالي:</strong></td>
+                    <td>{{ order.total_amount }} {{ order.currency }}</td>
+                </tr>
+                <tr>
+                    <td><strong>طريقة الدفع:</strong></td>
+                    <td>{{ order.payment_method or 'غير محدد' }}</td>
+                </tr>
+                <tr>
+                    <td><strong>حالة الدفع:</strong></td>
+                    <td>
+                        <span class="status-badge status-{{ order.payment_status }}">
+                            {% if order.payment_status == 'pending' %}
+                                معلق
+                            {% elif order.payment_status == 'completed' %}
+                                مكتمل
+                            {% elif order.payment_status == 'failed' %}
+                                فاشل
+                            {% endif %}
+                        </span>
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>حالة الطلب:</strong></td>
+                    <td>
+                        <span class="status-badge status-{{ order.order_status }}">
+                            {% if order.order_status == 'pending' %}
+                                معلق
+                            {% elif order.order_status == 'completed' %}
+                                مكتمل
+                            {% elif order.order_status == 'cancelled' %}
+                                ملغي
+                            {% endif %}
+                        </span>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="content-card">
+            <h3>معلومات العميل</h3>
+            <table style="width: 100%; margin-top: 15px;">
+                <tr>
+                    <td><strong>الاسم:</strong></td>
+                    <td>{{ order.user.full_name or 'غير محدد' }}</td>
+                </tr>
+                <tr>
+                    <td><strong>البريد الإلكتروني:</strong></td>
+                    <td>{{ order.user.email }}</td>
+                </tr>
+                <tr>
+                    <td><strong>رقم الهاتف:</strong></td>
+                    <td>{{ order.user.phone or 'غير محدد' }}</td>
+                </tr>
+                <tr>
+                    <td><strong>نوع العميل:</strong></td>
+                    <td>
+                        {% if order.user.customer_type == 'regular' %}
+                            العميل العادي
+                        {% elif order.user.customer_type == 'kyc' %}
+                            العميل الموثق
+                        {% elif order.user.customer_type == 'reseller' %}
+                            الموزع
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>حالة التحقق:</strong></td>
+                    <td>
+                        <span class="status-badge status-{{ order.user.kyc_status }}">
+                            {% if order.user.kyc_status == 'pending' %}
+                                معلق
+                            {% elif order.user.kyc_status == 'approved' %}
+                                موافق عليه
+                            {% elif order.user.kyc_status == 'rejected' %}
+                                مرفوض
+                            {% endif %}
+                        </span>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <div class="content-card">
+        <h3>منتجات الطلب</h3>
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>المنتج</th>
+                        <th>الكمية</th>
+                        <th>السعر</th>
+                        <th>الإجمالي</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in order.items %}
+                    <tr>
+                        <td>{{ item.product.name }}</td>
+                        <td>{{ item.quantity }}</td>
+                        <td>{{ item.price }} {{ order.currency }}</td>
+                        <td>{{ item.price * item.quantity }} {{ order.currency }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% if order.codes %}
+    <div class="content-card">
+        <h3>أكواد المنتجات</h3>
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>المنتج</th>
+                        <th>الكود</th>
+                        <th>تاريخ الاستخدام</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for code in order.codes %}
+                    <tr>
+                        <td>{{ code.product.name }}</td>
+                        <td>
+                            <code style="background: #f8f9fa; padding: 5px 10px; border-radius: 4px; font-family: monospace;">
+                                {{ code.code }}
+                            </code>
+                        </td>
+                        <td>{{ code.used_at.strftime('%Y-%m-%d %H:%M') if code.used_at else 'غير مستخدم' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="content-card">
+        <h3>تحديث حالة الطلب</h3>
+        <form method="POST" action="{{ url_for('admin.update_order_status', order_id=order.id) }}">
+            <div class="form-group">
+                <label class="form-label">حالة الطلب:</label>
+                <select name="status" class="form-control" style="width: 300px;">
+                    <option value="pending" {{ 'selected' if order.order_status == 'pending' }}>معلق</option>
+                    <option value="completed" {{ 'selected' if order.order_status == 'completed' }}>مكتمل</option>
+                    <option value="cancelled" {{ 'selected' if order.order_status == 'cancelled' }}>ملغي</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save"></i>
+                حفظ التغييرات
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

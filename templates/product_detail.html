@@ -1,0 +1,702 @@
+{% extends "base.html" %}
+
+{% block title %}{{ product.name }} - Es-Gift{% endblock %}
+
+{% block content %}
+<div class="product-detail-container">
+    <!-- Navigation Breadcrumb -->
+    <div class="breadcrumb">
+        <a href="{{ url_for('main.index') }}">الرئيسية</a>
+        <span>/</span>
+        <a href="#">{{ product.category }}</a>
+        <span>/</span>
+        <span>{{ product.name }}</span>
+    </div>
+
+    <div class="product-detail-content">
+        <!-- Product Image -->
+        <div class="product-image-section">
+            <div class="main-image" >
+                <img style="object-fit: contain;" src="{{ product.image_url|image_url }}" 
+                     alt="{{ product.name }}" id="mainProductImage">
+            </div>
+            <div class="image-thumbnails">
+                <img src="{{ product.image_url|image_url }}" 
+                     alt="{{ product.name }}" class="thumbnail active">
+                <!-- يمكن إضافة المزيد من الصور المصغرة هنا -->
+            </div>
+        </div>
+
+        <!-- Product Info -->
+        <div class="product-info-section">
+            <h1 class="product-title">{{ product.name }}</h1>
+            
+            <div class="product-rating">
+                <div class="stars">
+                    <i class="fa-solid fa-star"></i>
+                    <i class="fa-solid fa-star"></i>
+                    <i class="fa-solid fa-star"></i>
+                    <i class="fa-solid fa-star"></i>
+                    <i class="fa-solid fa-star"></i>
+                </div>
+                <span class="rating-text">(4.8) 156 تقييم</span>
+            </div>
+
+            <div class="product-description">
+                <p>{{ product.description }}</p>
+            </div>
+
+            <div class="product-details">
+                <div class="detail-item">
+                    <span class="label">المنطقة:</span>
+                    <span class="value">{{ product.region }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="label">القيمة:</span>
+                    <span class="value">{{ product.value }}</span>
+                </div>
+                {% if product.expiry_date %}
+                <div class="detail-item">
+                    <span class="label">تاريخ الانتهاء:</span>
+                    <span class="value">{{ product.expiry_date.strftime('%Y-%m-%d') }}</span>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="availability">
+                {% if product.stock_quantity > 0 %}
+                    <div class="in-stock">
+                        <i class="fa-solid fa-check-circle"></i>
+                        <span>متوفر ({{ product.stock_quantity }} قطعة)</span>
+                    </div>
+                {% else %}
+                    <div class="out-of-stock">
+                        <i class="fa-solid fa-times-circle"></i>
+                        <span>نفدت الكمية</span>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="instant-delivery">
+                <i class="fa-solid fa-bolt"></i>
+                <span>توصيل فوري عبر البريد الإلكتروني</span>
+            </div>
+        </div>
+
+        <!-- Purchase Card -->
+        <div class="purchase-card">
+            <div class="price-section">
+                <div class="current-price">
+                    <span class="price-amount">{{ product.display_price }}</span>
+                    <span class="currency">{{ session.get('currency', 'SAR') }}</span>
+                </div>
+                
+                {% if current_user.is_authenticated %}
+                    <div class="customer-level-info">
+                        <span class="level-badge">
+                            {% if current_user.customer_type == 'regular' %}
+                                العميل العادي
+                            {% elif current_user.customer_type == 'kyc' %}
+                                العميل الموثق
+                            {% elif current_user.customer_type == 'reseller' %}
+                                الموزع
+                            {% endif %}
+                        </span>
+                        <span class="level-price">سعرك الخاص</span>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="quantity-section">
+                <label for="quantity">الكمية:</label>
+                <div class="quantity-controls">
+                    <button type="button" onclick="changeQuantity(-1)">-</button>
+                    <input type="number" id="quantity" value="1" min="1" max="{{ product.stock_quantity }}">
+                    <button type="button" onclick="changeQuantity(1)">+</button>
+                </div>
+            </div>
+
+            <div class="total-price">
+                <span>الإجمالي: </span>
+                <span id="totalPrice">{{ product.display_price }}</span>
+                <span>{{ session.get('currency', 'SAR') }}</span>
+            </div>
+
+            <div class="purchase-actions">
+                {% if product.stock_quantity > 0 %}
+                    <button class="buy-now-btn" onclick="buyNow()">
+                        <i class="fa-solid fa-shopping-cart"></i>
+                        اشتري الآن
+                    </button>
+                    <button class="add-to-cart-btn" onclick="addToCart()">
+                        <i class="fa-solid fa-cart-plus"></i>
+                        أضف للسلة
+                    </button>
+                {% else %}
+                    <button class="notify-btn" onclick="notifyWhenAvailable()">
+                        <i class="fa-solid fa-bell"></i>
+                        أعلمني عند التوفر
+                    </button>
+                {% endif %}
+            </div>
+
+            <div class="security-badges">
+                <div class="badge">
+                    <i class="fa-solid fa-shield-alt"></i>
+                    <span>معاملة آمنة</span>
+                </div>
+                <div class="badge">
+                    <i class="fa-solid fa-undo"></i>
+                    <span>ضمان الاسترداد</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Product Instructions -->
+    {% if product.instructions %}
+    <div class="instructions-section">
+        <h2>تعليمات الاستخدام</h2>
+        <div class="instructions-content">
+            <div class="instructions-text">
+                {{ product.instructions|safe }}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Related Products -->
+    <div class="related-products">
+        <h2>منتجات مشابهة</h2>
+        <div class="related-products-grid">
+            <!-- يمكن إضافة منتجات مشابهة هنا -->
+        </div>
+    </div>
+</div>
+
+<style>
+.product-detail-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #111;
+    color: #fff;
+}
+
+.breadcrumb {
+    margin-bottom: 30px;
+    padding: 15px;
+    background: #222;
+    border-radius: 10px;
+    font-size: 0.9em;
+}
+
+.breadcrumb a {
+    color: #ff0033;
+    text-decoration: none;
+}
+
+.breadcrumb a:hover {
+    text-decoration: underline;
+}
+
+.breadcrumb span {
+    color: #ccc;
+    margin: 0 10px;
+}
+
+.product-detail-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr 350px;
+    gap: 30px;
+    margin-bottom: 50px;
+}
+
+.product-image-section {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.main-image {
+    width: 100%;
+    height: 400px;
+    overflow: hidden;
+    border-radius: 15px;
+    border: 2px solid #333;
+}
+
+.main-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.image-thumbnails {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+}
+
+.thumbnail {
+    width: 80px;
+    height: 80px;
+    border-radius: 8px;
+    border: 2px solid #333;
+    cursor: pointer;
+    transition: border-color 0.3s ease;
+}
+
+.thumbnail:hover,
+.thumbnail.active {
+    border-color: #ff0033;
+}
+
+.product-info-section {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.product-title {
+    font-size: 2em;
+    margin: 0;
+    color: #fff;
+}
+
+.product-rating {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.stars {
+    display: flex;
+    gap: 3px;
+}
+
+.stars i {
+    color: #ffc107;
+    font-size: 1.2em;
+}
+
+.rating-text {
+    color: #ccc;
+    font-size: 0.9em;
+}
+
+.product-description {
+    line-height: 1.6;
+    color: #ccc;
+}
+
+.product-details {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.detail-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #333;
+}
+
+.detail-item .label {
+    color: #ccc;
+    font-weight: bold;
+}
+
+.detail-item .value {
+    color: #fff;
+}
+
+.availability {
+    margin: 10px 0;
+}
+
+.in-stock {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #28a745;
+}
+
+.out-of-stock {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #dc3545;
+}
+
+.instant-delivery {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    background: #1a5f1a;
+    border-radius: 8px;
+    color: #28a745;
+}
+
+.purchase-card {
+    background: #222;
+    padding: 25px;
+    border-radius: 15px;
+    border: 2px solid #333;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    height: fit-content;
+}
+
+.price-section {
+    text-align: center;
+}
+
+.current-price {
+    font-size: 2.5em;
+    font-weight: bold;
+    color: #ff0033;
+}
+
+.currency {
+    font-size: 0.7em;
+    color: #ccc;
+}
+
+.customer-level-info {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.level-badge {
+    background: #ff0033;
+    color: white;
+    padding: 5px 15px;
+    border-radius: 15px;
+    font-size: 0.8em;
+    font-weight: bold;
+}
+
+.level-price {
+    color: #28a745;
+    font-size: 0.9em;
+}
+
+.quantity-section {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.quantity-controls {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.quantity-controls button {
+    width: 35px;
+    height: 35px;
+    border: 2px solid #444;
+    background: #333;
+    color: #fff;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1.2em;
+    font-weight: bold;
+}
+
+.quantity-controls button:hover {
+    background: #444;
+}
+
+.quantity-controls input {
+    width: 60px;
+    text-align: center;
+    padding: 8px;
+    border: 2px solid #444;
+    background: #333;
+    color: #fff;
+    border-radius: 5px;
+}
+
+.total-price {
+    font-size: 1.3em;
+    font-weight: bold;
+    text-align: center;
+    color: #fff;
+}
+
+.purchase-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.buy-now-btn,
+.add-to-cart-btn,
+.notify-btn {
+    padding: 15px;
+    border: none;
+    border-radius: 10px;
+    font-size: 1.1em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.buy-now-btn {
+    background: linear-gradient(135deg, #ff0033, #ff6b6b);
+    color: white;
+}
+
+.buy-now-btn:hover {
+    background: linear-gradient(135deg, #e60029, #ff5252);
+    transform: translateY(-2px);
+}
+
+.add-to-cart-btn {
+    background: #333;
+    color: white;
+    border: 2px solid #444;
+}
+
+.add-to-cart-btn:hover {
+    background: #444;
+    border-color: #555;
+}
+
+.notify-btn {
+    background: #ffc107;
+    color: #000;
+}
+
+.notify-btn:hover {
+    background: #ffca28;
+}
+
+.security-badges {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 15px;
+}
+
+.badge {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: #28a745;
+    font-size: 0.8em;
+}
+
+.instructions-section {
+    margin-bottom: 50px;
+    padding: 30px;
+    background: #222;
+    border-radius: 15px;
+    border: 1px solid #333;
+}
+
+.instructions-section h2 {
+    color: #ff0033;
+    margin-bottom: 20px;
+}
+
+.instructions-text {
+    line-height: 1.8;
+    color: #ccc;
+}
+
+.related-products {
+    margin-bottom: 50px;
+}
+
+.related-products h2 {
+    color: #ff0033;
+    margin-bottom: 25px;
+}
+
+.related-products-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+}
+
+@media (max-width: 1024px) {
+    .product-detail-content {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .purchase-card {
+        order: -1;
+    }
+}
+
+@media (max-width: 768px) {
+    .product-detail-container {
+        padding: 10px;
+    }
+    
+    .main-image {
+        height: 300px;
+    }
+    
+    .product-title {
+        font-size: 1.5em;
+    }
+    
+    .current-price {
+        font-size: 2em;
+    }
+    
+    .purchase-actions {
+        gap: 15px;
+    }
+    
+    .buy-now-btn,
+    .add-to-cart-btn,
+    .notify-btn {
+        padding: 12px;
+        font-size: 1em;
+    }
+}
+</style>
+
+<script>
+const productPrice = {{ product.display_price }};
+const productId = {{ product.id }};
+const maxQuantity = {{ product.stock_quantity }};
+
+function changeQuantity(change) {
+    const quantityInput = document.getElementById('quantity');
+    let currentQuantity = parseInt(quantityInput.value);
+    let newQuantity = currentQuantity + change;
+    
+    if (newQuantity >= 1 && newQuantity <= maxQuantity) {
+        quantityInput.value = newQuantity;
+        updateTotalPrice();
+    }
+}
+
+function updateTotalPrice() {
+    const quantity = parseInt(document.getElementById('quantity').value);
+    const totalPrice = (productPrice * quantity).toFixed(2);
+    document.getElementById('totalPrice').textContent = totalPrice;
+}
+
+function addToCart() {
+    {% if current_user.is_authenticated %}
+    const quantity = parseInt(document.getElementById('quantity').value);
+    
+    fetch('/add-to-cart', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            product_id: productId,
+            quantity: quantity
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('تمت إضافة المنتج إلى السلة', 'success');
+        } else {
+            showNotification('حدث خطأ، يرجى المحاولة مرة أخرى', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('حدث خطأ، يرجى المحاولة مرة أخرى', 'error');
+    });
+    {% else %}
+    showNotification('يجب تسجيل الدخول أولاً', 'warning');
+    {% endif %}
+}
+
+function buyNow() {
+    {% if current_user.is_authenticated %}
+    const quantity = parseInt(document.getElementById('quantity').value);
+    
+    // إضافة المنتج للسلة ثم الانتقال للدفع
+    fetch('/add-to-cart', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            product_id: productId,
+            quantity: quantity
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.location.href = '/cart';
+        } else {
+            showNotification('حدث خطأ، يرجى المحاولة مرة أخرى', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('حدث خطأ، يرجى المحاولة مرة أخرى', 'error');
+    });
+    {% else %}
+    showNotification('يجب تسجيل الدخول أولاً', 'warning');
+    {% endif %}
+}
+
+function notifyWhenAvailable() {
+    {% if current_user.is_authenticated %}
+    showNotification('سنقوم بإعلامك عندما يتوفر المنتج', 'info');
+    {% else %}
+    showNotification('يجب تسجيل الدخول أولاً', 'warning');
+    {% endif %}
+}
+
+function showNotification(message, type) {
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.innerHTML = `
+        <span>${message}</span>
+        <button onclick="this.parentElement.remove()">×</button>
+    `;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.remove();
+    }, 5000);
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    updateTotalPrice();
+    
+    // Handle quantity input changes
+    document.getElementById('quantity').addEventListener('change', updateTotalPrice);
+    
+    // Handle thumbnail clicks
+    const thumbnails = document.querySelectorAll('.thumbnail');
+    const mainImage = document.getElementById('mainProductImage');
+    
+    thumbnails.forEach(thumbnail => {
+        thumbnail.addEventListener('click', function() {
+            thumbnails.forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            mainImage.src = this.src;
+        });
+    });
+});
+</script>
+{% endblock %}

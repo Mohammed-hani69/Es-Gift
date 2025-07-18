@@ -1,0 +1,121 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}{{ 'تعديل إعدادات API' if api_setting else 'إضافة API جديد' }}{% endblock %}
+
+{% block content %}
+<div class="content-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2>
+            <i class="fas fa-cog"></i>
+            {{ 'تعديل إعدادات API' if api_setting else 'إضافة API جديد' }}
+        </h2>
+        <a href="{{ url_for('admin.api_settings') }}" class="btn btn-primary">
+            <i class="fas fa-arrow-right"></i>
+            العودة لإعدادات API
+        </a>
+    </div>
+
+    <form method="POST">
+        <div class="form-group">
+            <label class="form-label">اسم API:</label>
+            <input type="text" name="api_name" class="form-control" 
+                   value="{{ api_setting.api_name if api_setting else '' }}" 
+                   placeholder="مثل: Offgamers API" required>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">URL الخاص بـ API:</label>
+            <input type="url" name="api_url" class="form-control" 
+                   value="{{ api_setting.api_url if api_setting else '' }}" 
+                   placeholder="https://api.example.com/products" required>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">API Key:</label>
+            <input type="password" name="api_key" class="form-control" 
+                   value="{{ api_setting.api_key if api_setting else '' }}" 
+                   placeholder="أدخل مفتاح API" required>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">إعدادات إضافية (JSON):</label>
+            <textarea name="settings_json" class="form-control" rows="8" 
+                      placeholder='{"headers": {"Authorization": "Bearer YOUR_TOKEN"}, "timeout": 30}'>{{ api_setting.settings_json if api_setting else '' }}</textarea>
+            <small style="color: #666; font-size: 0.9em;">
+                أدخل إعدادات إضافية بصيغة JSON مثل headers أو timeout
+            </small>
+        </div>
+
+        <div class="form-group">
+            <label style="display: flex; align-items: center; gap: 10px;">
+                <input type="checkbox" name="is_active" 
+                       {{ 'checked' if api_setting and api_setting.is_active else '' }}>
+                <span>تفعيل API</span>
+            </label>
+        </div>
+
+        <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save"></i>
+            {{ 'حفظ التعديلات' if api_setting else 'إضافة API' }}
+        </button>
+    </form>
+</div>
+
+<div class="content-card">
+    <h3>
+        <i class="fas fa-lightbulb"></i>
+        نصائح لاستخدام API
+    </h3>
+    <div class="alert alert-info">
+        <h4>تنسيق البيانات المتوقع:</h4>
+        <pre style="background: #f8f9fa; padding: 15px; border-radius: 8px; overflow-x: auto;">
+{
+  "products": [
+    {
+      "name": "بطاقة جوجل بلاي 25 دولار",
+      "description": "بطاقة شحن لمتجر جوجل بلاي",
+      "category": "بطاقات شحن",
+      "price": 100.00,
+      "kyc_price": 95.00,
+      "reseller_price": 90.00,
+      "image_url": "https://example.com/image.jpg",
+      "stock": 50,
+      "codes": [
+        "XXXX-XXXX-XXXX-XXXX",
+        "YYYY-YYYY-YYYY-YYYY"
+      ]
+    }
+  ]
+}
+        </pre>
+    </div>
+</div>
+
+<style>
+    .form-control {
+        margin-bottom: 15px;
+    }
+    
+    textarea.form-control {
+        resize: vertical;
+        font-family: monospace;
+    }
+    
+    .alert {
+        padding: 15px;
+        border-radius: 8px;
+        margin-top: 20px;
+    }
+    
+    .alert-info {
+        background: #e3f2fd;
+        border: 1px solid #2196f3;
+        color: #1976d2;
+    }
+    
+    pre {
+        font-size: 0.9em;
+        line-height: 1.4;
+    }
+</style>
+{% endblock %}

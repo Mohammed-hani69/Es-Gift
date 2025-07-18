@@ -1,0 +1,2408 @@
+{% extends "base.html" %}
+
+{% block title %}طلب التحقق من الهوية - Es-Gift{% endblock %}
+
+{% block head %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="format-detection" content="telephone=no">
+{% endblock %}
+
+{% block content %}
+<div class="kyc-container">
+    <div class="kyc-header">
+        <h1>طلب التحقق من الهوية</h1>
+        <p>اكمل البيانات التالية للحصول على مميزات العميل الموثق</p>
+    </div>
+
+    <!-- مؤشر التقدم -->
+    <div class="progress-indicator">
+        <div class="step active" data-step="1">
+            <div class="step-number">1</div>
+            <div class="step-label">المعلومات الشخصية</div>
+        </div>
+        <div class="step" data-step="2">
+            <div class="step-number">2</div>
+            <div class="step-label">التحقق من الهوية</div>
+        </div>
+        <div class="step" data-step="3">
+            <div class="step-number">3</div>
+            <div class="step-label">التحقق من الوجه</div>
+        </div>
+        <div class="step" data-step="4">
+            <div class="step-number">4</div>
+            <div class="step-label">مراجعة وإرسال</div>
+        </div>
+    </div>
+
+    <div class="kyc-benefits">
+        <h2>مميزات العميل الموثق</h2>
+        <div class="benefits-grid">
+            <div class="benefit-item">
+                <i class="fa-solid fa-percentage"></i>
+                <h3>خصومات حصرية</h3>
+                <p>احصل على خصومات إضافية على جميع المنتجات</p>
+            </div>
+            <div class="benefit-item">
+                <i class="fa-solid fa-star"></i>
+                <h3>وصول مبكر</h3>
+                <p>كن أول من يعرف عن العروض والمنتجات الجديدة</p>
+            </div>
+            <div class="benefit-item">
+                <i class="fa-solid fa-headset"></i>
+                <h3>دعم متقدم</h3>
+                <p>احصل على دعم فني متقدم ومخصص</p>
+            </div>
+            <div class="benefit-item">
+                <i class="fa-solid fa-shield-alt"></i>
+                <h3>أمان إضافي</h3>
+                <p>حماية محسنة لحسابك ومعاملاتك</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- خطوة 1: المعلومات الشخصية -->
+    <div class="kyc-step active" id="step1">
+        <div class="kyc-form">
+            <h2>المعلومات الشخصية</h2>
+            
+            <div class="form-group">
+                <label for="full_name">الاسم الكامل *</label>
+                <input type="text" id="full_name" name="full_name" 
+                       value="{{ current_user.full_name or '' }}" required>
+            </div>
+
+            <div class="form-group">
+                <label for="phone">رقم الهاتف *</label>
+                <input type="tel" id="phone" name="phone" 
+                       value="{{ current_user.phone or '' }}" required>
+            </div>
+
+            <div class="form-group">
+                <label for="birth_date">تاريخ الميلاد *</label>
+                <input type="date" id="birth_date" name="birth_date" 
+                       value="{{ current_user.birth_date or '' }}" required>
+            </div>
+
+            <div class="form-group">
+                <label for="nationality">الجنسية *</label>
+                <select id="nationality" name="nationality" required>
+                    <option value="">اختر الجنسية</option>
+                    <option value="السعودية" {% if current_user.nationality == 'السعودية' %}selected{% endif %}>المملكة العربية السعودية</option>
+                    <option value="الإمارات" {% if current_user.nationality == 'الإمارات' %}selected{% endif %}>الإمارات العربية المتحدة</option>
+                    <option value="مصر" {% if current_user.nationality == 'مصر' %}selected{% endif %}>مصر</option>
+                    <option value="الأردن" {% if current_user.nationality == 'الأردن' %}selected{% endif %}>الأردن</option>
+                    <option value="الكويت" {% if current_user.nationality == 'الكويت' %}selected{% endif %}>الكويت</option>
+                    <option value="قطر" {% if current_user.nationality == 'قطر' %}selected{% endif %}>قطر</option>
+                    <option value="البحرين" {% if current_user.nationality == 'البحرين' %}selected{% endif %}>البحرين</option>
+                    <option value="عمان" {% if current_user.nationality == 'عمان' %}selected{% endif %}>عمان</option>
+                </select>
+            </div>
+
+            <div class="step-actions">
+                <button type="button" class="btn-next" onclick="nextStep(1)">التالي</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- خطوة 2: التحقق من الهوية -->
+    <div class="kyc-step" id="step2">
+        <div class="kyc-form">
+            <h2>التحقق من الهوية</h2>
+            <p class="step-description">اختر نوع الوثيقة التي تريد رفعها للتحقق من هويتك</p>
+
+            <div class="document-type-selection">
+                <div class="document-option" data-type="national_id">
+                    <div class="option-icon">
+                        <i class="fas fa-id-card"></i>
+                    </div>
+                    <h3>الهوية الوطنية</h3>
+                    <p>صورة من الجهة الأمامية والخلفية للهوية الوطنية</p>
+                </div>
+
+                <div class="document-option" data-type="passport">
+                    <div class="option-icon">
+                        <i class="fas fa-passport"></i>
+                    </div>
+                    <h3>جواز السفر</h3>
+                    <p>صورة من الصفحة الرئيسية لجواز السفر</p>
+                </div>
+
+                <div class="document-option" data-type="driver_license">
+                    <div class="option-icon">
+                        <i class="fas fa-car"></i>
+                    </div>
+                    <h3>رخصة القيادة</h3>
+                    <p>صورة من رخصة القيادة السارية</p>
+                </div>
+            </div>
+
+            <!-- منطقة رفع الملفات -->
+            <div class="upload-section" id="uploadSection" style="display: none;">
+                <div id="nationalIdUpload" class="upload-container" style="display: none;">
+                    <h3>رفع صور الهوية الوطنية</h3>
+                    <div class="upload-grid">
+                        <div class="upload-area" id="idFrontUpload">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <p>اسحب وأفلت صورة الهوية الأمامية هنا أو اضغط للاختيار</p>
+                            <input type="file" id="id_front" name="id_front" accept="image/*" style="display: none;">
+                            <div class="upload-preview" id="idFrontPreview"></div>
+                        </div>
+                        <div class="upload-area" id="idBackUpload">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <p>اسحب وأفلت صورة الهوية الخلفية هنا أو اضغط للاختيار</p>
+                            <input type="file" id="id_back" name="id_back" accept="image/*" style="display: none;">
+                            <div class="upload-preview" id="idBackPreview"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="passportUpload" class="upload-container" style="display: none;">
+                    <h3>رفع صورة جواز السفر</h3>
+                    <div class="upload-area" id="passportSingleUpload">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <p>اسحب وأفلت صورة جواز السفر هنا أو اضغط للاختيار</p>
+                        <input type="file" id="passport" name="passport" accept="image/*" style="display: none;">
+                        <div class="upload-preview" id="passportPreview"></div>
+                    </div>
+                </div>
+
+                <div id="driverLicenseUpload" class="upload-container" style="display: none;">
+                    <h3>رفع صورة رخصة القيادة</h3>
+                    <div class="upload-area" id="licenseSingleUpload">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <p>اسحب وأفلت صورة رخصة القيادة هنا أو اضغط للاختيار</p>
+                        <input type="file" id="driver_license" name="driver_license" accept="image/*" style="display: none;">
+                        <div class="upload-preview" id="licensePreview"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="step-actions">
+                <button type="button" class="btn-prev" onclick="prevStep(2)">السابق</button>
+                <button type="button" class="btn-next" id="step2Next" onclick="nextStep(2)" disabled>التالي</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- خطوة 3: التحقق من الوجه -->
+    <div class="kyc-step" id="step3">
+        <div class="kyc-form">
+            <h2>التحقق من الوجه</h2>
+            <p class="step-description">سنقوم بأخذ ثلاث صور لوجهك للتحقق من هويتك</p>
+
+            <div class="face-verification-container">
+                <div class="verification-instructions">
+                    <div class="instruction-item">
+                        <div class="instruction-icon">
+                            <i class="fas fa-camera"></i>
+                        </div>
+                        <h3>تعليمات التصوير</h3>
+                        <ul>
+                            <li>تأكد من وجود إضاءة جيدة</li>
+                            <li>انظر مباشرة للكاميرا</li>
+                            <li>تجنب ارتداء النظارات الشمسية</li>
+                            <li>تأكد من ظهور وجهك بالكامل</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="camera-container">
+                    <video id="video" autoplay muted style="display: none;"></video>
+                    <canvas id="canvas" style="display: none;"></canvas>
+                    
+                    <div class="camera-placeholder" id="cameraPlaceholder">
+                        <i class="fas fa-video fa-5x"></i>
+                        <p>اضغط على "بدء التحقق" لتشغيل الكاميرا</p>
+                        <button type="button" class="btn-start-camera" onclick="startCamera()">
+                            <i class="fas fa-play"></i>
+                            بدء التحقق
+                        </button>
+                    </div>
+
+                    <div class="face-capture-interface" id="faceCaptureInterface" style="display: none;">
+                        <div class="capture-instruction" id="captureInstruction">
+                            انظر مباشرة للكاميرا
+                        </div>
+                        <div class="capture-progress">
+                            <div class="progress-item" id="progress1">
+                                <i class="fas fa-camera"></i>
+                                <span>مباشر</span>
+                            </div>
+                            <div class="progress-item" id="progress2">
+                                <i class="fas fa-arrow-right"></i>
+                                <span>يمين</span>
+                            </div>
+                            <div class="progress-item" id="progress3">
+                                <i class="fas fa-arrow-left"></i>
+                                <span>يسار</span>
+                            </div>
+                        </div>
+                        <div class="auto-capture-countdown" id="captureCountdown">
+                            <div class="countdown-circle">
+                                <span id="countdownNumber">3</span>
+                            </div>
+                            <p>جاري التصوير التلقائي...</p>
+                        </div>
+                    </div>
+
+                    <div class="captured-photos" id="capturedPhotos">
+                        <div class="photo-item" id="photo1">
+                            <div class="photo-placeholder">
+                                <i class="fas fa-user"></i>
+                                <span>مباشر</span>
+                            </div>
+                        </div>
+                        <div class="photo-item" id="photo2">
+                            <div class="photo-placeholder">
+                                <i class="fas fa-user"></i>
+                                <span>يمين</span>
+                            </div>
+                        </div>
+                        <div class="photo-item" id="photo3">
+                            <div class="photo-placeholder">
+                                <i class="fas fa-user"></i>
+                                <span>يسار</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="verification-success" id="verificationSuccess" style="display: none;">
+                        <div class="success-icon">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <h3>تم التحقق بنجاح!</h3>
+                        <p>تم التقاط جميع الصور المطلوبة</p>
+                        <button type="button" class="btn-finish" id="finishBtn" onclick="finishVerification()">
+                            <i class="fas fa-check"></i>
+                            إنهاء التحقق
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="step-actions">
+                <button type="button" class="btn-prev" onclick="prevStep(3)">السابق</button>
+                <button type="button" class="btn-next" id="step3Next" onclick="nextStep(3)" disabled>التالي</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- خطوة 4: المراجعة والإرسال -->
+    <div class="kyc-step" id="step4">
+        <div class="kyc-form">
+            <h2>مراجعة البيانات</h2>
+            <p class="step-description">راجع جميع البيانات قبل الإرسال</p>
+
+            <div class="review-section">
+                <div class="review-item">
+                    <h3>المعلومات الشخصية</h3>
+                    <div class="review-data" id="reviewPersonalInfo"></div>
+                </div>
+
+                <div class="review-item">
+                    <h3>مستندات الهوية</h3>
+                    <div class="review-data" id="reviewDocuments"></div>
+                </div>
+
+                <div class="review-item">
+                    <h3>صور التحقق من الوجه</h3>
+                    <div class="review-data" id="reviewFacePhotos"></div>
+                </div>
+            </div>
+
+            <div class="agreement-section">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="finalAgreement" required>
+                    أوافق على جميع <a href="#" target="_blank">الشروط والأحكام</a> وسياسة الخصوصية
+                </label>
+            </div>
+
+            <div class="step-actions">
+                <button type="button" class="btn-prev" onclick="prevStep(4)">السابق</button>
+                <button type="button" class="btn-submit" id="submitKYC" onclick="submitKYCForm()" disabled>
+                    <i class="fas fa-paper-plane"></i>
+                    إرسال طلب التحقق
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- حقول مخفية لحفظ البيانات -->
+    <form id="kycDataForm" method="POST" enctype="multipart/form-data" style="display: none;">
+        <input type="hidden" name="document_type" id="hiddenDocumentType">
+        <input type="hidden" name="face_photo_front" id="hiddenFacePhotoFront">
+        <input type="hidden" name="face_photo_right" id="hiddenFacePhotoRight">
+        <input type="hidden" name="face_photo_left" id="hiddenFacePhotoLeft">
+    </form>
+</div>
+
+<style>
+/* تحسينات عامة للموبايل */
+* {
+    box-sizing: border-box;
+}
+
+body {
+    -webkit-overflow-scrolling: touch;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.kyc-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #111;
+    color: #fff;
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+}
+
+.kyc-header {
+    text-align: center;
+    margin-bottom: 40px;
+    padding: 30px;
+    background: linear-gradient(135deg, #ff0033, #ff6b6b);
+    border-radius: 15px;
+}
+
+.kyc-header h1 {
+    margin: 0 0 10px 0;
+    font-size: 2.5em;
+}
+
+.kyc-header p {
+    margin: 0;
+    font-size: 1.2em;
+    opacity: 0.9;
+}
+
+/* مؤشر التقدم */
+.progress-indicator {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    margin-bottom: 40px;
+    padding: 20px;
+    background: #222;
+    border-radius: 15px;
+    border: 1px solid #333;
+}
+
+.step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    opacity: 0.5;
+    transition: all 0.3s ease;
+}
+
+.step.active {
+    opacity: 1;
+}
+
+.step.completed {
+    opacity: 1;
+    color: #28a745;
+}
+
+.step-number {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #444;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    border: 2px solid #444;
+}
+
+.step.active .step-number {
+    background: #ff0033;
+    border-color: #ff0033;
+    color: white;
+}
+
+.step.completed .step-number {
+    background: #28a745;
+    border-color: #28a745;
+    color: white;
+}
+
+.step-label {
+    font-size: 0.9em;
+    text-align: center;
+}
+
+/* مراحل KYC */
+.kyc-step {
+    display: none;
+}
+
+.kyc-step.active {
+    display: block;
+}
+
+.kyc-benefits {
+    margin-bottom: 40px;
+    padding: 30px;
+    background: #222;
+    border-radius: 15px;
+    border: 1px solid #333;
+}
+
+.kyc-benefits h2 {
+    color: #ff0033;
+    margin-bottom: 25px;
+    text-align: center;
+}
+
+.benefits-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+}
+
+.benefit-item {
+    text-align: center;
+    padding: 20px;
+    background: #333;
+    border-radius: 10px;
+    border: 1px solid #444;
+    transition: all 0.3s ease;
+}
+
+.benefit-item:hover {
+    transform: translateY(-5px);
+    border-color: #ff0033;
+}
+
+.benefit-item i {
+    font-size: 2.5em;
+    color: #ff0033;
+    margin-bottom: 15px;
+}
+
+.benefit-item h3 {
+    margin: 0 0 10px 0;
+    color: #fff;
+}
+
+.benefit-item p {
+    margin: 0;
+    color: #ccc;
+    font-size: 0.9em;
+}
+
+.kyc-form {
+    background: #222;
+    padding: 30px;
+    border-radius: 15px;
+    border: 1px solid #333;
+}
+
+.kyc-form h2 {
+    color: #ff0033;
+    margin-bottom: 25px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #ff0033;
+}
+
+.step-description {
+    color: #ccc;
+    margin-bottom: 30px;
+    font-size: 1.1em;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: #ccc;
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #444;
+    border-radius: 8px;
+    background: #333;
+    color: #fff;
+    font-size: 1em;
+    transition: border-color 0.3s ease;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: #ff0033;
+}
+
+/* اختيار نوع المستند */
+.document-type-selection {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.document-option {
+    padding: 25px;
+    background: #333;
+    border: 2px solid #444;
+    border-radius: 15px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.document-option:hover {
+    border-color: #ff0033;
+    transform: translateY(-5px);
+}
+
+.document-option.selected {
+    border-color: #ff0033;
+    background: #2a0a0a;
+}
+
+.option-icon {
+    font-size: 3em;
+    color: #ff0033;
+    margin-bottom: 15px;
+}
+
+.document-option h3 {
+    margin: 0 0 10px 0;
+    color: #fff;
+}
+
+.document-option p {
+    margin: 0;
+    color: #ccc;
+    font-size: 0.9em;
+}
+
+/* رفع الملفات */
+.upload-section {
+    margin: 30px 0;
+}
+
+.upload-container h3 {
+    color: #ff0033;
+    margin-bottom: 20px;
+}
+
+.upload-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+.upload-area {
+    position: relative;
+    padding: 40px 20px;
+    border: 2px dashed #444;
+    border-radius: 10px;
+    background: #333;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+.upload-area:hover {
+    border-color: #ff0033;
+    background: #2a2a2a;
+}
+
+.upload-area.dragover {
+    border-color: #ff0033;
+    background: #2a2a2a;
+}
+
+.upload-area i {
+    font-size: 2.5em;
+    color: #666;
+    margin-bottom: 10px;
+}
+
+.upload-area p {
+    margin: 0;
+    color: #ccc;
+}
+
+.upload-area input[type="file"] {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.upload-preview {
+    margin-top: 15px;
+    min-height: 60px;
+}
+
+.upload-preview img {
+    max-width: 100%;
+    max-height: 200px;
+    border-radius: 8px;
+    border: 2px solid #444;
+}
+
+/* التحقق من الوجه */
+.face-verification-container {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 30px;
+}
+
+.verification-instructions {
+    background: #333;
+    padding: 25px;
+    border-radius: 15px;
+    border: 1px solid #444;
+}
+
+.instruction-item h3 {
+    color: #ff0033;
+    margin-bottom: 15px;
+}
+
+.instruction-item ul {
+    list-style: none;
+    padding: 0;
+}
+
+.instruction-item li {
+    padding: 8px 0;
+    color: #ccc;
+    border-bottom: 1px solid #444;
+}
+
+.instruction-item li:before {
+    content: "✓";
+    color: #28a745;
+    margin-left: 10px;
+}
+
+.camera-container {
+    background: #333;
+    border-radius: 15px;
+    padding: 25px;
+    text-align: center;
+    border: 1px solid #444;
+    position: relative;
+}
+
+.camera-placeholder {
+    padding: 60px 20px;
+    color: #666;
+}
+
+.camera-placeholder i {
+    margin-bottom: 20px;
+}
+
+.camera-placeholder p {
+    margin: 20px 0;
+    font-size: 1.1em;
+}
+
+.btn-start-camera {
+    background: linear-gradient(135deg, #ff0033, #ff6b6b);
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    border-radius: 25px;
+    font-size: 1.1em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-start-camera:hover {
+    transform: translateY(-2px);
+}
+
+.btn-retry-camera {
+    background: linear-gradient(135deg, #28a745, #34ce57);
+    color: white;
+    border: none;
+    padding: 12px 25px;
+    border-radius: 20px;
+    font-size: 1em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-block;
+}
+
+.btn-retry-camera:hover {
+    transform: translateY(-2px);
+    background: linear-gradient(135deg, #218838, #28a745);
+}
+
+.camera-error-instructions {
+    background: #2a2a2a;
+    padding: 20px;
+    border-radius: 10px;
+    border: 1px solid #444;
+    margin: 20px auto;
+    max-width: 450px;
+}
+
+.camera-error-instructions h4 {
+    margin-bottom: 15px;
+    color: #ff0033;
+    text-align: center;
+}
+
+.camera-error-instructions ol {
+    color: #ccc;
+    line-height: 1.6;
+    padding-right: 20px;
+}
+
+.camera-error-instructions li {
+    margin-bottom: 8px;
+    padding: 5px 0;
+    border-bottom: 1px solid #333;
+}
+
+#video {
+    width: 100%;
+    max-width: 500px;
+    border-radius: 15px;
+    border: 2px solid #ff0033;
+}
+
+.face-capture-interface {
+    position: relative;
+}
+
+.capture-instruction {
+    font-size: 1.3em;
+    color: #ff0033;
+    margin-bottom: 20px;
+    font-weight: bold;
+}
+
+.capture-progress {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.progress-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    padding: 10px;
+    border-radius: 10px;
+    border: 2px solid #444;
+    transition: all 0.3s ease;
+}
+
+.progress-item.active {
+    border-color: #ff0033;
+    background: #2a0a0a;
+}
+
+.progress-item.completed {
+    border-color: #28a745;
+    background: #0a2a0a;
+}
+
+.progress-item i {
+    font-size: 1.5em;
+}
+
+.btn-capture {
+    background: linear-gradient(135deg, #ff0033, #ff6b6b);
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    border-radius: 25px;
+    font-size: 1.1em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-capture:hover {
+    transform: translateY(-2px);
+}
+
+.auto-capture-countdown {
+    text-align: center;
+    margin: 20px 0;
+}
+
+.countdown-circle {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ff0033, #ff6b6b);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 15px auto;
+    animation: pulse 1s infinite;
+}
+
+.countdown-circle span {
+    font-size: 2em;
+    font-weight: bold;
+    color: white;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+.btn-finish {
+    background: linear-gradient(135deg, #28a745, #34ce57);
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    border-radius: 25px;
+    font-size: 1.1em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 20px;
+}
+
+.btn-finish:hover {
+    transform: translateY(-2px);
+    background: linear-gradient(135deg, #218838, #28a745);
+}
+
+.captured-photos {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.photo-item {
+    width: 100px;
+    height: 100px;
+    border-radius: 10px;
+    border: 2px solid #444;
+    overflow: hidden;
+}
+
+.photo-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    background: #333;
+    color: #666;
+}
+
+.photo-placeholder i {
+    font-size: 1.5em;
+    margin-bottom: 5px;
+}
+
+.photo-placeholder span {
+    font-size: 0.8em;
+}
+
+.verification-success {
+    text-align: center;
+    padding: 40px;
+}
+
+.success-icon {
+    font-size: 4em;
+    color: #28a745;
+    margin-bottom: 20px;
+}
+
+.verification-success h3 {
+    color: #28a745;
+    margin: 0 0 10px 0;
+}
+
+/* مراجعة البيانات */
+.review-section {
+    margin-bottom: 30px;
+}
+
+.review-item {
+    background: #333;
+    padding: 25px;
+    border-radius: 15px;
+    margin-bottom: 20px;
+    border: 1px solid #444;
+}
+
+.review-item h3 {
+    color: #ff0033;
+    margin-bottom: 15px;
+}
+
+.review-data {
+    color: #ccc;
+}
+
+.agreement-section {
+    background: #333;
+    padding: 25px;
+    border-radius: 15px;
+    margin-bottom: 30px;
+    border: 1px solid #444;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+    cursor: pointer;
+    font-size: 1em;
+    line-height: 1.5;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+}
+
+.checkbox-label a {
+    color: #ff0033;
+    text-decoration: underline;
+}
+
+/* أزرار التنقل */
+.step-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    margin-top: 40px;
+}
+
+.btn-prev,
+.btn-next,
+.btn-submit {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 15px 30px;
+    border: none;
+    border-radius: 25px;
+    font-size: 1.1em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-prev {
+    background: #666;
+    color: white;
+}
+
+.btn-prev:hover {
+    background: #555;
+    transform: translateY(-2px);
+}
+
+.btn-next,
+.btn-submit {
+    background: linear-gradient(135deg, #ff0033, #ff6b6b);
+    color: white;
+}
+
+.btn-next:hover,
+.btn-submit:hover {
+    background: linear-gradient(135deg, #e60029, #ff5252);
+    transform: translateY(-2px);
+}
+
+.btn-next:disabled,
+.btn-submit:disabled {
+    background: #444;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* تصميم الموبايل - الشاشات الصغيرة */
+@media (max-width: 768px) {
+    .kyc-container {
+        padding: 10px;
+        margin: 0;
+    }
+    
+    .kyc-header {
+        padding: 20px 15px;
+        margin-bottom: 20px;
+    }
+    
+    .kyc-header h1 {
+        font-size: 1.8em;
+    }
+    
+    .kyc-header p {
+        font-size: 1em;
+    }
+    
+    .progress-indicator {
+        gap: 10px;
+        flex-wrap: wrap;
+        padding: 15px 10px;
+        margin-bottom: 20px;
+    }
+    
+    .step {
+        min-width: 120px;
+    }
+    
+    .step-number {
+        width: 35px;
+        height: 35px;
+        font-size: 0.9em;
+    }
+    
+    .step-label {
+        font-size: 0.75em;
+        line-height: 1.2;
+    }
+    
+    .kyc-benefits {
+        padding: 20px 15px;
+        margin-bottom: 20px;
+    }
+    
+    .benefits-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .benefit-item {
+        padding: 15px;
+    }
+    
+    .benefit-item i {
+        font-size: 2em;
+        margin-bottom: 10px;
+    }
+    
+    .kyc-form {
+        padding: 20px 15px;
+    }
+    
+    .kyc-form h2 {
+        font-size: 1.5em;
+        margin-bottom: 20px;
+    }
+    
+    .step-description {
+        font-size: 1em;
+        margin-bottom: 20px;
+    }
+    
+    .form-group {
+        margin-bottom: 15px;
+    }
+    
+    .form-group input,
+    .form-group select {
+        padding: 12px 10px;
+        font-size: 16px; /* منع التكبير في iOS */
+    }
+    
+    .document-type-selection {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .document-option {
+        padding: 20px 15px;
+    }
+    
+    .option-icon {
+        font-size: 2.5em;
+        margin-bottom: 10px;
+    }
+    
+    .document-option h3 {
+        font-size: 1.1em;
+    }
+    
+    .document-option p {
+        font-size: 0.85em;
+    }
+    
+    .upload-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .upload-area {
+        padding: 30px 15px;
+    }
+    
+    .upload-area i {
+        font-size: 2em;
+    }
+    
+    .upload-area p {
+        font-size: 0.9em;
+    }
+    
+    .face-verification-container {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .verification-instructions {
+        padding: 20px 15px;
+        order: 2;
+    }
+    
+    .camera-container {
+        padding: 20px 15px;
+        order: 1;
+    }
+    
+    .camera-placeholder {
+        padding: 40px 15px;
+    }
+    
+    .camera-placeholder i {
+        font-size: 3em;
+    }
+    
+    .camera-placeholder p {
+        font-size: 1em;
+        margin: 15px 0;
+    }
+    
+    .btn-start-camera,
+    .btn-retry-camera {
+        padding: 12px 25px;
+        font-size: 1em;
+    }
+    
+    #video {
+        max-width: 100%;
+        height: auto;
+    }
+    
+    .capture-instruction {
+        font-size: 1.1em;
+        margin-bottom: 15px;
+    }
+    
+    .capture-progress {
+        gap: 10px;
+        margin-bottom: 15px;
+        flex-wrap: wrap;
+    }
+    
+    .progress-item {
+        padding: 8px;
+        min-width: 80px;
+    }
+    
+    .progress-item i {
+        font-size: 1.2em;
+    }
+    
+    .progress-item span {
+        font-size: 0.8em;
+    }
+    
+    .countdown-circle {
+        width: 60px;
+        height: 60px;
+    }
+    
+    .countdown-circle span {
+        font-size: 1.5em;
+    }
+    
+    .captured-photos {
+        flex-wrap: wrap;
+        gap: 10px;
+        justify-content: center;
+    }
+    
+    .photo-item {
+        width: 80px;
+        height: 80px;
+    }
+    
+    .verification-success {
+        padding: 30px 15px;
+    }
+    
+    .success-icon {
+        font-size: 3em;
+        margin-bottom: 15px;
+    }
+    
+    .verification-success h3 {
+        font-size: 1.3em;
+        margin-bottom: 10px;
+    }
+    
+    .btn-finish {
+        padding: 12px 25px;
+        font-size: 1em;
+    }
+    
+    .review-section {
+        margin-bottom: 20px;
+    }
+    
+    .review-item {
+        padding: 20px 15px;
+        margin-bottom: 15px;
+    }
+    
+    .review-item h3 {
+        font-size: 1.2em;
+        margin-bottom: 12px;
+    }
+    
+    .agreement-section {
+        padding: 20px 15px;
+        margin-bottom: 20px;
+    }
+    
+    .checkbox-label {
+        gap: 10px;
+        font-size: 0.9em;
+    }
+    
+    .step-actions {
+        flex-direction: column;
+        gap: 15px;
+        margin-top: 30px;
+    }
+    
+    .btn-prev,
+    .btn-next,
+    .btn-submit {
+        padding: 12px 25px;
+        font-size: 1em;
+        justify-content: center;
+        width: 100%;
+    }
+    
+    .camera-error-instructions {
+        max-width: 100%;
+        padding: 15px;
+        margin: 15px 0;
+    }
+    
+    .camera-error-instructions ol {
+        padding-right: 15px;
+        font-size: 0.9em;
+    }
+}
+
+/* تصميم الهواتف الصغيرة جداً */
+@media (max-width: 480px) {
+    .kyc-container {
+        padding: 5px;
+    }
+    
+    .kyc-header {
+        padding: 15px 10px;
+        margin-bottom: 15px;
+    }
+    
+    .kyc-header h1 {
+        font-size: 1.5em;
+    }
+    
+    .kyc-header p {
+        font-size: 0.9em;
+    }
+    
+    .progress-indicator {
+        gap: 5px;
+        padding: 10px 5px;
+        margin-bottom: 15px;
+    }
+    
+    .step {
+        min-width: 100px;
+    }
+    
+    .step-number {
+        width: 30px;
+        height: 30px;
+        font-size: 0.8em;
+    }
+    
+    .step-label {
+        font-size: 0.7em;
+    }
+    
+    .kyc-benefits {
+        padding: 15px 10px;
+        margin-bottom: 15px;
+    }
+    
+    .benefit-item {
+        padding: 12px;
+    }
+    
+    .benefit-item i {
+        font-size: 1.8em;
+        margin-bottom: 8px;
+    }
+    
+    .benefit-item h3 {
+        font-size: 1em;
+        margin-bottom: 8px;
+    }
+    
+    .benefit-item p {
+        font-size: 0.8em;
+    }
+    
+    .kyc-form {
+        padding: 15px 10px;
+    }
+    
+    .kyc-form h2 {
+        font-size: 1.3em;
+        margin-bottom: 15px;
+    }
+    
+    .step-description {
+        font-size: 0.9em;
+        margin-bottom: 15px;
+    }
+    
+    .form-group input,
+    .form-group select {
+        padding: 10px 8px;
+        font-size: 16px;
+    }
+    
+    .document-option {
+        padding: 15px 10px;
+    }
+    
+    .option-icon {
+        font-size: 2em;
+        margin-bottom: 8px;
+    }
+    
+    .document-option h3 {
+        font-size: 1em;
+        margin-bottom: 8px;
+    }
+    
+    .document-option p {
+        font-size: 0.8em;
+    }
+    
+    .upload-area {
+        padding: 25px 10px;
+    }
+    
+    .upload-area i {
+        font-size: 1.8em;
+    }
+    
+    .upload-area p {
+        font-size: 0.8em;
+    }
+    
+    .verification-instructions {
+        padding: 15px 10px;
+    }
+    
+    .instruction-item h3 {
+        font-size: 1.1em;
+        margin-bottom: 10px;
+    }
+    
+    .instruction-item li {
+        font-size: 0.8em;
+        padding: 6px 0;
+    }
+    
+    .camera-container {
+        padding: 15px 10px;
+    }
+    
+    .camera-placeholder {
+        padding: 30px 10px;
+    }
+    
+    .camera-placeholder i {
+        font-size: 2.5em;
+        margin-bottom: 15px;
+    }
+    
+    .camera-placeholder p {
+        font-size: 0.9em;
+        margin: 12px 0;
+    }
+    
+    .btn-start-camera,
+    .btn-retry-camera {
+        padding: 10px 20px;
+        font-size: 0.9em;
+    }
+    
+    .capture-instruction {
+        font-size: 1em;
+        margin-bottom: 12px;
+    }
+    
+    .capture-progress {
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+    
+    .progress-item {
+        padding: 6px;
+        min-width: 70px;
+    }
+    
+    .progress-item i {
+        font-size: 1em;
+    }
+    
+    .progress-item span {
+        font-size: 0.7em;
+    }
+    
+    .countdown-circle {
+        width: 50px;
+        height: 50px;
+    }
+    
+    .countdown-circle span {
+        font-size: 1.2em;
+    }
+    
+    .photo-item {
+        width: 70px;
+        height: 70px;
+    }
+    
+    .verification-success {
+        padding: 25px 10px;
+    }
+    
+    .success-icon {
+        font-size: 2.5em;
+        margin-bottom: 12px;
+    }
+    
+    .verification-success h3 {
+        font-size: 1.1em;
+        margin-bottom: 8px;
+    }
+    
+    .verification-success p {
+        font-size: 0.9em;
+    }
+    
+    .btn-finish {
+        padding: 10px 20px;
+        font-size: 0.9em;
+    }
+    
+    .review-item {
+        padding: 15px 10px;
+        margin-bottom: 12px;
+    }
+    
+    .review-item h3 {
+        font-size: 1.1em;
+        margin-bottom: 10px;
+    }
+    
+    .review-data {
+        font-size: 0.9em;
+    }
+    
+    .agreement-section {
+        padding: 15px 10px;
+        margin-bottom: 15px;
+    }
+    
+    .checkbox-label {
+        gap: 8px;
+        font-size: 0.85em;
+    }
+    
+    .step-actions {
+        gap: 12px;
+        margin-top: 25px;
+    }
+    
+    .btn-prev,
+    .btn-next,
+    .btn-submit {
+        padding: 10px 20px;
+        font-size: 0.9em;
+    }
+    
+    .camera-error-instructions {
+        padding: 12px;
+        margin: 12px 0;
+    }
+    
+    .camera-error-instructions h4 {
+        font-size: 1em;
+        margin-bottom: 8px;
+    }
+    
+    .camera-error-instructions ol {
+        padding-right: 12px;
+        font-size: 0.8em;
+    }
+    
+    .camera-error-instructions li {
+        margin-bottom: 6px;
+        padding: 4px 0;
+    }
+}
+
+/* تحسينات إضافية للمس */
+@media (hover: none) and (pointer: coarse) {
+    .btn-start-camera,
+    .btn-retry-camera,
+    .btn-finish,
+    .btn-prev,
+    .btn-next,
+    .btn-submit {
+        min-height: 44px; /* الحد الأدنى لحجم العناصر القابلة للمس */
+    }
+    
+    .document-option {
+        min-height: 120px;
+    }
+    
+    .upload-area {
+        min-height: 120px;
+    }
+    
+    .progress-item {
+        min-height: 60px;
+        min-width: 60px;
+    }
+    
+    .checkbox-label {
+        min-height: 44px;
+        align-items: center;
+    }
+}
+</style>
+
+<script>
+let currentStep = 1;
+let selectedDocumentType = null;
+let capturedPhotos = {};
+let captureIndex = 0;
+let stream = null;
+let autoCapturePaused = false;
+let countdownInterval = null;
+let captureTimeout = null;
+
+const captureInstructions = [
+    "انظر مباشرة للكاميرا",
+    "انظر إلى اليمين",
+    "انظر إلى اليسار"
+];
+
+const captureTypes = ['front', 'right', 'left'];
+
+// التنقل بين الخطوات
+function nextStep(step) {
+    if (validateStep(step)) {
+        document.querySelector(`#step${step}`).classList.remove('active');
+        document.querySelector(`.step[data-step="${step}"]`).classList.add('completed');
+        document.querySelector(`.step[data-step="${step}"]`).classList.remove('active');
+        
+        currentStep = step + 1;
+        document.querySelector(`#step${currentStep}`).classList.add('active');
+        document.querySelector(`.step[data-step="${currentStep}"]`).classList.add('active');
+        
+        if (currentStep === 4) {
+            populateReviewData();
+        }
+    }
+}
+
+function prevStep(step) {
+    document.querySelector(`#step${step}`).classList.remove('active');
+    document.querySelector(`.step[data-step="${step}"]`).classList.remove('active');
+    
+    currentStep = step - 1;
+    document.querySelector(`#step${currentStep}`).classList.add('active');
+    document.querySelector(`.step[data-step="${currentStep}"]`).classList.add('active');
+}
+
+// التحقق من صحة الخطوة
+function validateStep(step) {
+    switch(step) {
+        case 1:
+            const fullName = document.getElementById('full_name').value;
+            const phone = document.getElementById('phone').value;
+            const birthDate = document.getElementById('birth_date').value;
+            const nationality = document.getElementById('nationality').value;
+            
+            if (!fullName || !phone || !birthDate || !nationality) {
+                alert('يرجى ملء جميع الحقول المطلوبة');
+                return false;
+            }
+            return true;
+            
+        case 2:
+            if (!selectedDocumentType) {
+                alert('يرجى اختيار نوع المستند');
+                return false;
+            }
+            
+            if (selectedDocumentType === 'national_id') {
+                const frontFile = document.getElementById('id_front').files[0];
+                const backFile = document.getElementById('id_back').files[0];
+                if (!frontFile || !backFile) {
+                    alert('يرجى رفع صورتي الهوية الأمامية والخلفية');
+                    return false;
+                }
+            } else if (selectedDocumentType === 'passport') {
+                const passportFile = document.getElementById('passport').files[0];
+                if (!passportFile) {
+                    alert('يرجى رفع صورة جواز السفر');
+                    return false;
+                }
+            } else if (selectedDocumentType === 'driver_license') {
+                const licenseFile = document.getElementById('driver_license').files[0];
+                if (!licenseFile) {
+                    alert('يرجى رفع صورة رخصة القيادة');
+                    return false;
+                }
+            }
+            return true;
+            
+        case 3:
+            if (Object.keys(capturedPhotos).length < 3) {
+                alert('يرجى إكمال عملية التحقق من الوجه أولاً');
+                return false;
+            }
+            return true;
+            
+        default:
+            return true;
+    }
+}
+
+// اختيار نوع المستند
+document.addEventListener('DOMContentLoaded', function() {
+    const documentOptions = document.querySelectorAll('.document-option');
+    
+    documentOptions.forEach(option => {
+        option.addEventListener('click', function() {
+            // إزالة التحديد من جميع الخيارات
+            documentOptions.forEach(opt => opt.classList.remove('selected'));
+            
+            // تحديد الخيار المختار
+            this.classList.add('selected');
+            selectedDocumentType = this.dataset.type;
+            
+            // إظهار منطقة الرفع المناسبة
+            showUploadSection(selectedDocumentType);
+            
+            // تفعيل زر التالي
+            document.getElementById('step2Next').disabled = false;
+        });
+    });
+    
+    // إعداد رفع الملفات
+    setupFileUploads();
+    
+    // التحقق من دعم الكاميرا عند تحميل الصفحة
+    checkCameraSupport();
+});
+
+// التحقق من دعم الكاميرا
+async function checkCameraSupport() {
+    try {
+        // التحقق من دعم المتصفح للكاميرا
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            console.warn('المتصفح لا يدعم استخدام الكاميرا');
+            return;
+        }
+        
+        // التحقق من حالة الإذن
+        if (navigator.permissions) {
+            const permissionStatus = await navigator.permissions.query({name: 'camera'});
+            console.log('حالة إذن الكاميرا:', permissionStatus.state);
+            
+            // مراقبة تغييرات حالة الإذن
+            permissionStatus.addEventListener('change', function() {
+                console.log('تغيرت حالة إذن الكاميرا إلى:', this.state);
+            });
+        }
+        
+        // التحقق من وجود كاميرات متاحة
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(device => device.kind === 'videoinput');
+        
+        if (videoDevices.length === 0) {
+            console.warn('لا توجد كاميرات متاحة');
+        } else {
+            console.log(`تم العثور على ${videoDevices.length} كاميرا`);
+        }
+        
+    } catch (error) {
+        console.error('خطأ في التحقق من دعم الكاميرا:', error);
+    }
+}
+
+function showUploadSection(type) {
+    // إخفاء جميع منطق الرفع
+    document.querySelectorAll('.upload-container').forEach(container => {
+        container.style.display = 'none';
+    });
+    
+    // إظهار المنطقة المناسبة
+    document.getElementById('uploadSection').style.display = 'block';
+    
+    if (type === 'national_id') {
+        document.getElementById('nationalIdUpload').style.display = 'block';
+    } else if (type === 'passport') {
+        document.getElementById('passportUpload').style.display = 'block';
+    } else if (type === 'driver_license') {
+        document.getElementById('driverLicenseUpload').style.display = 'block';
+    }
+}
+
+function setupFileUploads() {
+    const uploadAreas = document.querySelectorAll('.upload-area');
+    
+    uploadAreas.forEach(area => {
+        const input = area.querySelector('input[type="file"]');
+        if (!input) return;
+        
+        // النقر لاختيار الملف
+        area.addEventListener('click', () => input.click());
+        
+        // السحب والإفلات
+        area.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            area.classList.add('dragover');
+        });
+        
+        area.addEventListener('dragleave', () => {
+            area.classList.remove('dragover');
+        });
+        
+        area.addEventListener('drop', (e) => {
+            e.preventDefault();
+            area.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                input.files = files;
+                handleFileSelect(input);
+            }
+        });
+        
+        // تغيير الملف
+        input.addEventListener('change', () => handleFileSelect(input));
+    });
+}
+
+function handleFileSelect(input) {
+    const file = input.files[0];
+    if (file) {
+        const previewId = input.id + 'Preview';
+        const preview = document.getElementById(previewId);
+        
+        if (preview && file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                preview.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        checkStep2Completion();
+    }
+}
+
+function checkStep2Completion() {
+    let isComplete = false;
+    
+    if (selectedDocumentType === 'national_id') {
+        const frontFile = document.getElementById('id_front').files[0];
+        const backFile = document.getElementById('id_back').files[0];
+        isComplete = frontFile && backFile;
+    } else if (selectedDocumentType === 'passport') {
+        const passportFile = document.getElementById('passport').files[0];
+        isComplete = !!passportFile;
+    } else if (selectedDocumentType === 'driver_license') {
+        const licenseFile = document.getElementById('driver_license').files[0];
+        isComplete = !!licenseFile;
+    }
+    
+    document.getElementById('step2Next').disabled = !isComplete;
+}
+
+// التحقق من الوجه
+async function startCamera() {
+    try {
+        // التحقق من إمكانية الوصول للكاميرا أولاً
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            showCameraError('المتصفح لا يدعم استخدام الكاميرا');
+            return;
+        }
+
+        // تحديد جودة الكاميرا بناءً على حجم الشاشة
+        const isMobile = window.innerWidth <= 768;
+        const videoConstraints = {
+            width: isMobile ? { ideal: 480, max: 640 } : { ideal: 640, max: 1280 },
+            height: isMobile ? { ideal: 360, max: 480 } : { ideal: 480, max: 720 },
+            facingMode: 'user'
+        };
+
+        // طلب الإذن للوصول للكاميرا
+        stream = await navigator.mediaDevices.getUserMedia({ 
+            video: videoConstraints
+        });
+        
+        const video = document.getElementById('video');
+        video.srcObject = stream;
+        
+        // ضبط حجم الفيديو للموبايل
+        if (isMobile) {
+            video.style.maxWidth = '100%';
+            video.style.height = 'auto';
+            video.style.maxHeight = '300px';
+        }
+        
+        // إخفاء placeholder وإظهار الكاميرا
+        document.getElementById('cameraPlaceholder').style.display = 'none';
+        document.getElementById('video').style.display = 'block';
+        document.getElementById('faceCaptureInterface').style.display = 'block';
+        
+        // بدء عملية التصوير التلقائي
+        captureIndex = 0;
+        updateCaptureInstruction();
+        startAutoCapture();
+        
+    } catch (error) {
+        console.error('خطأ في الوصول للكاميرا:', error);
+        handleCameraError(error);
+    }
+}
+
+// معالجة أخطاء الكاميرا
+function handleCameraError(error) {
+    let errorMessage = '';
+    let showPermissionButton = false;
+    
+    switch(error.name) {
+        case 'NotAllowedError':
+        case 'PermissionDeniedError':
+            errorMessage = 'تم رفض الإذن للوصول للكاميرا. يرجى إعطاء الإذن للموقع لاستخدام الكاميرا.';
+            showPermissionButton = true;
+            break;
+        case 'NotFoundError':
+        case 'DevicesNotFoundError':
+            errorMessage = 'لم يتم العثور على كاميرا متصلة بالجهاز.';
+            break;
+        case 'NotReadableError':
+        case 'TrackStartError':
+            errorMessage = 'الكاميرا مستخدمة من قبل تطبيق آخر. يرجى إغلاق التطبيقات الأخرى والمحاولة مرة أخرى.';
+            break;
+        case 'OverconstrainedError':
+        case 'ConstraintNotSatisfiedError':
+            errorMessage = 'جودة الكاميرا المطلوبة غير متوفرة. سنحاول بجودة أقل.';
+            // محاولة بجودة أقل
+            retryWithLowerQuality();
+            return;
+        case 'NotSupportedError':
+            errorMessage = 'المتصفح لا يدعم استخدام الكاميرا.';
+            break;
+        case 'AbortError':
+            errorMessage = 'تم إلغاء العملية. يرجى المحاولة مرة أخرى.';
+            showPermissionButton = true;
+            break;
+        default:
+            errorMessage = 'حدث خطأ غير معروف أثناء الوصول للكاميرا. يرجى المحاولة مرة أخرى.';
+            showPermissionButton = true;
+            break;
+    }
+    
+    showCameraError(errorMessage, showPermissionButton);
+}
+
+// إظهار رسالة خطأ الكاميرا
+function showCameraError(message, showPermissionButton = false) {
+    const placeholder = document.getElementById('cameraPlaceholder');
+    
+    let buttonHtml = '';
+    if (showPermissionButton) {
+        buttonHtml = `
+            <button type="button" class="btn-start-camera" onclick="requestCameraPermission()">
+                <i class="fas fa-video"></i>
+                طلب إذن الكاميرا
+            </button>
+            <button type="button" class="btn-retry-camera" onclick="startCamera()" style="margin-top: 10px;">
+                <i class="fas fa-redo"></i>
+                إعادة المحاولة
+            </button>
+        `;
+    } else {
+        buttonHtml = `
+            <button type="button" class="btn-start-camera" onclick="startCamera()">
+                <i class="fas fa-redo"></i>
+                إعادة المحاولة
+            </button>
+        `;
+    }
+    
+    placeholder.innerHTML = `
+        <i class="fas fa-exclamation-triangle fa-4x" style="color: #ff6b6b; margin-bottom: 20px;"></i>
+        <h3 style="color: #ff6b6b; margin-bottom: 15px;">خطأ في الكاميرا</h3>
+        <p style="margin-bottom: 25px; max-width: 400px; line-height: 1.5;">${message}</p>
+        <div class="camera-error-instructions" style="margin-bottom: 25px;">
+            <h4 style="color: #ccc; margin-bottom: 10px;">خطوات حل المشكلة:</h4>
+            <ol style="text-align: right; color: #ccc; max-width: 400px; margin: 0 auto;">
+                <li>تأكد من توصيل الكاميرا بالجهاز</li>
+                <li>أعط الإذن للموقع لاستخدام الكاميرا</li>
+                <li>تأكد من عدم استخدام كاميرا من قبل تطبيق آخر</li>
+                <li>حاول تحديث الصفحة</li>
+            </ol>
+        </div>
+        ${buttonHtml}
+    `;
+}
+
+// طلب إذن الكاميرا صراحة
+async function requestCameraPermission() {
+    try {
+        // إظهار رسالة انتظار
+        const placeholder = document.getElementById('cameraPlaceholder');
+        placeholder.innerHTML = `
+            <i class="fas fa-spinner fa-spin fa-4x" style="color: #ff0033; margin-bottom: 20px;"></i>
+            <h3 style="color: #ff0033; margin-bottom: 15px;">جاري طلب الإذن</h3>
+            <p>يرجى الموافقة على طلب استخدام الكاميرا في المتصفح</p>
+        `;
+        
+        // طلب الإذن
+        const permissionStatus = await navigator.permissions.query({name: 'camera'});
+        
+        if (permissionStatus.state === 'denied') {
+            showCameraError('تم رفض الإذن نهائياً. يرجى تفعيل الكاميرا من إعدادات المتصفح.', false);
+            return;
+        }
+        
+        // محاولة الوصول للكاميرا
+        await startCamera();
+        
+    } catch (error) {
+        console.error('خطأ في طلب إذن الكاميرا:', error);
+        
+        // إذا فشل استخدام Permissions API، نحاول getUserMedia مباشرة
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            stream.getTracks().forEach(track => track.stop()); // إيقاف الكاميرا مؤقتاً
+            await startCamera(); // إعادة بدء الكاميرا بالإعدادات الصحيحة
+        } catch (mediaError) {
+            handleCameraError(mediaError);
+        }
+    }
+}
+
+// إعادة المحاولة بجودة أقل
+async function retryWithLowerQuality() {
+    try {
+        const isMobile = window.innerWidth <= 768;
+        const videoConstraints = {
+            width: isMobile ? { ideal: 320, max: 480 } : { ideal: 320, max: 640 },
+            height: isMobile ? { ideal: 240, max: 360 } : { ideal: 240, max: 480 },
+            facingMode: 'user'
+        };
+
+        stream = await navigator.mediaDevices.getUserMedia({ 
+            video: videoConstraints
+        });
+        
+        const video = document.getElementById('video');
+        video.srcObject = stream;
+        
+        // ضبط حجم الفيديو للموبايل
+        if (isMobile) {
+            video.style.maxWidth = '100%';
+            video.style.height = 'auto';
+            video.style.maxHeight = '250px';
+        }
+        
+        // إخفاء placeholder وإظهار الكاميرا
+        document.getElementById('cameraPlaceholder').style.display = 'none';
+        document.getElementById('video').style.display = 'block';
+        document.getElementById('faceCaptureInterface').style.display = 'block';
+        
+        // بدء عملية التصوير التلقائي
+        captureIndex = 0;
+        updateCaptureInstruction();
+        startAutoCapture();
+        
+    } catch (error) {
+        console.error('فشل في استخدام جودة أقل:', error);
+        handleCameraError(error);
+    }
+}
+
+function startAutoCapture() {
+    let countdown = 3;
+    const countdownElement = document.getElementById('countdownNumber');
+    
+    // إظهار العداد التنازلي
+    document.getElementById('captureCountdown').style.display = 'block';
+    countdownElement.textContent = countdown;
+    
+    countdownInterval = setInterval(() => {
+        countdown--;
+        countdownElement.textContent = countdown;
+        
+        if (countdown <= 0) {
+            clearInterval(countdownInterval);
+            document.getElementById('captureCountdown').style.display = 'none';
+            capturePhoto();
+        }
+    }, 1000);
+}
+
+function updateCaptureInstruction() {
+    const instruction = document.getElementById('captureInstruction');
+    const progressItems = document.querySelectorAll('.progress-item');
+    
+    // تحديث التعليمات
+    instruction.textContent = captureInstructions[captureIndex];
+    
+    // تحديث مؤشرات التقدم
+    progressItems.forEach((item, index) => {
+        item.classList.remove('active', 'completed');
+        if (index === captureIndex) {
+            item.classList.add('active');
+        } else if (index < captureIndex) {
+            item.classList.add('completed');
+        }
+    });
+}
+
+function capturePhoto() {
+    if (autoCapturePaused) return;
+    
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    // تعيين أبعاد Canvas
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    
+    // رسم الإطار الحالي من الفيديو
+    ctx.drawImage(video, 0, 0);
+    
+    // تحويل إلى base64
+    const photoData = canvas.toDataURL('image/jpeg', 0.8);
+    
+    // حفظ الصورة
+    const photoType = captureTypes[captureIndex];
+    capturedPhotos[photoType] = photoData;
+    
+    // تحديث معاينة الصورة
+    const photoItem = document.getElementById(`photo${captureIndex + 1}`);
+    photoItem.innerHTML = `<img src="${photoData}" alt="${photoType}" style="width: 100%; height: 100%; object-fit: cover;">`;
+    
+    // التقدم للصورة التالية
+    captureIndex++;
+    
+    if (captureIndex < 3) {
+        // الانتظار 2 ثانية قبل تغيير التعليمات
+        setTimeout(() => {
+            updateCaptureInstruction();
+            // الانتظار ثانية أخرى قبل بدء العد التنازلي
+            setTimeout(() => {
+                startAutoCapture();
+            }, 1000);
+        }, 2000);
+    } else {
+        // انتهاء التصوير
+        setTimeout(() => {
+            finishFaceVerification();
+        }, 1000);
+    }
+}
+
+function finishFaceVerification() {
+    // إيقاف جميع المؤقتات
+    if (countdownInterval) {
+        clearInterval(countdownInterval);
+    }
+    if (captureTimeout) {
+        clearTimeout(captureTimeout);
+    }
+    
+    // إيقاف الكاميرا
+    if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+    }
+    
+    // إخفاء واجهة التصوير
+    document.getElementById('video').style.display = 'none';
+    document.getElementById('faceCaptureInterface').style.display = 'none';
+    
+    // إظهار رسالة النجاح
+    document.getElementById('verificationSuccess').style.display = 'block';
+    
+    // حفظ الصور في الحقول المخفية
+    document.getElementById('hiddenFacePhotoFront').value = capturedPhotos.front || '';
+    document.getElementById('hiddenFacePhotoRight').value = capturedPhotos.right || '';
+    document.getElementById('hiddenFacePhotoLeft').value = capturedPhotos.left || '';
+}
+
+function finishVerification() {
+    // تفعيل زر التالي
+    document.getElementById('step3Next').disabled = false;
+    
+    // لا نرسل البيانات هنا، سنرسلها في النهاية فقط
+    // submitKYCData();
+}
+
+function submitKYCData() {
+    // تحضير البيانات
+    const formData = new FormData();
+    
+    // المعلومات الشخصية
+    formData.append('full_name', document.getElementById('full_name').value);
+    formData.append('phone', document.getElementById('phone').value);
+    formData.append('birth_date', document.getElementById('birth_date').value);
+    formData.append('nationality', document.getElementById('nationality').value);
+    
+    // نوع المستند
+    formData.append('document_type', selectedDocumentType);
+    
+    // ملفات المستندات
+    if (selectedDocumentType === 'national_id') {
+        formData.append('id_front', document.getElementById('id_front').files[0]);
+        formData.append('id_back', document.getElementById('id_back').files[0]);
+    } else if (selectedDocumentType === 'passport') {
+        formData.append('passport', document.getElementById('passport').files[0]);
+    } else if (selectedDocumentType === 'driver_license') {
+        formData.append('driver_license', document.getElementById('driver_license').files[0]);
+    }
+    
+    // صور التحقق من الوجه (تحويل base64 إلى blob)
+    if (capturedPhotos.front) {
+        formData.append('face_photo_front', dataURLtoBlob(capturedPhotos.front), 'face_front.jpg');
+    }
+    if (capturedPhotos.right) {
+        formData.append('face_photo_right', dataURLtoBlob(capturedPhotos.right), 'face_right.jpg');
+    }
+    if (capturedPhotos.left) {
+        formData.append('face_photo_left', dataURLtoBlob(capturedPhotos.left), 'face_left.jpg');
+    }
+    
+    // إرسال البيانات
+    fetch('/kyc-upgrade', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('تم حفظ بيانات التحقق بنجاح! يمكنك الآن المتابعة للخطوة التالية.');
+            // الانتقال للخطوة التالية
+            nextStep(3);
+        } else {
+            alert('حدث خطأ أثناء حفظ البيانات: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('خطأ:', error);
+        alert('حدث خطأ أثناء حفظ البيانات');
+    });
+}
+
+// تعبئة بيانات المراجعة
+function populateReviewData() {
+    // المعلومات الشخصية
+    const personalInfo = `
+        <p><strong>الاسم الكامل:</strong> ${document.getElementById('full_name').value}</p>
+        <p><strong>رقم الهاتف:</strong> ${document.getElementById('phone').value}</p>
+        <p><strong>تاريخ الميلاد:</strong> ${document.getElementById('birth_date').value}</p>
+        <p><strong>الجنسية:</strong> ${document.getElementById('nationality').value}</p>
+    `;
+    document.getElementById('reviewPersonalInfo').innerHTML = personalInfo;
+    
+    // مستندات الهوية
+    let documentsInfo = `<p><strong>نوع المستند:</strong> `;
+    if (selectedDocumentType === 'national_id') {
+        documentsInfo += 'الهوية الوطنية</p>';
+    } else if (selectedDocumentType === 'passport') {
+        documentsInfo += 'جواز السفر</p>';
+    } else if (selectedDocumentType === 'driver_license') {
+        documentsInfo += 'رخصة القيادة</p>';
+    }
+    documentsInfo += `<p style="color: #28a745;"><i class="fas fa-check"></i> تم رفع المستندات بنجاح</p>`;
+    document.getElementById('reviewDocuments').innerHTML = documentsInfo;
+    
+    // صور التحقق من الوجه
+    const facePhotosInfo = `
+        <p style="color: #28a745;"><i class="fas fa-check"></i> تم التقاط 3 صور للوجه بنجاح</p>
+        <div style="display: flex; gap: 10px; margin-top: 10px;">
+            <img src="${capturedPhotos.front}" style="width: 60px; height: 60px; border-radius: 8px; object-fit: cover;">
+            <img src="${capturedPhotos.right}" style="width: 60px; height: 60px; border-radius: 8px; object-fit: cover;">
+            <img src="${capturedPhotos.left}" style="width: 60px; height: 60px; border-radius: 8px; object-fit: cover;">
+        </div>
+    `;
+    document.getElementById('reviewFacePhotos').innerHTML = facePhotosInfo;
+    
+    // مراقبة موافقة المستخدم
+    document.getElementById('finalAgreement').addEventListener('change', function() {
+        document.getElementById('submitKYC').disabled = !this.checked;
+    });
+}
+
+// إرسال النموذج
+function submitKYCForm() {
+    // تحضير البيانات
+    const formData = new FormData();
+    
+    // المعلومات الشخصية
+    formData.append('full_name', document.getElementById('full_name').value);
+    formData.append('phone', document.getElementById('phone').value);
+    formData.append('birth_date', document.getElementById('birth_date').value);
+    formData.append('nationality', document.getElementById('nationality').value);
+    
+    // نوع المستند
+    formData.append('document_type', selectedDocumentType);
+    
+    // ملفات المستندات
+    if (selectedDocumentType === 'national_id') {
+        formData.append('id_front', document.getElementById('id_front').files[0]);
+        formData.append('id_back', document.getElementById('id_back').files[0]);
+    } else if (selectedDocumentType === 'passport') {
+        formData.append('passport', document.getElementById('passport').files[0]);
+    } else if (selectedDocumentType === 'driver_license') {
+        formData.append('driver_license', document.getElementById('driver_license').files[0]);
+    }
+    
+    // صور التحقق من الوجه (تحويل base64 إلى blob)
+    if (capturedPhotos.front) {
+        formData.append('face_photo_front', dataURLtoBlob(capturedPhotos.front), 'face_front.jpg');
+    }
+    if (capturedPhotos.right) {
+        formData.append('face_photo_right', dataURLtoBlob(capturedPhotos.right), 'face_right.jpg');
+    }
+    if (capturedPhotos.left) {
+        formData.append('face_photo_left', dataURLtoBlob(capturedPhotos.left), 'face_left.jpg');
+    }
+    
+    // إرسال البيانات
+    fetch('/kyc-upgrade', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('تم إرسال طلب التحقق بنجاح! سيتم مراجعة طلبك قريباً.');
+            window.location.href = '/profile';
+        } else {
+            alert('حدث خطأ أثناء إرسال الطلب: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('خطأ:', error);
+        alert('حدث خطأ أثناء إرسال الطلب');
+    });
+}
+
+// تحويل data URL إلى blob
+function dataURLtoBlob(dataURL) {
+    const arr = dataURL.split(',');
+    const mime = arr[0].match(/:(.*?);/)[1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], { type: mime });
+}
+
+// تنظيف الموارد عند إغلاق الصفحة
+window.addEventListener('beforeunload', function() {
+    if (countdownInterval) {
+        clearInterval(countdownInterval);
+    }
+    if (captureTimeout) {
+        clearTimeout(captureTimeout);
+    }
+    if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+    }
+});
+
+// التعامل مع تغيير اتجاه الشاشة
+window.addEventListener('orientationchange', function() {
+    setTimeout(function() {
+        // إعادة ضبط حجم الفيديو عند تغيير الاتجاه
+        const video = document.getElementById('video');
+        if (video && video.srcObject) {
+            const isMobile = window.innerWidth <= 768;
+            if (isMobile) {
+                video.style.maxWidth = '100%';
+                video.style.height = 'auto';
+                video.style.maxHeight = window.innerHeight < window.innerWidth ? '200px' : '300px';
+            }
+        }
+    }, 500);
+});
+
+// منع التكبير على iOS عند التركيز على input
+document.addEventListener('focusin', function(e) {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') {
+        const viewport = document.querySelector('meta[name=viewport]');
+        if (viewport) {
+            viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+        }
+    }
+});
+
+document.addEventListener('focusout', function(e) {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') {
+        const viewport = document.querySelector('meta[name=viewport]');
+        if (viewport) {
+            viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+        }
+    }
+});
+</script>
+{% endblock %}

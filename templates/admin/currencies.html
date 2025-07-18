@@ -1,0 +1,815 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}إدارة العملات{% endblock %}
+
+{% block content %}
+<div class="content-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="margin: 0;">
+            <i class="fas fa-coins"></i>
+            إدارة العملات وأسعار الصرف
+        </h2>
+        <a href="{{ url_for('admin.add_currency') }}" class="btn btn-success">
+            <i class="fas fa-plus"></i>
+            إضافة عملة جديدة
+        </a>
+    </div>
+    <p style="color: #ccc; margin-bottom: 20px;">
+        تحكم في أسعار الصرف للعملات المختلفة. الريال السعودي هو العملة الأساسية.
+    </p>
+
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>العملة</th>
+                    <th>الرمز</th>
+                    <th>الاسم</th>
+                    <th>سعر الصرف (مقابل الريال)</th>
+                    <th>الحالة</th>
+                    <th>الإجراءات</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for currency in currencies %}
+                <tr>
+                    <td>
+                        <span style="font-size: 1.2em; font-weight: bold;">{{ currency.symbol }}</span>
+                    </td>
+                    <td>{{ currency.code }}</td>
+                    <td>{{ currency.name }}</td>
+                    <td>
+                        <form method="POST" action="{{ url_for('admin.update_currency_rate', currency_id=currency.id) }}" 
+                              style="display: inline-flex; align-items: center; gap: 10px;" class="currency-rate-form">
+                            <input type="number" name="exchange_rate" 
+                                   value="{{ currency.exchange_rate }}" 
+                                   step="0.0001" 
+                                   class="form-control rate-input"
+                                   style="width: 120px;">
+                            <button type="submit" class="btn btn-success btn-sm save-rate-btn">
+                                <i class="fas fa-save"></i>
+                                حفظ
+                            </button>
+                        </form>
+                    </td>
+                    <td>
+                        <span class="badge {{ 'badge-success' if currency.is_active else 'badge-warning' }}">
+                            {{ 'نشطة' if currency.is_active else 'غير نشطة' }}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn btn-primary btn-sm test-currency-btn" onclick="testCurrency('{{ currency.code }}')">
+                                <i class="fas fa-calculator"></i>
+                                اختبار التحويل
+                            </button>
+                            
+                            {% if currency.code != 'SAR' %}
+                            <button class="btn btn-warning btn-sm toggle-currency-btn" 
+                                    onclick="toggleCurrencyStatus({{ currency.id }}, '{{ currency.name }}')">
+                                <i class="fas fa-{{ 'eye-slash' if currency.is_active else 'eye' }}"></i>
+                                {{ 'إلغاء التفعيل' if currency.is_active else 'تفعيل' }}
+                            </button>
+                            
+                            <button class="btn btn-danger btn-sm delete-currency-btn" 
+                                    onclick="deleteCurrency({{ currency.id }}, '{{ currency.name }}')">
+                                <i class="fas fa-trash"></i>
+                                حذف
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="content-card">
+    <h3>
+        <i class="fas fa-calculator"></i>
+        حاسبة تحويل العملات
+    </h3>
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; align-items: end;">
+        <div class="form-group">
+            <label class="form-label">المبلغ:</label>
+            <input type="number" id="amount" class="form-control" value="100" placeholder="أدخل المبلغ">
+        </div>
+        <div class="form-group">
+            <label class="form-label">من:</label>
+            <select id="fromCurrency" class="form-control">
+                {% for currency in currencies %}
+                <option value="{{ currency.code }}">{{ currency.name }} ({{ currency.symbol }})</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label class="form-label">إلى:</label>
+            <select id="toCurrency" class="form-control">
+                {% for currency in currencies %}
+                <option value="{{ currency.code }}">{{ currency.name }} ({{ currency.symbol }})</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+    
+    <button onclick="convertCurrency()" class="btn btn-primary convert-btn">
+        <i class="fas fa-exchange-alt"></i>
+        تحويل
+    </button>
+    
+    <div id="conversionResult" class="conversion-result-card">
+        <h4><i class="fas fa-chart-line"></i> نتيجة التحويل:</h4>
+        <div id="resultText" class="result-text"></div>
+    </div>
+</div>
+
+<div class="content-card">
+    <h3>
+        <i class="fas fa-info-circle"></i>
+        معلومات مهمة
+    </h3>
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle" style="margin-left: 10px; font-size: 1.2em;"></i>
+        <div>
+            <ul style="margin: 0; padding-right: 20px;">
+                <li><strong>الريال السعودي (SAR)</strong> هو العملة الأساسية بسعر صرف 1.0</li>
+                <li>جميع أسعار الصرف محسوبة مقابل الريال السعودي</li>
+                <li>عند التحويل من عملة إلى أخرى، يتم التحويل إلى الريال أولاً ثم إلى العملة المطلوبة</li>
+                <li>تحديث أسعار الصرف يؤثر على جميع أسعار المنتجات فوراً</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<script>
+// بيانات العملات من الخادم
+const currencies = {
+    {% for currency in currencies %}
+    '{{ currency.code }}': {
+        name: '{{ currency.name }}',
+        symbol: '{{ currency.symbol }}',
+        rate: {{ currency.exchange_rate }}
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+};
+
+// تهيئة الصفحة عند التحميل
+document.addEventListener('DOMContentLoaded', function() {
+    // تأثيرات التحميل للبطاقات
+    const cards = document.querySelectorAll('.content-card');
+    cards.forEach((card, index) => {
+        card.style.animationDelay = `${index * 0.2}s`;
+    });
+    
+    // تأثيرات على صفوف الجدول
+    const tableRows = document.querySelectorAll('.data-table tbody tr');
+    tableRows.forEach(row => {
+        row.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateX(10px) scale(1.02)';
+        });
+        
+        row.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateX(0) scale(1)';
+        });
+    });
+    
+    // تأثيرات على النماذج
+    const forms = document.querySelectorAll('.currency-rate-form');
+    forms.forEach(form => {
+        const input = form.querySelector('.rate-input');
+        const button = form.querySelector('.save-rate-btn');
+        
+        input.addEventListener('focus', function() {
+            form.style.transform = 'scale(1.05)';
+            form.style.zIndex = '10';
+        });
+        
+        input.addEventListener('blur', function() {
+            form.style.transform = 'scale(1)';
+            form.style.zIndex = '1';
+        });
+        
+        // تأثير نجاح الحفظ
+        form.addEventListener('submit', function() {
+            button.classList.add('loading');
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحفظ...';
+            
+            // محاكاة تأخير الشبكة
+            setTimeout(() => {
+                button.classList.remove('loading');
+                button.innerHTML = '<i class="fas fa-check"></i> تم الحفظ!';
+                button.style.background = 'linear-gradient(135deg, #28a745, #20c997)';
+                
+                setTimeout(() => {
+                    button.innerHTML = '<i class="fas fa-save"></i> حفظ';
+                    button.style.background = '';
+                }, 2000);
+            }, 1000);
+        });
+    });
+    
+    // تأثيرات على أزرار الاختبار
+    const testButtons = document.querySelectorAll('.test-currency-btn');
+    testButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            // تأثير النقر
+            this.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                this.style.transform = '';
+            }, 150);
+            
+            // تأثير التركيز على حاسبة التحويل
+            const calculator = document.querySelector('.content-card:nth-child(2)');
+            calculator.style.border = '3px solid #ff0033';
+            calculator.style.boxShadow = '0 0 20px rgba(255, 0, 51, 0.3)';
+            
+            setTimeout(() => {
+                calculator.style.border = '';
+                calculator.style.boxShadow = '';
+            }, 3000);
+        });
+    });
+});
+
+function convertCurrency() {
+    const amount = parseFloat(document.getElementById('amount').value);
+    const fromCurrency = document.getElementById('fromCurrency').value;
+    const toCurrency = document.getElementById('toCurrency').value;
+    const convertBtn = document.querySelector('.convert-btn');
+    const resultDiv = document.getElementById('conversionResult');
+    const resultText = document.getElementById('resultText');
+    
+    if (!amount || amount <= 0) {
+        showNotification('يرجى إدخال مبلغ صحيح', 'error');
+        return;
+    }
+    
+    // تأثير التحميل
+    convertBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري التحويل...';
+    convertBtn.disabled = true;
+    
+    // إرسال طلب تحويل العملة إلى الخادم
+    fetch('{{ url_for("admin.convert_currency_route") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            amount: amount,
+            from_currency: fromCurrency,
+            to_currency: toCurrency
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // عرض النتيجة مع تأثيرات
+            resultText.innerHTML = `
+                <span style="color: #ffcccc;">${amount.toLocaleString()}</span> 
+                <span style="color: #ff6666;">${data.from_currency.symbol}</span> 
+                <span style="color: #fff; margin: 0 10px;">⟸</span>
+                <span style="color: #ffcccc;">${data.converted_amount.toFixed(2).toLocaleString()}</span> 
+                <span style="color: #ff6666;">${data.to_currency.symbol}</span>
+            `;
+            
+            resultDiv.classList.add('show');
+            showNotification('تم التحويل بنجاح!', 'success');
+        } else {
+            showNotification(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('حدث خطأ أثناء التحويل', 'error');
+    })
+    .finally(() => {
+        // إعادة تعيين الزر
+        convertBtn.innerHTML = '<i class="fas fa-exchange-alt"></i> تحويل';
+        convertBtn.disabled = false;
+    });
+}
+
+function testCurrency(currencyCode) {
+    // إظهار مؤشر التحميل
+    showNotification('جاري اختبار العملة...', 'info');
+    
+    // استدعاء API لاختبار العملة
+    fetch(`{{ url_for('admin.test_currency', currency_code='') }}${currencyCode}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification(data.message, 'success');
+                
+                // تحديث حاسبة التحويل لاستخدام هذه العملة
+                const fromCurrencySelect = document.getElementById('fromCurrency');
+                const toCurrencySelect = document.getElementById('toCurrency');
+                
+                // تعيين العملة المختبرة في حاسبة التحويل
+                fromCurrencySelect.value = 'SAR';
+                toCurrencySelect.value = currencyCode;
+                
+                // تأثير التركيز على حاسبة التحويل
+                const calculator = document.querySelector('.content-card:nth-child(2)');
+                calculator.style.border = '3px solid #ff0033';
+                calculator.style.boxShadow = '0 0 20px rgba(255, 0, 51, 0.3)';
+                
+                setTimeout(() => {
+                    calculator.style.border = '';
+                    calculator.style.boxShadow = '';
+                }, 3000);
+            } else {
+                showNotification(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('حدث خطأ أثناء اختبار العملة', 'error');
+        });
+}
+
+function toggleCurrencyStatus(currencyId, currencyName) {
+    if (confirm(`هل أنت متأكد من تغيير حالة العملة "${currencyName}"؟`)) {
+        fetch(`{{ url_for('admin.toggle_currency_status', currency_id=0) }}`.replace('0', currencyId), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification(data.message, 'success');
+                // إعادة تحميل الصفحة لتحديث الحالة
+                setTimeout(() => {
+                    location.reload();
+                }, 1500);
+            } else {
+                showNotification(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('حدث خطأ أثناء تغيير حالة العملة', 'error');
+        });
+    }
+}
+
+function deleteCurrency(currencyId, currencyName) {
+    if (confirm(`هل أنت متأكد من حذف العملة "${currencyName}"؟\nلا يمكن التراجع عن هذا الإجراء!`)) {
+        fetch(`{{ url_for('admin.delete_currency', currency_id=0) }}`.replace('0', currencyId), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification(data.message, 'success');
+                // إعادة تحميل الصفحة لحذف العملة من القائمة
+                setTimeout(() => {
+                    location.reload();
+                }, 1500);
+            } else {
+                showNotification(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('حدث خطأ أثناء حذف العملة', 'error');
+        });
+    }
+}
+
+// دالة الإشعارات
+function showNotification(message, type) {
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'}"></i>
+        ${message}
+    `;
+    
+    // تصميم الإشعار
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${type === 'success' ? 'linear-gradient(135deg, #28a745, #20c997)' : 'linear-gradient(135deg, #dc3545, #e83e8c)'};
+        color: white;
+        padding: 15px 20px;
+        border-radius: 10px;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        z-index: 1000;
+        transform: translateX(400px);
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 600;
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // تأثير الدخول
+    setTimeout(() => {
+        notification.style.transform = 'translateX(0)';
+    }, 100);
+    
+    // إزالة الإشعار
+    setTimeout(() => {
+        notification.style.transform = 'translateX(400px)';
+        setTimeout(() => {
+            document.body.removeChild(notification);
+        }, 300);
+    }, 3000);
+}
+
+// تأثيرات إضافية عند التمرير
+window.addEventListener('scroll', function() {
+    const cards = document.querySelectorAll('.content-card');
+    cards.forEach(card => {
+        const rect = card.getBoundingClientRect();
+        if (rect.top < window.innerHeight && rect.bottom > 0) {
+            card.style.transform = 'translateY(0)';
+            card.style.opacity = '1';
+        }
+    });
+});
+</script>
+
+<style>
+/* تحسينات عامة للصفحة */
+.content-card h2, .content-card h3 {
+    color: #ff0033 !important;
+    border-bottom: 2px solid #333;
+    padding-bottom: 10px;
+    margin-bottom: 20px !important;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* تأثيرات الجداول */
+.data-table tbody tr {
+    transition: all 0.3s ease;
+    border-radius: 8px;
+}
+
+.data-table tbody tr:hover {
+    background: linear-gradient(135deg, #333, #444);
+    transform: translateX(5px);
+    box-shadow: 0 4px 15px rgba(255, 0, 51, 0.2);
+}
+
+.data-table td {
+    padding: 15px;
+    vertical-align: middle;
+}
+
+/* تحسين النماذج */
+.currency-rate-form {
+    transition: all 0.3s ease;
+}
+
+.currency-rate-form:hover {
+    transform: scale(1.02);
+}
+
+.rate-input {
+    padding: 8px 12px !important;
+    border: 2px solid #333 !important;
+    border-radius: 8px !important;
+    background: #444 !important;
+    color: #fff !important;
+    transition: all 0.3s ease;
+}
+
+.rate-input:focus {
+    border-color: #ff0033 !important;
+    box-shadow: 0 0 0 3px rgba(255, 0, 51, 0.1) !important;
+    background: #555 !important;
+    transform: scale(1.05);
+}
+
+/* تحسين الأزرار */
+.save-rate-btn {
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+}
+
+.save-rate-btn:hover {
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
+}
+
+.action-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.test-currency-btn,
+.toggle-currency-btn,
+.delete-currency-btn {
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    min-width: auto;
+    padding: 6px 12px;
+    font-size: 0.85em;
+}
+
+.test-currency-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 123, 255, 0.4);
+}
+
+.toggle-currency-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(255, 193, 7, 0.4);
+}
+
+.delete-currency-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(220, 53, 69, 0.4);
+}
+
+.test-currency-btn::before,
+.toggle-currency-btn::before,
+.delete-currency-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
+}
+
+.test-currency-btn:hover::before,
+.toggle-currency-btn:hover::before,
+.delete-currency-btn:hover::before {
+    left: 100%;
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    border: none;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-success:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
+    text-decoration: none;
+    color: white;
+}
+
+/* تحسين حاسبة العملات */
+.form-group {
+    position: relative;
+}
+
+.form-group label {
+    color: #fff !important;
+    font-weight: 600;
+    margin-bottom: 8px;
+    transition: color 0.3s ease;
+}
+
+.form-control {
+    background: #333 !important;
+    border: 2px solid #444 !important;
+    color: #fff !important;
+    padding: 12px 15px !important;
+    border-radius: 10px !important;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.form-control:focus {
+    border-color: #ff0033 !important;
+    box-shadow: 0 0 0 3px rgba(255, 0, 51, 0.1) !important;
+    background: #444 !important;
+    transform: translateY(-2px);
+}
+
+.form-control:hover {
+    border-color: #555 !important;
+    background: #3a3a3a !important;
+}
+
+/* زر التحويل */
+.convert-btn {
+    background: linear-gradient(135deg, #ff0033, #cc0029) !important;
+    border: none !important;
+    padding: 12px 30px !important;
+    font-size: 1.1em !important;
+    font-weight: 600 !important;
+    border-radius: 10px !important;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    margin-top: 15px;
+}
+
+.convert-btn:hover {
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 8px 25px rgba(255, 0, 51, 0.4);
+}
+
+.convert-btn::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: width 0.3s ease, height 0.3s ease;
+}
+
+.convert-btn:active::after {
+    width: 300px;
+    height: 300px;
+}
+
+/* نتيجة التحويل */
+.conversion-result-card {
+    margin-top: 20px;
+    padding: 20px;
+    background: linear-gradient(135deg, #333, #444);
+    border: 2px solid #ff0033;
+    border-radius: 15px;
+    display: none;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.5s ease;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+.conversion-result-card.show {
+    display: block;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.conversion-result-card h4 {
+    color: #ff0033;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.result-text {
+    font-size: 1.4em;
+    font-weight: bold;
+    color: #fff;
+    text-align: center;
+    padding: 15px;
+    background: linear-gradient(135deg, #ff0033, #cc0029);
+    border-radius: 10px;
+    box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.2);
+    animation: resultPulse 2s ease-in-out;
+}
+
+@keyframes resultPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+/* تحسين التنبيهات */
+.alert {
+    padding: 20px;
+    border-radius: 15px;
+    margin-top: 20px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.alert::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: linear-gradient(135deg, #17a2b8, #6f42c1);
+}
+
+.alert-info {
+    background: linear-gradient(135deg, #138496, #17a2b8);
+    border: 2px solid #17a2b8;
+    color: white;
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+}
+
+.alert:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(23, 162, 184, 0.3);
+}
+
+/* تأثيرات الدخول */
+.content-card {
+    animation: fadeInUp 0.6s ease;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* تحسينات للشاشات الصغيرة */
+@media (max-width: 768px) {
+    .data-table {
+        font-size: 0.9em;
+    }
+    
+    .currency-rate-form {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .rate-input {
+        width: 100% !important;
+    }
+    
+    .content-card h2, .content-card h3 {
+        font-size: 1.2em;
+    }
+    
+    .result-text {
+        font-size: 1.1em;
+    }
+    
+    .action-buttons {
+        flex-direction: column;
+    }
+    
+    .action-buttons .btn {
+        width: 100%;
+        justify-content: center;
+        margin-bottom: 5px;
+    }
+    
+    /* تحسين عرض زر إضافة عملة جديدة */
+    .content-card > div[style*="flex"] {
+        flex-direction: column;
+        gap: 15px;
+        align-items: flex-start;
+    }
+    
+    .content-card > div[style*="flex"] h2 {
+        margin-bottom: 0;
+    }
+}
+
+/* تأثيرات التحميل */
+.loading {
+    position: relative;
+}
+
+.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid #ff0033;
+    border-top: 2px solid transparent;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+</style>
+{% endblock %}

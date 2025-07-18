@@ -1,0 +1,324 @@
+{% extends "base.html" %}
+
+{% block title %}الملف الشخصي - Es-Gift{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/profile-enhanced.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="profile-container">
+    <div class="profile-header">
+        <div class="header-content">
+            <h1>🎮 الملف الشخصي</h1>
+            <p class="welcome-text">مرحباً بك في لوحة تحكم حسابك</p>
+        </div>
+        <div class="customer-level">
+            <div class="level-badge level-{{ current_user.customer_type }}">
+                {% if current_user.customer_type == 'regular' %}
+                    <i class="fa-solid fa-user"></i>
+                    <span>عميل عادي</span>
+                {% elif current_user.customer_type == 'kyc' %}
+                    <i class="fa-solid fa-user-check"></i>
+                    <span>عميل موثق</span>
+                {% elif current_user.customer_type == 'reseller' %}
+                    <i class="fa-solid fa-crown"></i>
+                    <span>موزع</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="profile-grid">
+        <!-- معلومات العميل -->
+        <div class="profile-section">
+            <h2><i class="fa-solid fa-user-circle"></i> المعلومات الشخصية</h2>
+            <div class="info-group">
+                <div class="info-item">
+                    <label><i class="fa-solid fa-envelope"></i> البريد الإلكتروني:</label>
+                    <span>{{ current_user.email }}</span>
+                </div>
+                <div class="info-item">
+                    <label><i class="fa-solid fa-id-card"></i> الاسم الكامل:</label>
+                    <span>{{ current_user.full_name or 'غير محدد' }}</span>
+                </div>
+                <div class="info-item">
+                    <label><i class="fa-solid fa-phone"></i> رقم الهاتف:</label>
+                    <span>{{ current_user.phone or 'غير محدد' }}</span>
+                </div>
+                <div class="info-item">
+                    <label><i class="fa-solid fa-flag"></i> الجنسية:</label>
+                    <span>{{ current_user.nationality or 'غير محدد' }}</span>
+                </div>
+                <div class="info-item">
+                    <label><i class="fa-solid fa-calendar-plus"></i> تاريخ التسجيل:</label>
+                    <span>{{ current_user.created_at.strftime('%Y-%m-%d') }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- مستوى العميل ومميزاته -->
+        <div class="profile-section">
+            <h2><i class="fa-solid fa-star"></i> مستوى العضوية</h2>
+            <div class="membership-info">
+                <div class="current-level">
+                    <h3><i class="fa-solid fa-trophy"></i> المستوى الحالي: 
+                        {% if current_user.customer_type == 'regular' %}
+                            العميل العادي
+                        {% elif current_user.customer_type == 'kyc' %}
+                            العميل الموثق
+                        {% elif current_user.customer_type == 'reseller' %}
+                            الموزع
+                        {% endif %}
+                    </h3>
+                    
+                    <div class="level-benefits">
+                        <h4><i class="fa-solid fa-gift"></i> المميزات الحالية:</h4>
+                        <ul>
+                            {% if current_user.customer_type == 'regular' %}
+                                <li><i class="fa-solid fa-shopping-cart"></i> شراء المنتجات بالأسعار العامة</li>
+                                <li><i class="fa-solid fa-headset"></i> دعم فني أساسي</li>
+                                <li><i class="fa-solid fa-tags"></i> عروض خاصة للعملاء الجدد</li>
+                            {% elif current_user.customer_type == 'kyc' %}
+                                <li><i class="fa-solid fa-percentage"></i> خصومات حصرية للعملاء الموثقين - خصم 5%</li>
+                                <li><i class="fa-solid fa-dollar-sign"></i> أسعار مخفضة على جميع المنتجات</li>
+                                <li><i class="fa-solid fa-headset"></i> دعم فني متقدم</li>
+                                <li><i class="fa-solid fa-bolt"></i> وصول مبكر للعروض الجديدة</li>
+                                <li><i class="fa-solid fa-shipping-fast"></i> معالجة أسرع للطلبات</li>
+                            {% elif current_user.customer_type == 'reseller' %}
+                                <li><i class="fa-solid fa-crown"></i> أسعار الموزعين المخفضة - خصم 10%</li>
+                                <li><i class="fa-solid fa-boxes"></i> شراء بكميات كبيرة</li>
+                                <li><i class="fa-solid fa-user-tie"></i> دعم فني مخصص</li>
+                                <li><i class="fa-solid fa-star"></i> أولوية عالية في الطلبات</li>
+                                <li><i class="fa-solid fa-code"></i> إمكانية الحصول على أكواد بكميات كبيرة</li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- أزرار الترقية -->
+                <div class="upgrade-section">
+                    {% if current_user.customer_type == 'regular' %}
+                        {% if current_user.kyc_status == 'pending' %}
+                            <div class="upgrade-status">
+                                <i class="fa-solid fa-clock"></i>
+                                <span>طلب التحقق قيد المراجعة</span>
+                                <p>سيتم مراجعة طلبك خلال 24-48 ساعة</p>
+                            </div>
+                        {% elif current_user.kyc_status == 'rejected' %}
+                            <div class="upgrade-status rejected">
+                                <i class="fa-solid fa-times"></i>
+                                <span>تم رفض طلب التحقق</span>
+                                <p>يرجى مراجعة البيانات وإعادة المحاولة</p>
+                            </div>
+                            <a href="{{ url_for('main.kyc_upgrade') }}" class="upgrade-btn">
+                                <i class="fa-solid fa-user-check"></i>
+                                إعادة تقديم طلب التحقق
+                            </a>
+                        {% else %}
+                            <!-- العميل عادي ولم يقدم طلب تحقق بعد -->
+                            <div class="upgrade-preview">
+                                <h4><i class="fa-solid fa-arrow-up"></i> الترقية إلى العميل الموثق (KYC)</h4>
+                                <div class="upgrade-benefits">
+                                    <h5><i class="fa-solid fa-star"></i> المميزات التي ستحصل عليها:</h5>
+                                    <ul>
+                                        <li><i class="fa-solid fa-percentage"></i> خصم 5% على جميع المنتجات</li>
+                                        <li><i class="fa-solid fa-headset"></i> دعم فني مميز</li>
+                                        <li><i class="fa-solid fa-star"></i> أولوية في الخدمة</li>
+                                        <li><i class="fa-solid fa-shipping-fast"></i> معالجة أسرع للطلبات</li>
+                                    </ul>
+                                </div>
+                                <div class="upgrade-requirements">
+                                    <h5><i class="fa-solid fa-clipboard-list"></i> المتطلبات:</h5>
+                                    <ul>
+                                        <li><i class="fa-solid fa-user-edit"></i> تعبئة البيانات الشخصية كاملة</li>
+                                        <li><i class="fa-solid fa-id-card"></i> رفع صورة البطاقة الشخصية (وجه وظهر)</li>
+                                        <li><i class="fa-solid fa-camera"></i> رفع صورة شخصية واضحة</li>
+                                        <li><i class="fa-solid fa-phone-check"></i> التحقق من رقم الهاتف</li>
+                                    </ul>
+                                </div>
+                                <div class="upgrade-steps">
+                                    <h5><i class="fa-solid fa-list-ol"></i> خطوات التحقق:</h5>
+                                    <div class="steps-container">
+                                        <div class="step">
+                                            <div class="step-number">1</div>
+                                            <div class="step-content">
+                                                <h6>تعبئة النموذج</h6>
+                                                <p>املأ جميع البيانات الشخصية المطلوبة</p>
+                                            </div>
+                                        </div>
+                                        <div class="step">
+                                            <div class="step-number">2</div>
+                                            <div class="step-content">
+                                                <h6>رفع الوثائق</h6>
+                                                <p>ارفع صور البطاقة الشخصية والصورة الشخصية</p>
+                                            </div>
+                                        </div>
+                                        <div class="step">
+                                            <div class="step-number">3</div>
+                                            <div class="step-content">
+                                                <h6>المراجعة</h6>
+                                                <p>انتظار مراجعة الطلب (24-48 ساعة)</p>
+                                            </div>
+                                        </div>
+                                        <div class="step">
+                                            <div class="step-number">4</div>
+                                            <div class="step-content">
+                                                <h6>التفعيل</h6>
+                                                <p>تفعيل الحساب الموثق والاستفادة من المميزات</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <a href="{{ url_for('main.kyc_upgrade') }}" class="upgrade-btn">
+                                <i class="fa-solid fa-user-check"></i>
+                                بدء عملية التحقق
+                            </a>
+                        {% endif %}
+                    {% elif current_user.customer_type == 'kyc' %}
+                        <div class="upgrade-contact">
+                            <h4><i class="fa-solid fa-crown"></i> الترقية إلى موزع</h4>
+                            <div class="upgrade-benefits">
+                                <h5><i class="fa-solid fa-star"></i> المميزات التي ستحصل عليها:</h5>
+                                <ul>
+                                    <li><i class="fa-solid fa-percentage"></i> خصم 10% على جميع المنتجات</li>
+                                    <li><i class="fa-solid fa-boxes"></i> شراء بكميات كبيرة</li>
+                                    <li><i class="fa-solid fa-user-tie"></i> دعم فني متقدم</li>
+                                    <li><i class="fa-solid fa-star"></i> أولوية عالية في الخدمة</li>
+                                    <li><i class="fa-solid fa-code"></i> إمكانية الحصول على أكواد بكميات كبيرة</li>
+                                </ul>
+                            </div>
+                            <div class="upgrade-requirements">
+                                <h5><i class="fa-solid fa-clipboard-check"></i> المتطلبات:</h5>
+                                <ul>
+                                    <li><i class="fa-solid fa-file-alt"></i> تقديم طلب مراجعة يدوية</li>
+                                    <li><i class="fa-solid fa-building"></i> إثبات النشاط التجاري</li>
+                                    <li><i class="fa-solid fa-history"></i> مراجعة تاريخ الشراء</li>
+                                    <li><i class="fa-solid fa-check-circle"></i> موافقة إدارة الموقع</li>
+                                </ul>
+                            </div>
+                            <div class="contact-info">
+                                <p><i class="fa-solid fa-info-circle"></i> للحصول على مستوى الموزع، يرجى التواصل مع خدمة العملاء</p>
+                                <div class="contact-details">
+                                    <div class="contact-item">
+                                        <i class="fa-solid fa-phone"></i>
+                                        <span>+966 12 345 6789</span>
+                                    </div>
+                                    <div class="contact-item">
+                                        <i class="fa-solid fa-envelope"></i>
+                                        <span>support@es-gift.com</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <a href="https://wa.me/+966123456789?text=أريد ترقية حسابي إلى مستوى الموزع - البريد الإلكتروني: {{ current_user.email }}" class="whatsapp-btn" target="_blank">
+                                <i class="fa-brands fa-whatsapp"></i>
+                                تواصل مع خدمة العملاء
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- حالة التحقق -->
+        {% if current_user.customer_type == 'regular' and current_user.kyc_status %}
+        <div class="profile-section">
+            <h2><i class="fa-solid fa-shield-check"></i> حالة التحقق</h2>
+            <div class="kyc-status">
+                {% if current_user.kyc_status == 'pending' %}
+                    <div class="status-badge pending">
+                        <i class="fa-solid fa-clock"></i>
+                        <span>قيد المراجعة</span>
+                    </div>
+                    <p><i class="fa-solid fa-info-circle"></i> تم استلام طلب التحقق وهو قيد المراجعة من قبل الفريق المختص</p>
+                    <div class="timeline">
+                        <div class="timeline-item completed">
+                            <i class="fa-solid fa-check"></i>
+                            <span>تم تقديم الطلب</span>
+                        </div>
+                        <div class="timeline-item active">
+                            <i class="fa-solid fa-eye"></i>
+                            <span>قيد المراجعة</span>
+                        </div>
+                        <div class="timeline-item">
+                            <i class="fa-solid fa-flag-checkered"></i>
+                            <span>انتظار النتيجة</span>
+                        </div>
+                    </div>
+                {% elif current_user.kyc_status == 'approved' %}
+                    <div class="status-badge approved">
+                        <i class="fa-solid fa-check"></i>
+                        <span>موثق</span>
+                    </div>
+                    <p><i class="fa-solid fa-check-circle"></i> تم التحقق من هويتك بنجاح</p>
+                {% elif current_user.kyc_status == 'rejected' %}
+                    <div class="status-badge rejected">
+                        <i class="fa-solid fa-times"></i>
+                        <span>مرفوض</span>
+                    </div>
+                    <p><i class="fa-solid fa-exclamation-triangle"></i> تم رفض طلب التحقق، يرجى مراجعة البيانات المرسلة</p>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- الطلبات الأخيرة -->
+        <div class="profile-section">
+            <h2><i class="fa-solid fa-shopping-bag"></i> الطلبات الأخيرة</h2>
+            <div class="recent-orders">
+                {% if current_user.orders %}
+                    {% for order in current_user.orders[:5] %}
+                    <div class="order-item">
+                        <div class="order-header">
+                            <span class="order-number"><i class="fa-solid fa-hashtag"></i>{{ order.order_number }}</span>
+                            <span class="order-date"><i class="fa-solid fa-calendar"></i>{{ order.created_at.strftime('%Y-%m-%d') }}</span>
+                        </div>
+                        <div class="order-details">
+                            <span class="order-total"><i class="fa-solid fa-money-bill"></i>{{ order.total_amount }} {{ order.currency }}</span>
+                            <span class="order-status status-{{ order.order_status }}">
+                                {% if order.order_status == 'pending' %}
+                                    <i class="fa-solid fa-clock"></i> معلق
+                                {% elif order.order_status == 'completed' %}
+                                    <i class="fa-solid fa-check"></i> مكتمل
+                                {% elif order.order_status == 'cancelled' %}
+                                    <i class="fa-solid fa-times"></i> ملغي
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div class="order-actions">
+                            <a href="#" class="order-btn view-btn">
+                                <i class="fa-solid fa-eye"></i>
+                                عرض التفاصيل
+                            </a>
+                            {% if order.order_status == 'completed' %}
+                            <a href="#" class="order-btn download-btn">
+                                <i class="fa-solid fa-download"></i>
+                                تحميل
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                    <div class="orders-footer">
+                        <a href="#" class="view-all-orders">
+                            <i class="fa-solid fa-list"></i>
+                            عرض جميع الطلبات
+                        </a>
+                    </div>
+                {% else %}
+                    <div class="no-orders">
+                        <i class="fa-solid fa-shopping-cart"></i>
+                        <h3>لا توجد طلبات سابقة</h3>
+                        <p>ابدأ التسوق الآن واحصل على أفضل العروض!</p>
+                        <a href="{{ url_for('main.index') }}" class="start-shopping-btn">
+                            <i class="fa-solid fa-shopping-bag"></i>
+                            ابدأ التسوق
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

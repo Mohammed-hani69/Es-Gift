@@ -1,0 +1,1149 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="payment-container">
+    <!-- الأيقونات المتحركة في الخلفية -->
+    <div class="floating-icons" id="floatingIcons">
+        <!-- سيتم إضافة الأيقونات هنا عبر JavaScript -->
+    </div>
+    
+    <div class="payment-card">
+        <div class="payment-header">
+            <div class="order-badge">
+                <i class="fas fa-receipt"></i>
+                <span>طلب رقم {{ order.order_number }}</span>
+            </div>
+            <h2>
+                <i class="fas fa-credit-card"></i>
+                إتمام الدفع
+            </h2>
+        </div>
+        
+        <!-- معلومات الطلب -->
+        <div class="order-summary">
+            <h3>
+                <i class="fas fa-shopping-cart"></i>
+                ملخص الطلب
+            </h3>
+            <div class="summary-item">
+                <span>رقم الطلب:</span>
+                <span class="order-number">{{ order.order_number }}</span>
+            </div>
+            <div class="summary-item">
+                <span>تاريخ الطلب:</span>
+                <span>{{ order.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+            </div>
+            <div class="summary-item total-amount">
+                <span>المبلغ الإجمالي:</span>
+                <span class="amount">{{ order.total_amount }} {{ order.currency }}</span>
+            </div>
+        </div>
+        
+        <!-- نموذج الدفع -->
+        <form id="paymentForm" class="payment-form">
+            <div class="form-section">
+                <h3>
+                    <i class="fas fa-credit-card"></i>
+                    اختيار بوابة الدفع
+                </h3>
+                <div class="payment-methods">
+                    {% for gateway in payment_gateways %}
+                    <div class="payment-method" data-gateway="{{ gateway.name }}">
+                        <input type="radio" id="gateway_{{ loop.index }}" name="payment_method" value="{{ gateway.name }}" {% if loop.first %}checked{% endif %}>
+                        <label for="gateway_{{ loop.index }}">
+                            <div class="method-icon">
+                                {% if 'visa' in gateway.name.lower() %}
+                                    <i class="fab fa-cc-visa"></i>
+                                {% elif 'master' in gateway.name.lower() %}
+                                    <i class="fab fa-cc-mastercard"></i>
+                                {% elif 'paypal' in gateway.name.lower() %}
+                                    <i class="fab fa-cc-paypal"></i>
+                                {% elif 'apple' in gateway.name.lower() %}
+                                    <i class="fab fa-apple-pay"></i>
+                                {% elif 'stc' in gateway.name.lower() %}
+                                    <i class="fas fa-mobile-alt"></i>
+                                {% else %}
+                                    <i class="fas fa-credit-card"></i>
+                                {% endif %}
+                            </div>
+                            <div class="method-info">
+                                <span class="method-name">{{ gateway.name }}</span>
+                                <span class="method-desc">دفع آمن ومضمون</span>
+                            </div>
+                            <div class="method-check">
+                                <i class="fas fa-check"></i>
+                            </div>
+                        </label>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <input type="hidden" id="order_id" value="{{ order.id }}">
+            
+            <div class="payment-actions">
+                <button type="submit" class="pay-btn">
+                    <i class="fas fa-lock"></i>
+                    <span class="btn-text">ادفع الآن {{ order.total_amount }} {{ order.currency }}</span>
+                    <div class="btn-loader"></div>
+                </button>
+                
+                <a href="{{ url_for('main.profile') }}" class="cancel-btn">
+                    <i class="fas fa-arrow-right"></i>
+                    العودة للملف الشخصي
+                </a>
+            </div>
+        </form>
+        
+        <!-- رسائل النظام -->
+        <div id="paymentMessage" class="payment-message"></div>
+        
+        <!-- معلومات الأمان -->
+        <div class="security-info">
+            <div class="security-item">
+                <i class="fas fa-shield-alt"></i>
+                <span>دفع آمن ومشفر</span>
+            </div>
+            <div class="security-item">
+                <i class="fas fa-clock"></i>
+                <span>توصيل فوري</span>
+            </div>
+            <div class="security-item">
+                <i class="fas fa-headset"></i>
+                <span>دعم فني 24/7</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* تصميم صفحة الدفع العصري */
+.payment-container {
+    background: #000;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    padding: 20px;
+}
+
+/* خلفية متحركة مع الأيقونات */
+.floating-icons {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+    overflow: hidden;
+}
+
+.floating-icon {
+    position: absolute;
+    opacity: 0.4;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+}
+
+.floating-icon img {
+    width: 100%;
+    height: 100%;
+    filter: brightness(1.5) contrast(1) invert(1) drop-shadow(0 0 10px rgba(255, 255, 255, 0.3));
+    transition: all 0.3s ease;
+}
+
+/* أحجام الأيقونات */
+.icon-small { width: 25px; height: 25px; }
+.icon-medium { width: 40px; height: 40px; }
+.icon-large { width: 55px; height: 55px; }
+
+/* حركات الأيقونات */
+.float-up { animation-name: floatUp; }
+.float-diagonal { animation-name: floatDiagonal; }
+.float-horizontal { animation-name: floatHorizontal; }
+.float-rotate { animation-name: floatRotate; }
+
+@keyframes floatUp {
+    0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+    10% { opacity: 0.4; }
+    50% { transform: translateY(50vh) rotate(180deg); opacity: 0.6; }
+    90% { opacity: 0.4; }
+    100% { transform: translateY(-50px) rotate(360deg); opacity: 0; }
+}
+
+@keyframes floatDiagonal {
+    0% { transform: translate(0, 0) rotate(0deg); opacity: 0; }
+    10% { opacity: 0.3; }
+    50% { transform: translate(-30vw, -30vh) rotate(180deg); opacity: 0.5; }
+    90% { opacity: 0.3; }
+    100% { transform: translate(-60vw, -60vh) rotate(-360deg); opacity: 0; }
+}
+
+@keyframes floatHorizontal {
+    0% { transform: translateX(0) rotate(0deg); opacity: 0; }
+    10% { opacity: 0.5; }
+    50% { transform: translateX(30vw) rotate(90deg); opacity: 0.6; }
+    90% { opacity: 0.5; }
+    100% { transform: translateX(60vw) rotate(180deg); opacity: 0; }
+}
+
+@keyframes floatRotate {
+    0% { transform: translate(0, 0) rotate(0deg) scale(0.5); opacity: 0; }
+    10% { opacity: 0.3; }
+    25% { transform: translate(-15vw, -15vh) rotate(90deg) scale(0.8); opacity: 0.4; }
+    50% { transform: translate(-30vw, 0) rotate(180deg) scale(1); opacity: 0.6; }
+    75% { transform: translate(-45vw, 15vh) rotate(270deg) scale(0.8); opacity: 0.4; }
+    90% { opacity: 0.3; }
+    100% { transform: translate(-60vw, 30vh) rotate(360deg) scale(0.5); opacity: 0; }
+}
+
+/* بطاقة الدفع الرئيسية */
+.payment-card {
+    background: rgba(0, 0, 0, 0.9);
+    backdrop-filter: blur(15px);
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    width: 100%;
+    max-width: 600px;
+    position: relative;
+    z-index: 2;
+    animation: slideInUp 0.8s ease-out;
+}
+
+/* رأس البطاقة */
+.payment-header {
+    text-align: center;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.order-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(135deg, #ff0033, #ff6600);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 15px;
+}
+
+.payment-header h2 {
+    color: #fff;
+    font-size: 28px;
+    font-weight: 700;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+/* ملخص الطلب */
+.order-summary {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 30px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.order-summary h3 {
+    color: #ff0033;
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.summary-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    color: #ccc;
+    font-size: 15px;
+}
+
+.summary-item:last-child {
+    border-bottom: none;
+}
+
+.summary-item.total-amount {
+    background: rgba(255, 0, 51, 0.1);
+    border-radius: 10px;
+    padding: 15px;
+    margin-top: 10px;
+    border: 1px solid rgba(255, 0, 51, 0.2);
+}
+
+.summary-item.total-amount .amount {
+    color: #ff0033;
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.order-number {
+    color: #ff6600;
+    font-weight: 600;
+}
+
+/* قسم النموذج */
+.form-section {
+    margin-bottom: 30px;
+}
+
+.form-section h3 {
+    color: #ff0033;
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* بوابات الدفع */
+.payment-methods {
+    display: grid;
+    gap: 15px;
+}
+
+.payment-method {
+    position: relative;
+}
+
+.payment-method input[type="radio"] {
+    display: none;
+}
+
+.payment-method label {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.payment-method label::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 0, 51, 0.1), transparent);
+    transition: left 0.5s ease;
+}
+
+.payment-method:hover label::before {
+    left: 100%;
+}
+
+.payment-method:hover label {
+    border-color: rgba(255, 0, 51, 0.3);
+    background: rgba(255, 0, 51, 0.05);
+    transform: translateY(-2px);
+}
+
+.payment-method input:checked + label {
+    border-color: #ff0033;
+    background: rgba(255, 0, 51, 0.1);
+    box-shadow: 0 8px 25px rgba(255, 0, 51, 0.2);
+}
+
+.method-icon {
+    width: 50px;
+    height: 50px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: #ff0033;
+    flex-shrink: 0;
+}
+
+.payment-method input:checked + label .method-icon {
+    background: rgba(255, 0, 51, 0.2);
+    color: #ff6600;
+}
+
+.method-info {
+    flex: 1;
+}
+
+.method-name {
+    display: block;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.method-desc {
+    display: block;
+    color: #999;
+    font-size: 13px;
+}
+
+.method-check {
+    width: 25px;
+    height: 25px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+}
+
+.payment-method input:checked + label .method-check {
+    background: #ff0033;
+    border-color: #ff0033;
+    color: white;
+}
+
+.method-check i {
+    font-size: 12px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.payment-method input:checked + label .method-check i {
+    opacity: 1;
+}
+
+/* أزرار الدفع */
+.payment-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-top: 30px;
+}
+
+.pay-btn {
+    width: 100%;
+    padding: 18px 25px;
+    background: linear-gradient(135deg, #ff0033, #ff6600);
+    border: none;
+    border-radius: 15px;
+    color: white;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.pay-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
+}
+
+.pay-btn:hover::before {
+    left: 100%;
+}
+
+.pay-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 30px rgba(255, 0, 51, 0.4);
+}
+
+.pay-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.pay-btn.loading {
+    background: linear-gradient(135deg, #666, #999) !important;
+    opacity: 0.8;
+    cursor: not-allowed;
+}
+
+.pay-btn.loading::after {
+    content: '';
+    width: 16px;
+    height: 16px;
+    border: 2px solid transparent;
+    border-top: 2px solid #fff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-left: 8px;
+    display: inline-block;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.btn-loader {
+    width: 20px;
+    height: 20px;
+    border: 2px solid transparent;
+    border-top: 2px solid white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    display: none;
+}
+
+.pay-btn.loading .btn-text {
+    opacity: 0.7;
+}
+
+.pay-btn.loading .btn-loader {
+    display: block;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.cancel-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 15px 25px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    color: #ccc;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.cancel-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    transform: translateY(-2px);
+}
+
+/* رسائل الدفع */
+.payment-message {
+    margin-top: 20px;
+    padding: 15px 20px;
+    border-radius: 12px;
+    text-align: center;
+    display: none;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.payment-message.success {
+    background: rgba(40, 167, 69, 0.15);
+    color: #28a745;
+    border: 1px solid rgba(40, 167, 69, 0.3);
+}
+
+.payment-message.error {
+    background: rgba(220, 53, 69, 0.15);
+    color: #dc3545;
+    border: 1px solid rgba(220, 53, 69, 0.3);
+}
+
+.payment-message.info {
+    background: rgba(23, 162, 184, 0.15);
+    color: #17a2b8;
+    border: 1px solid rgba(23, 162, 184, 0.3);
+}
+
+/* معلومات الأمان */
+.security-info {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    margin-top: 25px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.security-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    color: #999;
+    font-size: 12px;
+    text-align: center;
+}
+
+.security-item i {
+    font-size: 20px;
+    color: #28a745;
+}
+
+/* الرسوم المتحركة */
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* تجاوب الموبايل */
+@media (max-width: 768px) {
+    .payment-container {
+        padding: 15px;
+    }
+    
+    .payment-card {
+        padding: 20px;
+        max-width: 100%;
+    }
+    
+    .payment-header h2 {
+        font-size: 24px;
+    }
+    
+    .order-summary,
+    .form-section {
+        margin-bottom: 25px;
+    }
+    
+    .payment-method label {
+        padding: 15px;
+        gap: 12px;
+    }
+    
+    .method-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 20px;
+    }
+    
+    .method-name {
+        font-size: 15px;
+    }
+    
+    .method-desc {
+        font-size: 12px;
+    }
+    
+    .pay-btn {
+        padding: 16px 20px;
+        font-size: 15px;
+    }
+    
+    .security-info {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .security-item {
+        flex-direction: row;
+        gap: 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .payment-container {
+        padding: 10px;
+    }
+    
+    .payment-card {
+        padding: 15px;
+        border-radius: 15px;
+    }
+    
+    .payment-header {
+        margin-bottom: 20px;
+    }
+    
+    .payment-header h2 {
+        font-size: 20px;
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .order-badge {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+    
+    .summary-item.total-amount .amount {
+        font-size: 18px;
+    }
+    
+    .payment-method label {
+        padding: 12px;
+        flex-direction: column;
+        text-align: center;
+        gap: 10px;
+    }
+    
+    .method-info {
+        order: 2;
+    }
+    
+    .method-check {
+        order: 3;
+    }
+    
+    .method-icon {
+        order: 1;
+        width: 35px;
+        height: 35px;
+        font-size: 18px;
+    }
+    
+    .pay-btn {
+        padding: 14px 18px;
+        font-size: 14px;
+    }
+    
+    .security-item {
+        font-size: 11px;
+    }
+    
+    .security-item i {
+        font-size: 16px;
+    }
+}
+
+@media (max-width: 375px) {
+    .payment-card {
+        padding: 12px;
+    }
+    
+    .payment-methods {
+        gap: 10px;
+    }
+    
+    .payment-method label {
+        padding: 10px;
+    }
+    
+    .method-icon {
+        width: 30px;
+        height: 30px;
+        font-size: 16px;
+    }
+    
+    .method-name {
+        font-size: 14px;
+    }
+    
+    .method-desc {
+        font-size: 11px;
+    }
+    
+    .summary-item {
+        font-size: 14px;
+    }
+    
+    .order-summary h3,
+    .form-section h3 {
+        font-size: 16px;
+    }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// تفعيل الأيقونات المتحركة عند تحميل الصفحة
+document.addEventListener('DOMContentLoaded', function() {
+    // إنشاء الأيقونات المتحركة
+    createFloatingIcons();
+    
+    // تفعيل تأثيرات بوابات الدفع
+    initPaymentMethods();
+});
+
+// إنشاء الأيقونات المتحركة
+function createFloatingIcons() {
+    const floatingContainer = document.getElementById('floatingIcons');
+    if (!floatingContainer) return;
+    
+    const icons = [
+        '/static/images/assets/icons/icons8-joystick-30.png',
+        '/static/images/assets/icons/icons8-joystick-90.png',
+        '/static/images/assets/icons/icons8-minecraft-creeper-30.png',
+        '/static/images/assets/icons/icons8-minecraft-creeper-90.png',
+        '/static/images/assets/icons/icons8-pubg-32.png',
+        '/static/images/assets/icons/icons8-pubg-96.png',
+        '/static/images/assets/icons/icons8-xbox-controller-30.png',
+        '/static/images/assets/icons/icons8-xbox-controller-90.png',
+        '/static/images/assets/icons/icons8-xbox-cross-30.png',
+        '/static/images/assets/icons/icons8-xbox-cross-90.png'
+    ];
+    
+    const iconColors = [
+        'brightness(1.5) invert(1)',
+        'brightness(1.7) invert(1)',
+        'brightness(1.3) invert(1)',
+        'brightness(1.9) invert(1)',
+        'brightness(1.6) invert(1)',
+        'brightness(1.4) invert(1)'
+    ];
+    
+    const animations = ['float-up', 'float-diagonal', 'float-horizontal', 'float-rotate'];
+    const sizes = ['icon-small', 'icon-medium', 'icon-large'];
+    
+    function createIcon() {
+        const icon = document.createElement('div');
+        icon.className = 'floating-icon';
+        
+        const randomIcon = icons[Math.floor(Math.random() * icons.length)];
+        const randomSize = sizes[Math.floor(Math.random() * sizes.length)];
+        const randomAnimation = animations[Math.floor(Math.random() * animations.length)];
+        
+        icon.classList.add(randomSize, randomAnimation);
+        
+        const img = document.createElement('img');
+        img.src = randomIcon;
+        img.alt = 'Gaming Icon';
+        
+        const randomColor = iconColors[Math.floor(Math.random() * iconColors.length)];
+        img.style.filter = randomColor + ' drop-shadow(0 0 10px rgba(255, 255, 255, 0.4))';
+        
+        icon.appendChild(img);
+        
+        // موضع بداية مركز في المنتصف
+        const centerX = window.innerWidth / 2;
+        const centerY = window.innerHeight / 2;
+        const radius = 150;
+        
+        if (randomAnimation === 'float-up') {
+            icon.style.left = (centerX - radius/2 + Math.random() * radius) + 'px';
+            icon.style.bottom = '-50px';
+        } else if (randomAnimation === 'float-diagonal') {
+            const side = Math.random() > 0.5 ? 1 : -1;
+            icon.style.left = (centerX + side * (radius + 30)) + 'px';
+            icon.style.top = (centerY + side * (radius + 30)) + 'px';
+        } else if (randomAnimation === 'float-horizontal') {
+            if (Math.random() > 0.5) {
+                icon.style.left = '-50px';
+            } else {
+                icon.style.right = '-50px';
+            }
+            icon.style.top = (centerY - radius/2 + Math.random() * radius) + 'px';
+        } else if (randomAnimation === 'float-rotate') {
+            const angle = Math.random() * 360;
+            const startRadius = radius + 50;
+            icon.style.left = (centerX + Math.cos(angle) * startRadius) + 'px';
+            icon.style.top = (centerY + Math.sin(angle) * startRadius) + 'px';
+        }
+        
+        const duration = 6 + Math.random() * 4;
+        const delay = Math.random() * 1;
+        icon.style.animationDuration = duration + 's';
+        icon.style.animationDelay = delay + 's';
+        
+        floatingContainer.appendChild(icon);
+        
+        setTimeout(() => {
+            if (icon.parentNode) {
+                icon.parentNode.removeChild(icon);
+            }
+        }, (duration + delay) * 1000);
+    }
+    
+    function generateIcons() {
+        createIcon();
+        const nextIconDelay = 800 + Math.random() * 400;
+        setTimeout(generateIcons, nextIconDelay);
+    }
+    
+    generateIcons();
+    
+    // إنشاء أيقونات مبدئية
+    for (let i = 0; i < 8; i++) {
+        setTimeout(() => {
+            createIcon();
+        }, i * 200);
+    }
+}
+
+// تفعيل تأثيرات بوابات الدفع
+function initPaymentMethods() {
+    const paymentMethods = document.querySelectorAll('.payment-method');
+    
+    paymentMethods.forEach(method => {
+        const radio = method.querySelector('input[type="radio"]');
+        const label = method.querySelector('label');
+        
+        // تأثير النقر
+        label.addEventListener('click', function() {
+            // إزالة التأثير من جميع البوابات
+            paymentMethods.forEach(m => {
+                m.classList.remove('selected');
+            });
+            
+            // إضافة التأثير للبوابة المحددة
+            method.classList.add('selected');
+            
+            // تأثير نبضة
+            const icon = method.querySelector('.method-icon');
+            icon.style.animation = 'pulse 0.3s ease-in-out';
+            setTimeout(() => {
+                icon.style.animation = '';
+            }, 300);
+        });
+        
+        // تفعيل البوابة الأولى افتراضياً
+        if (radio.checked) {
+            method.classList.add('selected');
+        }
+    });
+}
+
+// معالجة نموذج الدفع المحسن
+document.getElementById('paymentForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const payBtn = document.querySelector('.pay-btn');
+    const btnText = payBtn.querySelector('.btn-text') || payBtn;
+    const originalText = btnText.textContent;
+    const messageContainer = document.getElementById('paymentMessage');
+    
+    // إخفاء الرسائل السابقة
+    hideMessage();
+    
+    // تفعيل حالة التحميل
+    setLoadingState(true);
+    
+    // جمع بيانات النموذج
+    const selectedMethod = document.querySelector('input[name="payment_method"]:checked');
+    if (!selectedMethod) {
+        setLoadingState(false);
+        showMessage('يرجى اختيار طريقة دفع أولاً', 'error');
+        return;
+    }
+    
+    // إرسال البيانات
+    fetch('/process-payment', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({
+            order_id: document.getElementById('order_id').value,
+            payment_method: selectedMethod.value
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('خطأ في الشبكة');
+        }
+        return response.json();
+    })
+    .then(data => {
+        setLoadingState(false);
+        
+        if (data.success) {
+            showMessage(data.message, 'success');
+            
+            // تأثير النجاح
+            payBtn.style.background = 'linear-gradient(135deg, #28a745, #20c997)';
+            btnText.innerHTML = '<i class="fas fa-check"></i> تم الدفع بنجاح!';
+            
+            // التوجيه بعد ثانيتين
+            setTimeout(() => {
+                window.location.href = '/profile';
+            }, 2000);
+        } else {
+            showMessage(data.message || 'حدث خطأ في الدفع', 'error');
+            shakeButton();
+        }
+    })
+    .catch(error => {
+        setLoadingState(false);
+        console.error('خطأ:', error);
+        showMessage('حدث خطأ في الاتصال. يرجى المحاولة مرة أخرى.', 'error');
+        shakeButton();
+    });
+});
+
+// دوال مساعدة
+function setLoadingState(loading) {
+    const payBtn = document.querySelector('.pay-btn');
+    const btnText = payBtn.querySelector('.btn-text') || payBtn;
+    
+    if (loading) {
+        payBtn.disabled = true;
+        payBtn.classList.add('loading');
+        btnText.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري المعالجة...';
+    } else {
+        payBtn.disabled = false;
+        payBtn.classList.remove('loading');
+        payBtn.style.background = 'linear-gradient(135deg, #ff0033, #ff6600)';
+        btnText.innerHTML = '<i class="fas fa-credit-card"></i> تأكيد الدفع';
+    }
+}
+
+function showMessage(message, type) {
+    let messageContainer = document.getElementById('paymentMessage');
+    if (!messageContainer) {
+        messageContainer = document.createElement('div');
+        messageContainer.id = 'paymentMessage';
+        document.querySelector('.payment-card').appendChild(messageContainer);
+    }
+    
+    messageContainer.textContent = message;
+    messageContainer.className = `payment-message ${type}`;
+    messageContainer.style.display = 'block';
+    
+    // إخفاء الرسالة بعد 5 ثوان إذا كانت خطأ
+    if (type === 'error') {
+        setTimeout(() => {
+            hideMessage();
+        }, 5000);
+    }
+}
+
+function hideMessage() {
+    const messageContainer = document.getElementById('paymentMessage');
+    if (messageContainer) {
+        messageContainer.style.display = 'none';
+    }
+}
+
+function shakeButton() {
+    const payBtn = document.querySelector('.pay-btn');
+    payBtn.style.animation = 'shake 0.5s';
+    setTimeout(() => {
+        payBtn.style.animation = '';
+    }, 500);
+}
+
+// إضافة CSS للرسوم المتحركة
+const style = document.createElement('style');
+style.textContent = `
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.payment-method.selected {
+    background: rgba(255, 0, 51, 0.15) !important;
+    border-color: #ff0033 !important;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(255, 0, 51, 0.3) !important;
+}
+
+.payment-message {
+    padding: 15px;
+    border-radius: 10px;
+    margin: 20px 0;
+    text-align: center;
+    font-weight: 600;
+    animation: slideInDown 0.5s ease-out;
+    display: none;
+}
+
+.payment-message.success {
+    background: rgba(40, 167, 69, 0.2);
+    color: #28a745;
+    border: 1px solid #28a745;
+}
+
+.payment-message.error {
+    background: rgba(220, 53, 69, 0.2);
+    color: #dc3545;
+    border: 1px solid #dc3545;
+}
+
+@keyframes slideInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.pay-btn.loading {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+`;
+document.head.appendChild(style);
+
+// تحسين تجربة اللمس للموبايل
+if ('ontouchstart' in window) {
+    const paymentMethods = document.querySelectorAll('.payment-method label');
+    
+    paymentMethods.forEach(label => {
+        label.addEventListener('touchstart', function() {
+            this.style.transform = 'scale(0.98)';
+        });
+        
+        label.addEventListener('touchend', function() {
+            this.style.transform = 'scale(1)';
+        });
+    });
+}
+
+// معالجة تغيير حجم الشاشة للأيقونات المتحركة
+window.addEventListener('resize', function() {
+    // إعادة ضبط مواضع الأيقونات عند تغيير حجم الشاشة
+    const icons = document.querySelectorAll('.floating-icon');
+    icons.forEach(icon => {
+        const centerX = window.innerWidth / 2;
+        const centerY = window.innerHeight / 2;
+        
+        // تحديث موضع الأيقونة بناءً على حجم الشاشة الجديد
+        if (icon.classList.contains('float-horizontal')) {
+            icon.style.top = (centerY - 75 + Math.random() * 150) + 'px';
+        }
+    });
+});
+</script>
+{% endblock %}

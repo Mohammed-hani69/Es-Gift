@@ -1,0 +1,841 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}طلبات التحقق من الهوية{% endblock %}
+
+{% block content %}
+<div class="content-card">
+    <h2>
+        <i class="fas fa-id-card"></i>
+        طلبات التحقق من الهوية (KYC)
+    </h2>
+    <p style="color: #666; margin-bottom: 20px;">
+        مراجعة وإدارة طلبات ترقية العملاء للحصول على حساب موثق.
+    </p>
+
+    {% if pending_kyc %}
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>الاسم</th>
+                    <th>البريد الإلكتروني</th>
+                    <th>رقم الهاتف</th>
+                    <th>الجنسية</th>
+                    <th>تاريخ الميلاد</th>
+                    <th>حالة الطلب</th>
+                    <th>تاريخ التقديم</th>
+                    <th>الإجراءات</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in pending_kyc %}
+                <tr>
+                    <td>{{ user.full_name or 'غير محدد' }}</td>
+                    <td>{{ user.email }}</td>
+                    <td>{{ user.phone or 'غير محدد' }}</td>
+                    <td>{{ user.nationality or 'غير محدد' }}</td>
+                    <td>{{ user.birth_date.strftime('%Y-%m-%d') if user.birth_date else 'غير محدد' }}</td>
+                    <td>
+                        <span class="status-badge status-{{ user.kyc_status }}">
+                            {% if user.kyc_status == 'pending' %}
+                                معلق
+                            {% elif user.kyc_status == 'approved' %}
+                                مقبول
+                            {% elif user.kyc_status == 'rejected' %}
+                                مرفوض
+                            {% endif %}
+                        </span>
+                    </td>
+                    <td>{{ user.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>
+                        <button class="btn btn-primary btn-sm" onclick="viewKYCDetails({{ user.id }})">
+                            <i class="fas fa-eye"></i>
+                            عرض التفاصيل
+                        </button>
+                        {% if user.kyc_status == 'pending' %}
+                        <button class="btn btn-success btn-sm" onclick="approveKYC({{ user.id }})">
+                            <i class="fas fa-check"></i>
+                            قبول
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="rejectKYC({{ user.id }})">
+                            <i class="fas fa-times"></i>
+                            رفض
+                        </button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i>
+        لا توجد طلبات KYC في الوقت الحالي.
+    </div>
+    {% endif %}
+</div>
+
+<!-- Modal لعرض تفاصيل KYC -->
+<div id="kycModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 800px;">
+        <div class="modal-header">
+            <h3>تفاصيل طلب التحقق</h3>
+            <button class="close-btn" onclick="closeKYCModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="kycDetails">
+            <!-- سيتم تحميل التفاصيل هنا -->
+        </div>
+    </div>
+</div>
+
+<script>
+function viewKYCDetails(userId) {
+    fetch(`/admin/kyc-details/${userId}`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const user = data.user;
+            
+            // تحديد نوع المستند
+            let documentTypeText = 'غير محدد';
+            if (user.document_type === 'national_id') {
+                documentTypeText = 'الهوية الوطنية';
+            } else if (user.document_type === 'passport') {
+                documentTypeText = 'جواز السفر';
+            } else if (user.document_type === 'driver_license') {
+                documentTypeText = 'رخصة القيادة';
+            }
+            
+            // بناء HTML للمستندات المرفقة
+            let documentsHtml = `
+                <div class="document-type-info">
+                    <span class="label">نوع المستند:</span>
+                    <span class="value">${documentTypeText}</span>
+                </div>
+                <div class="document-images-grid">
+            `;
+            
+            // عرض مستندات الهوية حسب النوع
+            if (user.document_type === 'national_id') {
+                documentsHtml += user.id_front_image ? 
+                    `<div class="document-image-item">
+                        <h5>صورة البطاقة (وجه)</h5>
+                        <div class="image-container">
+                            <img src="/static/uploads/kyc-documents/${user.id_front_image}" onclick="openImageModal(this.src)" alt="صورة البطاقة الأمامية">
+                        </div>
+                    </div>` : 
+                    '<div class="document-image-item missing"><i class="fas fa-exclamation-triangle"></i><p>لم يتم رفع صورة وجه البطاقة</p></div>';
+                documentsHtml += user.id_back_image ? 
+                    `<div class="document-image-item">
+                        <h5>صورة البطاقة (ظهر)</h5>
+                        <div class="image-container">
+                            <img src="/static/uploads/kyc-documents/${user.id_back_image}" onclick="openImageModal(this.src)" alt="صورة البطاقة الخلفية">
+                        </div>
+                    </div>` : 
+                    '<div class="document-image-item missing"><i class="fas fa-exclamation-triangle"></i><p>لم يتم رفع صورة ظهر البطاقة</p></div>';
+            } else if (user.document_type === 'passport') {
+                documentsHtml += user.passport_image ? 
+                    `<div class="document-image-item">
+                        <h5>صورة جواز السفر</h5>
+                        <div class="image-container">
+                            <img src="/static/uploads/kyc-documents/${user.passport_image}" onclick="openImageModal(this.src)" alt="صورة جواز السفر">
+                        </div>
+                    </div>` : 
+                    '<div class="document-image-item missing"><i class="fas fa-exclamation-triangle"></i><p>لم يتم رفع صورة جواز السفر</p></div>';
+            } else if (user.document_type === 'driver_license') {
+                documentsHtml += user.driver_license_image ? 
+                    `<div class="document-image-item">
+                        <h5>صورة رخصة القيادة</h5>
+                        <div class="image-container">
+                            <img src="/static/uploads/kyc-documents/${user.driver_license_image}" onclick="openImageModal(this.src)" alt="صورة رخصة القيادة">
+                        </div>
+                    </div>` : 
+                    '<div class="document-image-item missing"><i class="fas fa-exclamation-triangle"></i><p>لم يتم رفع صورة رخصة القيادة</p></div>';
+            }
+            documentsHtml += '</div>';
+            
+            // بناء HTML لصور التحقق من الوجه
+            let facePhotosHtml = '';
+            if (user.face_photo_front || user.face_photo_right || user.face_photo_left) {
+                facePhotosHtml += '<div class="face-photos-grid">';
+                if (user.face_photo_front) {
+                    facePhotosHtml += `
+                        <div class="face-photo-item">
+                            <h5>نظرة مباشرة</h5>
+                            <div class="image-container">
+                                <img src="/static/uploads/face-verification/${user.face_photo_front}" onclick="openImageModal(this.src)" alt="صورة الوجه مباشرة">
+                            </div>
+                        </div>`;
+                }
+                if (user.face_photo_right) {
+                    facePhotosHtml += `
+                        <div class="face-photo-item">
+                            <h5>نظرة يمين</h5>
+                            <div class="image-container">
+                                <img src="/static/uploads/face-verification/${user.face_photo_right}" onclick="openImageModal(this.src)" alt="صورة الوجه يمين">
+                            </div>
+                        </div>`;
+                }
+                if (user.face_photo_left) {
+                    facePhotosHtml += `
+                        <div class="face-photo-item">
+                            <h5>نظرة يسار</h5>
+                            <div class="image-container">
+                                <img src="/static/uploads/face-verification/${user.face_photo_left}" onclick="openImageModal(this.src)" alt="صورة الوجه يسار">
+                            </div>
+                        </div>`;
+                }
+                facePhotosHtml += '</div>';
+            } else {
+                facePhotosHtml += '<div class="no-photos"><i class="fas fa-exclamation-triangle"></i><p>لم يتم رفع صور التحقق من الوجه</p></div>';
+            }
+            
+            document.getElementById('kycDetails').innerHTML = `
+                <div class="kyc-details-container">
+                    <!-- البيانات الشخصية -->
+                    <div class="detail-section personal-info">
+                        <div class="section-header">
+                            <i class="fas fa-user"></i>
+                            <h4>البيانات الشخصية</h4>
+                        </div>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="label">الاسم الكامل:</span>
+                                <span class="value">${user.full_name || 'غير محدد'}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">البريد الإلكتروني:</span>
+                                <span class="value">${user.email}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">رقم الهاتف:</span>
+                                <span class="value">${user.phone || 'غير محدد'}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">تاريخ الميلاد:</span>
+                                <span class="value">${user.birth_date || 'غير محدد'}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">الجنسية:</span>
+                                <span class="value">${user.nationality || 'غير محدد'}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">حالة الطلب:</span>
+                                <span class="status-badge status-${user.kyc_status}">${user.kyc_status === 'pending' ? 'معلق' : user.kyc_status === 'approved' ? 'مقبول' : 'مرفوض'}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">تاريخ التقديم:</span>
+                                <span class="value">${user.created_at || 'غير محدد'}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- المستندات المرفقة -->
+                    <div class="detail-section documents-info">
+                        <div class="section-header">
+                            <i class="fas fa-file-alt"></i>
+                            <h4>المستندات المرفقة</h4>
+                        </div>
+                        <div class="documents-content">
+                            ${documentsHtml}
+                        </div>
+                    </div>
+
+                    <!-- صور التحقق من الوجه -->
+                    <div class="detail-section face-photos">
+                        <div class="section-header">
+                            <i class="fas fa-camera"></i>
+                            <h4>صور التحقق من الوجه</h4>
+                        </div>
+                        <div class="face-photos-content">
+                            ${facePhotosHtml}
+                        </div>
+                    </div>
+
+                    <!-- أزرار الإجراءات -->
+                    ${user.kyc_status === 'pending' ? `
+                    <div class="action-buttons">
+                        <button class="action-btn approve-btn" onclick="approveKYC(${user.id})">
+                            <i class="fas fa-check"></i>
+                            قبول الطلب
+                        </button>
+                        <button class="action-btn reject-btn" onclick="rejectKYC(${user.id})">
+                            <i class="fas fa-times"></i>
+                            رفض الطلب
+                        </button>
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+            document.getElementById('kycModal').style.display = 'block';
+        } else {
+            alert('حدث خطأ: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('خطأ:', error);
+        alert('حدث خطأ في تحميل البيانات');
+    });
+}
+
+function closeKYCModal() {
+    document.getElementById('kycModal').style.display = 'none';
+}
+
+function openImageModal(imageSrc) {
+    const imageModal = document.createElement('div');
+    imageModal.className = 'image-modal';
+    imageModal.innerHTML = `
+        <div class="image-modal-content">
+            <span class="image-close" onclick="this.parentElement.parentElement.remove()">&times;</span>
+            <img src="${imageSrc}" alt="صورة كبيرة">
+        </div>
+    `;
+    document.body.appendChild(imageModal);
+}
+
+function approveKYC(userId) {
+    if (confirm('هل أنت متأكد من قبول طلب التحقق؟')) {
+        fetch(`/admin/approve-kyc/${userId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('تم قبول طلب التحقق بنجاح');
+                location.reload();
+            } else {
+                alert('حدث خطأ: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('خطأ:', error);
+            alert('حدث خطأ في الاتصال');
+        });
+    }
+}
+
+function rejectKYC(userId) {
+    if (confirm('هل أنت متأكد من رفض طلب التحقق؟')) {
+        fetch(`/admin/reject-kyc/${userId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('تم رفض طلب التحقق');
+                location.reload();
+            } else {
+                alert('حدث خطأ: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('خطأ:', error);
+            alert('حدث خطأ في الاتصال');
+        });
+    }
+}
+</script>
+
+<style>
+.alert {
+    padding: 15px;
+    border-radius: 8px;
+    margin-top: 20px;
+}
+
+.alert-info {
+    background: #e3f2fd;
+    border: 1px solid #2196f3;
+    color: #1976d2;
+}
+
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.7);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(5px);
+}
+
+.modal-content {
+    position: relative;
+    background: #111;
+    padding: 0;
+    border-radius: 20px;
+    max-height: 90vh;
+    overflow-y: auto;
+    width: 95%;
+    max-width: 1000px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    border: 1px solid #333;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 25px 35px;
+    background: linear-gradient(135deg, #ff0033, #ff6b6b);
+    color: white;
+    border-radius: 20px 20px 0 0;
+    margin-bottom: 0;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.8em;
+    font-weight: bold;
+}
+
+.modal-body {
+    padding: 35px;
+    background: #111;
+    color: #fff;
+}
+
+.kyc-details-container {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+.detail-section {
+    background: #222;
+    border-radius: 15px;
+    padding: 25px;
+    border: 1px solid #333;
+    transition: all 0.3s ease;
+}
+
+.detail-section:hover {
+    border-color: #ff0033;
+    box-shadow: 0 5px 20px rgba(255, 0, 51, 0.1);
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #ff0033;
+}
+
+.section-header i {
+    font-size: 1.5em;
+    color: #ff0033;
+}
+
+.section-header h4 {
+    margin: 0;
+    color: #fff;
+    font-size: 1.3em;
+    font-weight: bold;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 15px;
+}
+
+.info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    background: #333;
+    border-radius: 10px;
+    border-left: 4px solid #ff0033;
+    transition: all 0.3s ease;
+}
+
+.info-item:hover {
+    background: #3a3a3a;
+    transform: translateX(5px);
+}
+
+.info-item .label {
+    font-weight: bold;
+    color: #ccc;
+    min-width: 120px;
+}
+
+.info-item .value {
+    color: #fff;
+    font-weight: 500;
+}
+
+.document-type-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    background: #333;
+    border-radius: 10px;
+    border-left: 4px solid #ff0033;
+    margin-bottom: 20px;
+}
+
+.document-type-info .label {
+    font-weight: bold;
+    color: #ccc;
+}
+
+.document-type-info .value {
+    color: #fff;
+    font-weight: 500;
+}
+
+.document-images-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+.document-image-item {
+    background: #333;
+    border-radius: 15px;
+    padding: 20px;
+    text-align: center;
+    border: 1px solid #444;
+    transition: all 0.3s ease;
+}
+
+.document-image-item:hover {
+    border-color: #ff0033;
+    transform: translateY(-5px);
+}
+
+.document-image-item h5 {
+    margin: 0 0 15px 0;
+    color: #ff0033;
+    font-size: 1.1em;
+    font-weight: bold;
+}
+
+.document-image-item.missing {
+    background: #2a1a1a;
+    border-color: #dc3545;
+    color: #dc3545;
+}
+
+.document-image-item.missing i {
+    font-size: 2em;
+    margin-bottom: 10px;
+}
+
+.image-container {
+    position: relative;
+    overflow: hidden;
+    border-radius: 10px;
+    background: #222;
+}
+
+.image-container img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.image-container img:hover {
+    transform: scale(1.05);
+}
+
+.face-photos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+}
+
+.face-photo-item {
+    background: #333;
+    border-radius: 15px;
+    padding: 20px;
+    text-align: center;
+    border: 1px solid #444;
+    transition: all 0.3s ease;
+}
+
+.face-photo-item:hover {
+    border-color: #ff0033;
+    transform: translateY(-5px);
+}
+
+.face-photo-item h5 {
+    margin: 0 0 15px 0;
+    color: #ff0033;
+    font-size: 1.1em;
+    font-weight: bold;
+}
+
+.face-photo-item .image-container img {
+    width: 100%;
+    height: 150px;
+    object-fit: cover;
+    border-radius: 10px;
+}
+
+.no-photos {
+    text-align: center;
+    padding: 40px 20px;
+    background: #2a1a1a;
+    border-radius: 15px;
+    border: 1px solid #dc3545;
+    color: #dc3545;
+}
+
+.no-photos i {
+    font-size: 3em;
+    margin-bottom: 15px;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    padding: 25px;
+    background: #222;
+    border-radius: 15px;
+    border: 1px solid #333;
+}
+
+.action-btn {
+    padding: 15px 30px;
+    border: none;
+    border-radius: 25px;
+    font-size: 1.1em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 150px;
+    justify-content: center;
+}
+
+.approve-btn {
+    background: linear-gradient(135deg, #28a745, #34ce57);
+    color: white;
+}
+
+.approve-btn:hover {
+    background: linear-gradient(135deg, #218838, #28a745);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(40, 167, 69, 0.3);
+}
+
+.reject-btn {
+    background: linear-gradient(135deg, #dc3545, #e74c3c);
+    color: white;
+}
+
+.reject-btn:hover {
+    background: linear-gradient(135deg, #c82333, #dc3545);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(220, 53, 69, 0.3);
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 28px;
+    cursor: pointer;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 50%;
+    transition: background-color 0.3s ease;
+    line-height: 1;
+}
+
+.close-btn:hover {
+    background-color: rgba(255,255,255,0.2);
+}
+
+.status-badge {
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.9em;
+    font-weight: bold;
+    display: inline-block;
+}
+
+.status-pending {
+    background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+    color: #856404;
+    border: 1px solid #ffc107;
+}
+
+.status-approved {
+    background: linear-gradient(135deg, #d4edda, #00b894);
+    color: #155724;
+    border: 1px solid #28a745;
+}
+
+.status-rejected {
+    background: linear-gradient(135deg, #f8d7da, #e17055);
+    color: #721c24;
+    border: 1px solid #dc3545;
+}
+
+/* Image Modal */
+.image-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.9);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(5px);
+}
+
+.image-modal-content {
+    position: relative;
+    max-width: 90%;
+    max-height: 90%;
+}
+
+.image-modal-content img {
+    max-width: 100%;
+    max-height: 100%;
+    border-radius: 15px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+}
+
+.image-close {
+    position: absolute;
+    top: -40px;
+    right: -40px;
+    background: #ff0033;
+    color: white;
+    font-size: 24px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.image-close:hover {
+    background: #ff3355;
+    transform: scale(1.1);
+}
+
+/* تحسين responsive */
+@media (max-width: 768px) {
+    .modal-content {
+        width: 98%;
+        margin: 10px;
+        max-height: 95vh;
+    }
+    
+    .modal-body {
+        padding: 20px;
+    }
+    
+    .modal-header {
+        padding: 20px 25px;
+    }
+    
+    .modal-header h3 {
+        font-size: 1.4em;
+    }
+    
+    .info-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .document-images-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .face-photos-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .action-buttons {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .action-btn {
+        width: 100%;
+    }
+    
+    .image-close {
+        top: -30px;
+        right: -30px;
+        width: 30px;
+        height: 30px;
+        font-size: 20px;
+    }
+}
+
+@media (max-width: 480px) {
+    .modal-content {
+        width: 100%;
+        margin: 0;
+        border-radius: 0;
+        max-height: 100vh;
+    }
+    
+    .modal-header {
+        border-radius: 0;
+        padding: 15px 20px;
+    }
+    
+    .modal-body {
+        padding: 15px;
+    }
+    
+    .detail-section {
+        padding: 15px;
+    }
+    
+    .section-header {
+        gap: 10px;
+        margin-bottom: 15px;
+    }
+    
+    .section-header h4 {
+        font-size: 1.1em;
+    }
+    
+    .info-item {
+        flex-direction: column;
+        gap: 5px;
+        text-align: center;
+    }
+    
+    .document-type-info {
+        flex-direction: column;
+        gap: 5px;
+        text-align: center;
+    }
+}
+</style>
+{% endblock %}

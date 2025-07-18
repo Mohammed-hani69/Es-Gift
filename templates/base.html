@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Es-Gift - متجر الألعاب الرقمية{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/header-footer-enhanced.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="top-bar">
+            <!-- ترتيب عناصر الهيدر: للموبايل من اليمين: لوجو، عملة، تسجيل دخول/ملف شخصي+سلة -->
+            <!-- للشاشات الكبيرة: لوجو، بحث، عملة، تسجيل دخول/ملف شخصي+سلة -->
+            
+            <div class="header-left">
+                <div class="logo">
+                    <a href="{{ url_for('main.index') }}">
+                        <img src="{{ url_for('static', filename='images/logo.jpg') }}" alt="Es-Gift" class="logo-image">
+                    </a>
+                </div>
+            </div>
+
+            <div class="header-center">
+                <div class="search-box">
+                    <input type="text" placeholder="بحث" id="search-input">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                </div>
+            </div>
+
+            <div class="header-right">
+                <div class="lang-currency">
+                    <div class="global-container">
+                        <i class="fa-solid fa-globe"></i>
+                    </div>
+                    <div class="currency-selector-wrapper">
+                        <select id="currency-selector" onchange="changeCurrency(this.value)">
+                            {% if currencies %}
+                                {% for currency in currencies %}
+                                    <option value="{{ currency.code }}" 
+                                            {% if session.get('currency') == currency.code or (not session.get('currency') and currency.code == 'SAR') %}selected{% endif %}>
+                                        {{ currency.symbol }} {{ currency.code }}
+                                    </option>
+                                {% endfor %}
+                            {% else %}
+                                <option value="SAR" {% if session.get('currency') == 'SAR' or not session.get('currency') %}selected{% endif %}>ر.س SAR</option>
+                                <option value="USD" {% if session.get('currency') == 'USD' %}selected{% endif %}>$ USD</option>
+                                <option value="AED" {% if session.get('currency') == 'AED' %}selected{% endif %}>د.إ AED</option>
+                            {% endif %}
+                        </select>
+                        <i class="fa-solid fa-chevron-down currency-arrow"></i>
+                    </div>
+                </div>
+
+                <div class="user-actions">
+                    {% if current_user.is_authenticated %}
+                        {% if current_user.is_admin %}
+                            <a href="{{ url_for('admin.dashboard') }}" class="admin-panel-btn" title="لوحة التحكم">
+                                <i class="fa-solid fa-cog"></i>
+                                <span class="admin-text">لوحة التحكم</span>
+                            </a>
+                        {% endif %}
+                        <a href="{{ url_for('main.cart') }}" class="cart-btn">
+                            <i class="fa-solid fa-cart-shopping"></i>
+                            <span class="cart-count" id="cart-count">0</span>
+                        </a>
+                        <a href="{{ url_for('main.profile') }}" class="cart-btn">
+                            <i class="fa-regular fa-circle-user menu-btn"></i>
+                        </a>
+                        
+                    {% else %}
+                        <button class="login-btn-header" id="openSidebar">
+                            <i class="fa-solid fa-user"></i>
+                            <span class="login-text">تسجيل الدخول</span>
+                        </button>
+                    {% endif %}
+                </div>
+
+                <div class="support-icon">
+                    <i class="fa-solid fa-headset" title="خدمة العملاء"></i>
+                </div>
+            </div>
+        </div>
+
+        <nav class="nav-bar">
+            <div class="nav-links">
+                <a class="menu" href="{{ url_for('main.all_categories') }}">
+                    <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#fff">
+                        <path d="M280-600v-80h560v80H280Zm0 160v-80h560v80H280Zm0 160v-80h560v80H280ZM160-600q-17 0-28.5-11.5T120-640q0-17 11.5-28.5T160-680q17 0 28.5 11.5T200-640q0 17-11.5 28.5T160-600Zm0 160q-17 0-28.5-11.5T120-480q0-17 11.5-28.5T160-520q17 0 28.5 11.5T200-480q0 17-11.5 28.5T160-440Zm0 160q-17 0-28.5-11.5T120-320q0-17 11.5-28.5T160-360q17 0 28.5 11.5T200-320q0 17-11.5 28.5T160-280Z"/>
+                    </svg>
+                    <span>جميع الفئات</span>
+                </a>
+                <a href="#">🔥 الأكثر مبيعاً</a>
+                {% for category in main_categories %}
+                    <a href="{{ url_for('main.category_products', category_id=category.id, slug=category.name|create_slug) }}">
+                        {% if category.icon_class %}
+                            <i class="{{ category.icon_class }}"></i>
+                        {% endif %}
+                        {{ category.name }}
+                    </a>
+                {% endfor %}
+            </div>
+        </nav>
+
+        <div class="bottom-search-box">
+            <input type="text" placeholder="بحث" />
+            <i class="fa-solid fa-magnifying-glass"></i>
+        </div>
+    </header>
+
+    <!-- Sidebar for login -->
+    {% if not current_user.is_authenticated %}
+    <div id="overlay" class="overlay"></div>
+    <aside id="sidebar" class="sidebar">
+        <div class="sidebar-header">
+            <h3>مرحباً أيها الزائر 👋</h3>
+            <button class="close-btn" id="closeSidebar">✖</button>
+        </div>
+        <a href="{{ url_for('main.login') }}">
+        <button class="login-btn">
+            تسجيل الدخول باستخدام البريد الإلكتروني
+        </button>
+    </a>
+        <p class="no-account">أليس لديك حساب؟</p>
+        <a href="{{ url_for('main.register') }}">
+        <button class="register-btn">سجل الآن</button>
+        </a>
+    </aside>
+    {% endif %}
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-messages">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        {{ message }}
+                        <button onclick="this.parentElement.style.display='none'">&times;</button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- Main Content -->
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-first-row">
+            <div class="payment-icons">
+                <div class="payment-icon-item">
+                    <i class="fa-brands fa-cc-visa"></i>
+                </div>
+                <div class="payment-icon-item">
+                    <i class="fa-brands fa-cc-paypal"></i>
+                </div>
+                <div class="payment-icon-item">
+                    <i class="fa-brands fa-cc-mastercard"></i>
+                </div>
+                <p class="show-all">عرض الكل ></p>
+            </div>
+
+            <div class="trustpilot">
+                <button class="trustpilot-btn">قيمنا على Trustpilot ⭐</button>
+            </div>
+        </div>
+
+        <div class="social-section">
+            <h4>تابعنا للحصول على التحديثات</h4>
+            <div class="social-icons">
+                <img src="{{ url_for('static', filename='images/facebook.png') }}" alt="Facebook">
+                <img src="{{ url_for('static', filename='images/twitter.png') }}" alt="Twitter">
+                <img src="{{ url_for('static', filename='images/instagram.png') }}" alt="Instagram">
+                <img src="{{ url_for('static', filename='images/youtube.png') }}" alt="YouTube">
+            </div>
+        </div>
+
+        <div class="footer-links">
+            <div>
+                <p>سياسة الخصوصية</p>
+                <p>سياسة الإسترجاع</p>
+                <p>الشروط و الأحكام</p>
+            </div>
+            <div>
+                <p>طرق الدفع</p>
+                <p>اتصل بنا</p>
+                <p>نصائح أمنة</p>
+            </div>
+            <div>
+                <p>شراكة</p>
+                <p>مدونة Es-Gift</p>
+                <p>معلومات عنا</p>
+            </div>
+        </div>
+
+        <div class="bottom-text">
+            <p>
+                هذا الموقع مملوك ويتم تشغيله بواسطة شركة Es-Gift. إن استخدام هذا الموقع بشكل قبولا
+                <span style="cursor: pointer; color: #ff0033; text-decoration: underline; margin: 0 2px;">للشروط والأحكام</span>
+                <span style="cursor: pointer; color: #ff0033; text-decoration: underline; margin: 0 2px;">وسياسة الخصوصية</span>
+                <span style="cursor: pointer; color: #ff0033; text-decoration: underline; margin: 0 2px;">وسياسة الاسترداد</span>
+                . جميع حقوق النشر والعلامات التجارية مملوكة لأصحابها.
+            </p>
+        </div>
+
+        <div class="footer-bottom">
+            <div class="languages">
+                <select>
+                    <option>العربية</option>
+                    <option>English</option>
+                    <option>Français</option>
+                </select>
+            </div>
+            <div class="certificates">
+                <img src="{{ url_for('static', filename='images/logo.jpg') }}" alt="Certificate">
+            </div>
+        </div>
+    </footer>
+
+    <!-- Login/Register Modal -->
+    <div id="authModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            
+            <!-- Login Form -->
+            <div id="loginForm" class="auth-form">
+                <h2>تسجيل الدخول</h2>
+                <form id="loginFormElement">
+                    <input type="email" id="loginEmail" placeholder="البريد الإلكتروني" required>
+                    <input type="password" id="loginPassword" placeholder="كلمة المرور" required>
+                    <button type="submit">تسجيل الدخول</button>
+                </form>
+                <p>ليس لديك حساب؟ <a href="#" onclick="showRegisterForm()">سجل الآن</a></p>
+            </div>
+
+            <!-- Register Form -->
+            <div id="registerForm" class="auth-form" style="display: none;">
+                <h2>إنشاء حساب جديد</h2>
+                <form id="registerFormElement">
+                    <input type="email" id="registerEmail" placeholder="البريد الإلكتروني" required>
+                    <input type="password" id="registerPassword" placeholder="كلمة المرور" required>
+                    <input type="password" id="confirmPassword" placeholder="تأكيد كلمة المرور" required>
+                    <button type="submit">إنشاء حساب</button>
+                </form>
+                <p>لديك حساب بالفعل؟ <a href="#" onclick="showLoginForm()">سجل الدخول</a></p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

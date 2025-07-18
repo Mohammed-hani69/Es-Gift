@@ -1,0 +1,229 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}{{ 'تعديل المقال' if article else 'إضافة مقال جديد' }}{% endblock %}
+
+{% block content %}
+<div class="content-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2>
+            <i class="fas fa-newspaper"></i>
+            {{ 'تعديل المقال' if article else 'إضافة مقال جديد' }}
+        </h2>
+        <a href="{{ url_for('admin.articles') }}" class="btn btn-primary">
+            <i class="fas fa-arrow-right"></i>
+            العودة للمقالات
+        </a>
+    </div>
+
+    <form method="POST" enctype="multipart/form-data">
+        <div class="form-group">
+            <label class="form-label">
+                <i class="fas fa-heading"></i>
+                عنوان المقال *
+            </label>
+            <input type="text" name="title" class="form-control" 
+                   value="{{ article.title if article else '' }}" 
+                   placeholder="أدخل عنوان المقال"
+                   required>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">
+                <i class="fas fa-user"></i>
+                الكاتب
+            </label>
+            <input type="text" name="author" class="form-control" 
+                   value="{{ article.author if article else current_user.full_name }}" 
+                   placeholder="اسم الكاتب">
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">
+                <i class="fas fa-image"></i>
+                صورة المقال
+            </label>
+            <div class="file-upload-area">
+                <input type="file" name="image" class="form-control" 
+                       accept="image/*" onchange="previewImage(this)">
+                {% if article and article.image_url %}
+                <div class="current-image" style="margin-top: 15px;">
+                    <p>الصورة الحالية:</p>
+                    <img src="{{ article.image_url|image_url }}" 
+                         alt="صورة المقال" style="max-width: 200px; height: auto; border-radius: 8px;">
+                </div>
+                {% endif %}
+                <div id="imagePreview" class="image-preview" style="display: none; margin-top: 15px;">
+                    <p>معاينة الصورة الجديدة:</p>
+                    <img id="previewImg" style="max-width: 200px; height: auto; border-radius: 8px;">
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">
+                <i class="fas fa-align-left"></i>
+                محتوى المقال *
+            </label>
+            <textarea name="content" class="form-control content-editor" 
+                      rows="15" 
+                      placeholder="اكتب محتوى المقال هنا..."
+                      required>{{ article.content if article else '' }}</textarea>
+        </div>
+
+        <div class="form-group">
+            <div class="checkbox-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" name="is_published" 
+                           {{ 'checked' if article and article.is_published else '' }}>
+                    <span class="checkmark"></span>
+                    <i class="fas fa-globe"></i>
+                    نشر المقال فوراً
+                </label>
+                <small class="form-text">
+                    إذا لم يتم تحديد هذا الخيار، سيتم حفظ المقال كمسودة
+                </small>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save"></i>
+                {{ 'تحديث المقال' if article else 'إضافة المقال' }}
+            </button>
+            <a href="{{ url_for('admin.articles') }}" class="btn btn-secondary">
+                <i class="fas fa-times"></i>
+                إلغاء
+            </a>
+        </div>
+    </form>
+</div>
+
+<script>
+function previewImage(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            const preview = document.getElementById('imagePreview');
+            const previewImg = document.getElementById('previewImg');
+            
+            previewImg.src = e.target.result;
+            preview.style.display = 'block';
+        }
+        
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+</script>
+
+<style>
+.form-group {
+    margin-bottom: 25px;
+}
+
+.form-group label {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.form-control {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus {
+    border-color: #ff0033;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(255, 0, 51, 0.1);
+}
+
+.content-editor {
+    min-height: 300px;
+    font-family: 'Cairo', Arial, sans-serif;
+    line-height: 1.6;
+    resize: vertical;
+}
+
+.file-upload-area {
+    border: 2px dashed #e0e0e0;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.file-upload-area:hover {
+    border-color: #ff0033;
+    background: rgba(255, 0, 51, 0.02);
+}
+
+.checkbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    padding: 12px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+.checkbox-label:hover {
+    border-color: #ff0033;
+    background: rgba(255, 0, 51, 0.02);
+}
+
+.form-text {
+    color: #666;
+    font-size: 12px;
+    margin-top: 5px;
+}
+
+.form-actions {
+    display: flex;
+    gap: 15px;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #e0e0e0;
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+    text-decoration: none;
+}
+
+.btn-secondary:hover {
+    background: #5a6268;
+    color: white;
+    text-decoration: none;
+}
+</style>
+</div>
+
+<style>
+    .form-control {
+        margin-bottom: 15px;
+    }
+    
+    textarea.form-control {
+        resize: vertical;
+        min-height: 300px;
+    }
+</style>
+{% endblock %}

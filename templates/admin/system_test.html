@@ -1,0 +1,179 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}اختبار النظام{% endblock %}
+
+{% block content %}
+<div class="content-card">
+    <h2>
+        <i class="fas fa-vial"></i>
+        اختبار وظائف النظام
+    </h2>
+    
+    <!-- اختبار الإيميل -->
+    <div class="section-card" style="margin-bottom: 30px;">
+        <h3>
+            <i class="fas fa-envelope"></i>
+            اختبار إرسال الإيميل
+        </h3>
+        <p>اختبر إرسال بريد إلكتروني تجريبي للتأكد من عمل النظام.</p>
+        
+        <form id="testEmailForm" style="display: flex; gap: 15px; align-items: end; flex-wrap: wrap;">
+            <div style="min-width: 300px;">
+                <label for="testEmail">البريد الإلكتروني للاختبار:</label>
+                <input type="email" id="testEmail" name="testEmail" required 
+                       placeholder="example@gmail.com" class="form-input">
+            </div>
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-paper-plane"></i>
+                إرسال إيميل تجريبي
+            </button>
+        </form>
+        
+        <div id="emailTestResult" style="margin-top: 15px;"></div>
+    </div>
+    
+    <!-- معلومات النظام -->
+    <div class="section-card">
+        <h3>
+            <i class="fas fa-info-circle"></i>
+            معلومات النظام
+        </h3>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+            <div class="info-item">
+                <h4>إعدادات البريد الإلكتروني</h4>
+                <p><strong>خادم البريد:</strong> {{ mail_server }}</p>
+                <p><strong>المنفذ:</strong> {{ mail_port }}</p>
+                <p><strong>TLS:</strong> {{ mail_use_tls }}</p>
+                <p><strong>البريد المرسل:</strong> {{ mail_username }}</p>
+            </div>
+            
+            <div class="info-item">
+                <h4>إحصائيات المنتجات</h4>
+                <p><strong>إجمالي المنتجات:</strong> {{ products_count }}</p>
+                <p><strong>إجمالي الأكواد:</strong> {{ codes_count }}</p>
+                <p><strong>الأكواد المتاحة:</strong> {{ available_codes }}</p>
+                <p><strong>الأكواد المباعة:</strong> {{ sold_codes }}</p>
+            </div>
+            
+            <div class="info-item">
+                <h4>إحصائيات العملاء</h4>
+                <p><strong>إجمالي العملاء:</strong> {{ users_count }}</p>
+                <p><strong>طلبات KYC المعلقة:</strong> {{ pending_kyc }}</p>
+                <p><strong>العملاء الموثقين:</strong> {{ verified_users }}</p>
+                <p><strong>الموزعين:</strong> {{ resellers }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('testEmailForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const email = document.getElementById('testEmail').value;
+    const resultDiv = document.getElementById('emailTestResult');
+    
+    resultDiv.innerHTML = '<div class="loading">جاري إرسال الإيميل...</div>';
+    
+    fetch('/admin/test-email', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({email: email})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            resultDiv.innerHTML = `
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle"></i>
+                    تم إرسال الإيميل بنجاح إلى ${email}
+                </div>
+            `;
+        } else {
+            resultDiv.innerHTML = `
+                <div class="alert alert-error">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    فشل في إرسال الإيميل: ${data.message || 'خطأ غير معروف'}
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        resultDiv.innerHTML = `
+            <div class="alert alert-error">
+                <i class="fas fa-exclamation-triangle"></i>
+                حدث خطأ: ${error.message}
+            </div>
+        `;
+    });
+});
+</script>
+
+<style>
+.section-card {
+    background: white;
+    padding: 25px;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.info-item {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    border-left: 4px solid #667eea;
+}
+
+.info-item h4 {
+    color: #333;
+    margin-bottom: 15px;
+    font-size: 16px;
+}
+
+.info-item p {
+    margin: 8px 0;
+    color: #666;
+}
+
+.loading {
+    color: #667eea;
+    font-style: italic;
+}
+
+.alert {
+    padding: 15px;
+    border-radius: 8px;
+    margin: 10px 0;
+}
+
+.alert-success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.alert-error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.form-input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #333;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,1358 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}تفاصيل المستخدم - {{ user.full_name or user.email }}{% endblock %}
+
+{% block content %}
+<div class="content-card-modern">
+    <div class="page-header-modern">
+        <div class="page-title-section">
+            <h2>
+                <i class="fas fa-user-circle"></i>
+                تفاصيل المستخدم
+            </h2>
+            <p class="page-subtitle">إدارة وعرض تفاصيل المستخدم الكاملة</p>
+        </div>
+        <a href="{{ url_for('admin.users') }}" class="btn-back-modern">
+            <i class="fas fa-arrow-right"></i>
+            العودة للمستخدمين
+        </a>
+    </div>
+
+    <!-- معلومات المستخدم -->
+    <div class="user-info-grid-modern">
+        <!-- البطاقة الشخصية -->
+        <div class="user-profile-card-modern">
+            <div class="user-avatar-large-modern">
+                {{ user.name[0].upper() if user.name else user.email[0].upper() }}
+            </div>
+            <h3>{{ user.name or 'غير محدد' }}</h3>
+            <p class="user-email">{{ user.email }}</p>
+            
+            <div class="user-badges-modern">
+                {% if user.is_admin %}
+                    <span class="badge badge-danger">مدير</span>
+                {% endif %}
+                
+                {% if user.customer_type == 'kyc' %}
+                    <span class="badge badge-success">موثق</span>
+                {% elif user.customer_type == 'reseller' %}
+                    <span class="badge badge-warning">موزع</span>
+                {% else %}
+                    <span class="badge badge-info">عادي</span>
+                {% endif %}
+                
+                {% if user.kyc_status == 'approved' %}
+                    <span class="badge badge-success">تم التحقق</span>
+                {% elif user.kyc_status == 'pending' %}
+                    <span class="badge badge-warning">في الانتظار</span>
+                {% endif %}
+            </div>
+            
+            <div class="user-stats-modern">
+                <div class="stat-item-modern">
+                    <div class="stat-number">{{ orders|length }}</div>
+                    <div class="stat-label">إجمالي الطلبات</div>
+                </div>
+                <div class="stat-item-modern">
+                    <div class="stat-number">{{ orders|sum(attribute='total_amount')|round(2) }}</div>
+                    <div class="stat-label">إجمالي المشتريات (ريال)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- تفاصيل إضافية -->
+        <div class="user-details-modern">
+            <h4><i class="fas fa-info-circle"></i> المعلومات الأساسية</h4>
+            <div class="info-cards">
+                <div class="info-card">
+                    <div class="info-icon">
+                        <i class="fas fa-envelope"></i>
+                    </div>
+                    <div class="info-content">
+                        <label>البريد الإلكتروني</label>
+                        <span>{{ user.email }}</span>
+                    </div>
+                </div>
+                
+                <div class="info-card">
+                    <div class="info-icon">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="info-content">
+                        <label>الاسم</label>
+                        <span>{{ user.name or 'غير محدد' }}</span>
+                    </div>
+                </div>
+                
+                <div class="info-card">
+                    <div class="info-icon">
+                        <i class="fas fa-tag"></i>
+                    </div>
+                    <div class="info-content">
+                        <label>نوع العميل</label>
+                        <select class="customer-type-select-modern" data-user-id="{{ user.id }}">
+                            <option value="regular" {{ 'selected' if user.customer_type == 'regular' else '' }}>عادي</option>
+                            <option value="kyc" {{ 'selected' if user.customer_type == 'kyc' else '' }}>موثق</option>
+                            <option value="reseller" {{ 'selected' if user.customer_type == 'reseller' else '' }}>موزع</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="info-card">
+                    <div class="info-icon">
+                        <i class="fas fa-shield-check"></i>
+                    </div>
+                    <div class="info-content">
+                        <label>حالة التوثيق</label>
+                        <span>
+                            {% if user.kyc_status == 'approved' %}
+                                <span class="badge badge-success">موافق عليه</span>
+                            {% elif user.kyc_status == 'pending' %}
+                                <span class="badge badge-warning">في الانتظار</span>
+                            {% elif user.kyc_status == 'rejected' %}
+                                <span class="badge badge-danger">مرفوض</span>
+                            {% else %}
+                                <span class="badge badge-info">لم يتقدم</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="info-card">
+                    <div class="info-icon">
+                        <i class="fas fa-calendar-plus"></i>
+                    </div>
+                    <div class="info-content">
+                        <label>تاريخ التسجيل</label>
+                        <span>{{ user.created_at.strftime('%Y-%m-%d %H:%M') if user.created_at else 'غير محدد' }}</span>
+                    </div>
+                </div>
+                
+                <div class="info-card">
+                    <div class="info-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="info-content">
+                        <label>آخر تسجيل دخول</label>
+                        <span>{{ user.last_login.strftime('%Y-%m-%d %H:%M') if user.last_login else 'لم يسجل دخول بعد' }}</span>
+                    </div>
+                </div>
+            </div>
+
+            {% if user.customer_type == 'kyc' and user.kyc_status == 'pending' %}
+            <div class="kyc-actions-modern">
+                <h4><i class="fas fa-cogs"></i> إجراءات التوثيق</h4>
+                <div class="action-buttons-container">
+                    <a href="{{ url_for('approve_kyc', user_id=user.id) }}" class="btn btn-success approve-btn">
+                        <i class="fas fa-check"></i>
+                        الموافقة على التوثيق
+                    </a>
+                    <a href="{{ url_for('reject_kyc', user_id=user.id) }}" class="btn btn-danger reject-btn">
+                        <i class="fas fa-times"></i>
+                        رفض التوثيق
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- تاريخ الطلبات -->
+<div class="orders-section-modern">
+    <div class="orders-header-modern">
+        <h3><i class="fas fa-shopping-cart"></i> سجل الطلبات</h3>
+        <div class="orders-stats">
+            <span class="orders-count">{{ orders|length }} طلب</span>
+            <span class="orders-total">{{ orders|sum(attribute='total_amount')|round(2) }} ريال</span>
+        </div>
+    </div>
+    
+    {% if orders %}
+        <div class="orders-table-container">
+            <table class="orders-table-modern">
+                <thead>
+                    <tr>
+                        <th>رقم الطلب</th>
+                        <th>التاريخ</th>
+                        <th>المنتجات</th>
+                        <th>المبلغ الإجمالي</th>
+                        <th>الحالة</th>
+                        <th>الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in orders %}
+                    <tr class="order-row" data-order-id="{{ order.id }}">
+                        <td>
+                            <div class="order-id">
+                                <span class="order-number">#{{ order.id }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="order-date">
+                                <span>{{ order.created_at.strftime('%Y-%m-%d') }}</span>
+                                <small>{{ order.created_at.strftime('%H:%M') }}</small>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="order-items">
+                                <span class="items-count">{{ order.items|length }} منتج</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="order-total">
+                                <span class="total-amount">{{ order.total_amount }} ريال</span>
+                            </div>
+                        </td>
+                        <td>
+                            {% if order.order_status == 'completed' %}
+                                <span class="status-badge status-completed">مكتمل</span>
+                            {% elif order.order_status == 'pending' %}
+                                <span class="status-badge status-pending">في الانتظار</span>
+                            {% elif order.order_status == 'cancelled' %}
+                                <span class="status-badge status-cancelled">ملغي</span>
+                            {% elif order.order_status == 'processing' %}
+                                <span class="status-badge status-processing">قيد التنفيذ</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                <a href="{{ url_for('admin.order_detail', order_id=order.id) }}" class="btn-action view-btn" title="عرض التفاصيل">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                {% if order.order_status == 'pending' %}
+                                    <button class="btn-action approve-btn" onclick="updateOrderStatus({{ order.id }}, 'processing')" title="قبول الطلب">
+                                        <i class="fas fa-check"></i>
+                                    </button>
+                                    <button class="btn-action cancel-btn" onclick="updateOrderStatus({{ order.id }}, 'cancelled')" title="إلغاء الطلب">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                {% elif order.order_status == 'processing' %}
+                                    <button class="btn-action complete-btn" onclick="updateOrderStatus({{ order.id }}, 'completed')" title="إكمال الطلب">
+                                        <i class="fas fa-check-double"></i>
+                                    </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="no-orders-modern">
+            <i class="fas fa-shopping-cart empty-icon"></i>
+            <h4>لا توجد طلبات</h4>
+            <p>لم يقم هذا المستخدم بإجراء أي طلبات حتى الآن</p>
+        </div>
+    {% endif %}
+</div>
+
+<style>
+/* User Profile Card Modern Styles */
+.user-profile-card-modern {
+    background: linear-gradient(135deg, #ff0033 0%, #330011 100%);
+    color: white;
+    padding: 30px;
+    border-radius: 20px;
+    text-align: center;
+    box-shadow: 0 20px 40px rgba(255, 0, 51, 0.2);
+    border: 1px solid rgba(255, 0, 51, 0.3);
+    transition: all 0.4s ease;
+    animation: cardSlideIn 0.6s ease-out;
+}
+
+.user-avatar-large-modern {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 2.2em;
+    margin: 0 auto 20px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+}
+
+.user-avatar-large-modern:hover {
+    transform: scale(1.05);
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.user-profile-card-modern h3 {
+    margin: 0 0 5px 0;
+    font-size: 1.8em;
+    font-weight: 600;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.user-email {
+    opacity: 0.9;
+    margin-bottom: 20px;
+    font-size: 1.1em;
+}
+
+.user-badges-modern {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 25px;
+}
+
+.user-stats-modern {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 25px;
+    margin-top: 25px;
+}
+
+.stat-item-modern {
+    text-align: center;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+}
+
+.stat-item-modern:hover {
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.stat-number {
+    display: block;
+    font-size: 1.8em;
+    font-weight: 700;
+    margin-bottom: 5px;
+    color: #fff;
+}
+
+.stat-label {
+    font-size: 0.9em;
+    opacity: 0.9;
+    color: #fff;
+}
+
+/* User Details Modern Styles */
+.user-details-modern {
+    background: linear-gradient(135deg, #111 0%, #222 100%);
+    padding: 30px;
+    border-radius: 20px;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+    border: 1px solid #333;
+    animation: fadeInUp 0.6s ease-out 0.2s both;
+}
+
+.user-details-modern h4 {
+    color: #ff0033;
+    margin-bottom: 25px;
+    font-size: 1.3em;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.info-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.info-card {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 20px;
+    background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+    border-radius: 12px;
+    border: 1px solid #333;
+    transition: all 0.3s ease;
+    animation: cardPulse 2s ease-in-out infinite alternate;
+}
+
+.info-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px rgba(255, 0, 51, 0.2);
+    border-color: #ff0033;
+}
+
+.info-icon {
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, #ff0033 0%, #cc0028 100%);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.2em;
+    box-shadow: 0 5px 15px rgba(255, 0, 51, 0.3);
+}
+
+.info-content {
+    flex: 1;
+}
+
+.info-content label {
+    display: block;
+    color: #ff0033;
+    font-weight: 600;
+    margin-bottom: 5px;
+    font-size: 0.9em;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.info-content span {
+    color: #fff;
+    font-size: 1.1em;
+    font-weight: 500;
+}
+
+.customer-type-select-modern {
+    background: #1a1a1a;
+    border: 2px solid #333;
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 1em;
+    transition: all 0.3s ease;
+    width: 100%;
+}
+
+.customer-type-select-modern:focus {
+    border-color: #ff0033;
+    box-shadow: 0 0 10px rgba(255, 0, 51, 0.3);
+    outline: none;
+}
+
+/* Badge Styles */
+.badge {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.8em;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    animation: badgeGlow 2s ease-in-out infinite alternate;
+}
+
+.badge-danger {
+    background: linear-gradient(135deg, #ff0033 0%, #cc0028 100%);
+    color: white;
+}
+
+.badge-success {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+}
+
+.badge-warning {
+    background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
+    color: #333;
+}
+
+.badge-info {
+    background: linear-gradient(135deg, #17a2b8 0%, #20c997 100%);
+    color: white;
+}
+
+/* KYC Actions Modern */
+.kyc-actions-modern {
+    background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+    padding: 25px;
+    border-radius: 15px;
+    border: 1px solid #333;
+    margin-top: 20px;
+    animation: slideInRight 0.6s ease-out;
+}
+
+.kyc-actions-modern h4 {
+    color: #ff0033;
+    margin-bottom: 20px;
+    font-size: 1.2em;
+}
+
+.action-buttons-container {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.approve-btn, .reject-btn {
+    padding: 12px 20px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.approve-btn {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+}
+
+.approve-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(40, 167, 69, 0.4);
+}
+
+.reject-btn {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    color: white;
+}
+
+.reject-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(220, 53, 69, 0.4);
+}
+
+/* Orders Section Modern */
+.orders-section-modern {
+    background: linear-gradient(135deg, #111 0%, #222 100%);
+    padding: 30px;
+    border-radius: 20px;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+    border: 1px solid #333;
+    margin-top: 30px;
+    animation: fadeInUp 0.6s ease-out 0.4s both;
+}
+
+.orders-header-modern {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.orders-header-modern h3 {
+    color: #ff0033;
+    margin: 0;
+    font-size: 1.4em;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.orders-stats {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.orders-count, .orders-total {
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+    border: 1px solid #333;
+    border-radius: 20px;
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.9em;
+}
+
+.orders-table-container {
+    overflow-x: auto;
+    border-radius: 12px;
+    border: 1px solid #333;
+}
+
+.orders-table-modern {
+    width: 100%;
+    border-collapse: collapse;
+    background: #1a1a1a;
+}
+
+.orders-table-modern thead {
+    background: linear-gradient(135deg, #ff0033 0%, #cc0028 100%);
+}
+
+.orders-table-modern th {
+    padding: 15px;
+    color: white;
+    font-weight: 600;
+    text-align: right;
+    border-bottom: 2px solid #333;
+}
+
+.orders-table-modern td {
+    padding: 15px;
+    border-bottom: 1px solid #333;
+    color: #fff;
+}
+
+.order-row {
+    transition: all 0.3s ease;
+    animation: tableRowSlide 0.6s ease-out;
+}
+
+.order-row:hover {
+    background: linear-gradient(135deg, #222 0%, #333 100%);
+    transform: scale(1.01);
+}
+
+.order-id {
+    font-weight: 600;
+    color: #ff0033;
+}
+
+.order-date span {
+    display: block;
+    font-weight: 600;
+}
+
+.order-date small {
+    color: #999;
+    font-size: 0.85em;
+}
+
+.order-items, .order-total {
+    font-weight: 600;
+}
+
+.status-badge {
+    padding: 6px 12px;
+    border-radius: 15px;
+    font-size: 0.8em;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-completed {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+}
+
+.status-pending {
+    background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
+    color: #333;
+}
+
+.status-cancelled {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    color: white;
+}
+
+.status-processing {
+    background: linear-gradient(135deg, #17a2b8 0%, #20c997 100%);
+    color: white;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.btn-action {
+    width: 35px;
+    height: 35px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    font-size: 0.9em;
+}
+
+.view-btn {
+    background: linear-gradient(135deg, #17a2b8 0%, #20c997 100%);
+    color: white;
+}
+
+.approve-btn {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+}
+
+.cancel-btn {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    color: white;
+}
+
+.complete-btn {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    color: white;
+}
+
+.btn-action:hover {
+    transform: translateY(-2px) scale(1.1);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.no-orders-modern {
+    text-align: center;
+    padding: 60px 20px;
+    color: #666;
+}
+
+.empty-icon {
+    font-size: 4em;
+    color: #333;
+    margin-bottom: 20px;
+    animation: float 3s ease-in-out infinite;
+}
+
+.no-orders-modern h4 {
+    color: #999;
+    margin-bottom: 10px;
+    font-size: 1.3em;
+}
+
+.no-orders-modern p {
+    color: #666;
+    font-size: 1.1em;
+}
+
+/* Enhanced Page Header Styles */
+.content-card-modern {
+    background: transparent;
+    padding: 0;
+    border: none;
+    box-shadow: none;
+}
+
+.page-header-modern {
+    background: linear-gradient(135deg, #111 0%, #222 100%);
+    padding: 30px;
+    border-radius: 20px;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+    border: 1px solid #333;
+    margin-bottom: 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
+    animation: slideInDown 0.6s ease-out;
+}
+
+.page-title-section h2 {
+    color: #ff0033;
+    margin: 0;
+    font-size: 1.8em;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.page-title-section h2 i {
+    font-size: 1.1em;
+    background: linear-gradient(135deg, #ff0033 0%, #cc0028 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.page-subtitle {
+    color: #999;
+    margin: 8px 0 0 0;
+    font-size: 1em;
+    font-weight: 400;
+    padding-right: 44px;
+}
+
+.btn-back-modern {
+    background: linear-gradient(135deg, #333 0%, #555 100%);
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 12px;
+    text-decoration: none;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+    border: 1px solid #444;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.btn-back-modern:hover {
+    background: linear-gradient(135deg, #555 0%, #777 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    color: #fff;
+    text-decoration: none;
+}
+
+.btn-back-modern i {
+    transition: transform 0.3s ease;
+}
+
+.btn-back-modern:hover i {
+    transform: translateX(3px);
+}
+
+.user-info-grid-modern {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    margin-bottom: 30px;
+}
+
+@keyframes slideInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Animations */
+@keyframes cardSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes cardPulse {
+    from {
+        box-shadow: 0 5px 15px rgba(255, 0, 51, 0.1);
+    }
+    to {
+        box-shadow: 0 5px 15px rgba(255, 0, 51, 0.2);
+    }
+}
+
+@keyframes badgeGlow {
+    from {
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+    to {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes tableRowSlide {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .user-info-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .info-cards {
+        grid-template-columns: 1fr;
+    }
+    
+    .orders-header-modern {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .orders-stats {
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    .action-buttons-container {
+        flex-direction: column;
+    }
+    
+    .user-stats-modern {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+}
+
+/* Legacy styles for compatibility */
+.user-profile-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px;
+    border-radius: 15px;
+    text-align: center;
+}
+
+.user-avatar-large {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 2em;
+    margin: 0 auto 15px;
+}
+
+.user-profile-card h3 {
+    margin: 0 0 5px 0;
+    font-size: 1.5em;
+}
+
+.user-badges {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+.user-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.stat-item {
+    text-align: center;
+}
+
+.stat-item strong {
+    display: block;
+    font-size: 1.5em;
+    margin-bottom: 5px;
+}
+
+.stat-item span {
+    font-size: 0.9em;
+    opacity: 0.8;
+}
+
+.user-details {
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.info-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.info-table td {
+    padding: 10px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.info-table td:first-child {
+    width: 30%;
+    color: #666;
+}
+
+.customer-type-select {
+    padding: 5px 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: white;
+}
+
+.badge-admin {
+    background: #ff6b6b;
+    color: white;
+}
+
+.badge-kyc {
+    background: #51cf66;
+    color: white;
+}
+
+.badge-reseller {
+    background: #ffd43b;
+    color: #333;
+}
+
+.badge-regular {
+    background: #868e96;
+    color: white;
+}
+
+.badge-verified {
+    background: #20c997;
+    color: white;
+}
+
+.badge-pending {
+    background: #fd7e14;
+    color: white;
+}
+
+.status-approved, .status-pending, .status-rejected, .status-none {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.8em;
+    font-weight: bold;
+}
+
+.status-approved {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-rejected {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.status-none {
+    background: #e9ecef;
+    color: #6c757d;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+}
+
+.kyc-actions {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+}
+</style>
+
+<script>
+// Enhanced User Management JavaScript
+$(document).ready(function() {
+    // Animate elements on page load
+    $('.user-profile-card-modern').addClass('animate__animated animate__fadeInDown');
+    $('.user-details-modern').addClass('animate__animated animate__fadeInUp');
+    $('.orders-section-modern').addClass('animate__animated animate__fadeInUp');
+
+    // Enhanced customer type change
+    $('.customer-type-select-modern').on('change', function() {
+        const userId = $(this).data('user-id');
+        const newType = $(this).val();
+        const $select = $(this);
+        
+        // Show loading state
+        $select.prop('disabled', true);
+        
+        Swal.fire({
+            title: 'تأكيد التغيير',
+            text: 'هل أنت متأكد من تغيير نوع العميل؟',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#ff0033',
+            cancelButtonColor: '#666',
+            confirmButtonText: 'نعم، تغيير',
+            cancelButtonText: 'إلغاء',
+            background: '#1a1a1a',
+            color: '#fff'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Show loading
+                Swal.fire({
+                    title: 'جاري التحديث...',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    },
+                    background: '#1a1a1a',
+                    color: '#fff'
+                });
+
+                fetch('/admin/update-customer-type', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': $('meta[name=csrf-token]').attr('content')
+                    },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        customer_type: newType
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire({
+                            title: 'تم التحديث!',
+                            text: 'تم تغيير نوع العميل بنجاح',
+                            icon: 'success',
+                            confirmButtonColor: '#ff0033',
+                            background: '#1a1a1a',
+                            color: '#fff'
+                        }).then(() => {
+                            location.reload();
+                        });
+                    } else {
+                        throw new Error(data.message || 'حدث خطأ غير متوقع');
+                    }
+                })
+                .catch(error => {
+                    Swal.fire({
+                        title: 'خطأ!',
+                        text: 'حدث خطأ: ' + error.message,
+                        icon: 'error',
+                        confirmButtonColor: '#ff0033',
+                        background: '#1a1a1a',
+                        color: '#fff'
+                    });
+                    $select.prop('disabled', false);
+                });
+            } else {
+                $select.prop('disabled', false);
+            }
+        });
+    });
+
+    // Enhanced table row hover effects
+    $('.order-row').hover(
+        function() {
+            $(this).addClass('table-row-hover');
+        },
+        function() {
+            $(this).removeClass('table-row-hover');
+        }
+    );
+
+    // Smooth scroll to orders section
+    if (window.location.hash === '#orders') {
+        $('html, body').animate({
+            scrollTop: $('.orders-section-modern').offset().top - 100
+        }, 800);
+    }
+
+    // Add click sound effect to buttons
+    $('.btn-action, .approve-btn, .reject-btn').on('click', function() {
+        // Create audio context for click sound
+        if (typeof(AudioContext) !== "undefined" || typeof(webkitAudioContext) !== "undefined") {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = 800;
+            oscillator.type = 'sine';
+            
+            gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.1);
+        }
+    });
+});
+
+// Enhanced order status update function
+function updateOrderStatus(orderId, newStatus) {
+    let statusText = '';
+    let confirmText = '';
+    
+    switch(newStatus) {
+        case 'processing':
+            statusText = 'قيد التنفيذ';
+            confirmText = 'هل تريد قبول هذا الطلب؟';
+            break;
+        case 'completed':
+            statusText = 'مكتمل';
+            confirmText = 'هل تريد تأكيد اكتمال هذا الطلب؟';
+            break;
+        case 'cancelled':
+            statusText = 'ملغي';
+            confirmText = 'هل تريد إلغاء هذا الطلب؟';
+            break;
+    }
+
+    Swal.fire({
+        title: 'تأكيد تغيير الحالة',
+        text: confirmText,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#ff0033',
+        cancelButtonColor: '#666',
+        confirmButtonText: 'نعم، تغيير',
+        cancelButtonText: 'إلغاء',
+        background: '#1a1a1a',
+        color: '#fff'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Show loading
+            Swal.fire({
+                title: 'جاري التحديث...',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                },
+                background: '#1a1a1a',
+                color: '#fff'
+            });
+
+            fetch('/admin/update-order-status', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': $('meta[name=csrf-token]').attr('content')
+                },
+                body: JSON.stringify({
+                    order_id: orderId,
+                    status: newStatus
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        title: 'تم التحديث!',
+                        text: `تم تغيير حالة الطلب إلى: ${statusText}`,
+                        icon: 'success',
+                        confirmButtonColor: '#ff0033',
+                        background: '#1a1a1a',
+                        color: '#fff'
+                    }).then(() => {
+                        // Update the row with animation
+                        const $row = $(`tr[data-order-id="${orderId}"]`);
+                        $row.addClass('animate__animated animate__pulse');
+                        
+                        setTimeout(() => {
+                            location.reload();
+                        }, 500);
+                    });
+                } else {
+                    throw new Error(data.message || 'حدث خطأ غير متوقع');
+                }
+            })
+            .catch(error => {
+                Swal.fire({
+                    title: 'خطأ!',
+                    text: 'حدث خطأ: ' + error.message,
+                    icon: 'error',
+                    confirmButtonColor: '#ff0033',
+                    background: '#1a1a1a',
+                    color: '#fff'
+                });
+            });
+        }
+    });
+}
+
+// Add smooth transitions to all interactive elements
+$(document).ready(function() {
+    // Add ripple effect to buttons
+    $('.btn-action, .approve-btn, .reject-btn').on('click', function(e) {
+        const $button = $(this);
+        const ripple = $('<span class="ripple"></span>');
+        
+        const rect = this.getBoundingClientRect();
+        const size = Math.max(rect.width, rect.height);
+        const x = e.clientX - rect.left - size / 2;
+        const y = e.clientY - rect.top - size / 2;
+        
+        ripple.css({
+            width: size,
+            height: size,
+            left: x,
+            top: y
+        });
+        
+        $button.append(ripple);
+        
+        setTimeout(() => {
+            ripple.remove();
+        }, 600);
+    });
+});
+
+// Add CSS for ripple effect
+const rippleCSS = `
+<style>
+.ripple {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.6);
+    transform: scale(0);
+    animation: ripple-animation 0.6s linear;
+    pointer-events: none;
+}
+
+@keyframes ripple-animation {
+    to {
+        transform: scale(4);
+        opacity: 0;
+    }
+}
+
+.table-row-hover {
+    background: linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%) !important;
+    box-shadow: 0 5px 15px rgba(255, 0, 51, 0.2) !important;
+}
+
+.btn-action, .approve-btn, .reject-btn {
+    position: relative;
+    overflow: hidden;
+}
+</style>
+`;
+
+$('head').append(rippleCSS);
+</script>
+{% endblock %}
