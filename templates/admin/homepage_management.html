@@ -1,0 +1,1215 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}إدارة الصفحة الرئيسية{% endblock %}
+
+{% block content %}
+<div class="content-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2>
+            <i class="fas fa-home"></i>
+            إدارة الصفحة الرئيسية
+        </h2>
+        <p style="color: #666; margin: 0;">تحكم في جميع عناصر الصفحة الرئيسية</p>
+    </div>
+
+    <!-- السكشن الأول: العروض الرئيسية -->
+    <section class="homepage-section">
+        <div class="section-header">
+            <h3>
+                <i class="fas fa-fire"></i>
+                العروض الرئيسية
+            </h3>
+            <p>إضافة صورة مع رابط للعروض الرئيسية في أعلى الصفحة</p>
+            <button class="btn btn-primary" onclick="showAddOfferModal()">
+                <i class="fas fa-plus"></i>
+                إضافة عرض جديد
+            </button>
+        </div>
+        
+        <div class="items-grid">
+            {% for offer in main_offers %}
+            <div class="homepage-item">
+                <div class="item-image">
+                    <img src="{{ offer.image_url|image_url }}" alt="{{ offer.title }}">
+                </div>
+                <div class="item-info">
+                    <h4>{{ offer.title }}</h4>
+                    <p><strong>الرابط:</strong> {{ offer.link_url }}</p>
+                    <p><strong>ترتيب العرض:</strong> {{ offer.display_order }}</p>
+                </div>
+                <div class="item-actions">
+                    <button class="btn btn-warning btn-sm" onclick="editMainOffer({{ offer.id }}, '{{ offer.title }}', '{{ offer.image_url }}', '{{ offer.link_url }}', {{ offer.display_order }})" style="margin-left: 10px;">
+                        <i class="fas fa-edit"></i>
+                        تعديل
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteMainOffer({{ offer.id }})">
+                        <i class="fas fa-trash"></i>
+                        حذف
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <!-- السكشن الثاني: الفئات المختصرة -->
+    <section class="homepage-section">
+        <div class="section-header">
+            <h3>
+                <i class="fas fa-th-large"></i>
+                فئات مختصرة
+            </h3>
+            <p>إضافة اسم مع رابط مع أيقونة للفئات السريعة</p>
+            <button class="btn btn-primary" onclick="showAddCategoryModal()">
+                <i class="fas fa-plus"></i>
+                إضافة فئة جديدة
+            </button>
+        </div>
+        
+        <div class="items-grid">
+            {% for category in quick_categories %}
+            <div class="homepage-item">
+                <div class="item-icon">
+                    <i class="{{ category.icon_class }}"></i>
+                </div>
+                <div class="item-info">
+                    <h4>{{ category.name }}</h4>
+                    <p><strong>الأيقونة:</strong> {{ category.icon_class }}</p>
+                    <p><strong>الرابط:</strong> {{ category.link_url }}</p>
+                    <p><strong>ترتيب العرض:</strong> {{ category.display_order }}</p>
+                </div>
+                <div class="item-actions">
+                    <button class="btn btn-danger btn-sm" onclick="deleteQuickCategory({{ category.id }})">
+                        <i class="fas fa-trash"></i>
+                        حذف
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <!-- السكشن الثالث: بطاقات الهدايا -->
+    <section class="homepage-section">
+        <div class="section-header">
+            <h3>
+                <i class="fas fa-gift"></i>
+                بطاقات الهدايا
+            </h3>
+            <p>إضافة صورة مع رابط لبطاقات الهدايا</p>
+            <button class="btn btn-primary" onclick="showAddGiftCardModal()">
+                <i class="fas fa-plus"></i>
+                إضافة بطاقة جديدة
+            </button>
+        </div>
+        
+        <div class="items-grid">
+            {% for gift_card in gift_cards %}
+            <div class="homepage-item">
+                <div class="item-image">
+                    <img src="{{ url_for('static', filename='uploads/' + gift_card.image_url) }}" alt="{{ gift_card.title }}">
+                </div>
+                <div class="item-info">
+                    <h4>{{ gift_card.title }}</h4>
+                    <p><strong>الرابط:</strong> {{ gift_card.link_url }}</p>
+                    <p><strong>ترتيب العرض:</strong> {{ gift_card.display_order }}</p>
+                </div>
+                <div class="item-actions">
+                    <button class="btn btn-danger btn-sm" onclick="deleteGiftCard({{ gift_card.id }})">
+                        <i class="fas fa-trash"></i>
+                        حذف
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <!-- السكشن الرابع: ماركات أخرى -->
+    <section class="homepage-section">
+        <div class="section-header">
+            <h3>
+                <i class="fas fa-tags"></i>
+                ماركات أخرى
+            </h3>
+            <p>إضافة اسم وصورة ورابط للماركات الأخرى</p>
+            <button class="btn btn-primary" onclick="showAddBrandModal()">
+                <i class="fas fa-plus"></i>
+                إضافة ماركة جديدة
+            </button>
+        </div>
+        
+        <div class="items-grid">
+            {% for brand in other_brands %}
+            <div class="homepage-item">
+                <div class="item-image">
+                    <img src="{{ url_for('static', filename='uploads/' + brand.image_url) }}" alt="{{ brand.name }}">
+                </div>
+                <div class="item-info">
+                    <h4>{{ brand.name }}</h4>
+                    <p><strong>الرابط:</strong> {{ brand.link_url }}</p>
+                    <p><strong>ترتيب العرض:</strong> {{ brand.display_order }}</p>
+                </div>
+                <div class="item-actions">
+                    <button class="btn btn-danger btn-sm" onclick="deleteOtherBrand({{ brand.id }})">
+                        <i class="fas fa-trash"></i>
+                        حذف
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+</div>
+
+<!-- نوافذ إضافة العناصر -->
+
+<!-- نافذة إضافة عرض رئيسي -->
+<div id="addOfferModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <span class="close" onclick="closeAddOfferModal()">&times;</span>
+        <h3>إضافة عرض رئيسي جديد</h3>
+        
+        <form id="addOfferForm" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="offerTitle">عنوان العرض:</label>
+                <input type="text" id="offerTitle" name="title" class="form-control" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="offerImage">صورة العرض:</label>
+                <input type="file" id="offerImage" name="image" class="form-control" accept="image/*" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="offerLink">رابط العرض:</label>
+                <input type="url" id="offerLink" name="link_url" class="form-control" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="offerOrder">ترتيب العرض:</label>
+                <input type="number" id="offerOrder" name="display_order" class="form-control" value="0">
+            </div>
+            
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save"></i>
+                إضافة العرض
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- نافذة تعديل عرض رئيسي -->
+<div id="editOfferModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <span class="close" onclick="closeEditOfferModal()">&times;</span>
+        <h3>تعديل العرض الرئيسي</h3>
+        
+        <form id="editOfferForm" enctype="multipart/form-data">
+            <input type="hidden" id="editOfferId" name="offer_id">
+            
+            <div class="form-group">
+                <label for="editOfferTitle">عنوان العرض:</label>
+                <input type="text" id="editOfferTitle" name="title" class="form-control" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="editOfferImage">صورة العرض الحالية:</label>
+                <div id="currentOfferImage" style="margin-bottom: 10px;"></div>
+                <label for="editOfferImageFile">تغيير الصورة (اختياري):</label>
+                <input type="file" id="editOfferImageFile" name="image" class="form-control" accept="image/*">
+                <small>اتركه فارغاً للاحتفاظ بالصورة الحالية</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="editOfferLink">رابط العرض:</label>
+                <input type="url" id="editOfferLink" name="link_url" class="form-control" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="editOfferOrder">ترتيب العرض:</label>
+                <input type="number" id="editOfferOrder" name="display_order" class="form-control">
+            </div>
+            
+            <button type="submit" class="btn btn-success">
+                <i class="fas fa-save"></i>
+                حفظ التعديلات
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- نافذة إضافة فئة مختصرة -->
+<div id="addCategoryModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <span class="close" onclick="closeAddCategoryModal()">&times;</span>
+        <h3>إضافة فئة مختصرة جديدة</h3>
+        
+        <form id="addCategoryForm">
+            <div class="form-group">
+                <label for="categoryName">اسم الفئة:</label>
+                <input type="text" id="categoryName" name="name" class="form-control" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="categoryIcon">أيقونة الفئة (FontAwesome):</label>
+                <input type="text" id="categoryIcon" name="icon_class" class="form-control" placeholder="fas fa-gamepad" required>
+                <small>مثال: fas fa-gamepad, fas fa-mobile-alt, fas fa-gift</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="categoryLink">رابط الفئة:</label>
+                <input type="url" id="categoryLink" name="link_url" class="form-control" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="categoryOrder">ترتيب العرض:</label>
+                <input type="number" id="categoryOrder" name="display_order" class="form-control" value="0">
+            </div>
+            
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save"></i>
+                إضافة الفئة
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- نافذة إضافة بطاقة هدايا -->
+<div id="addGiftCardModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <span class="close" onclick="closeAddGiftCardModal()">&times;</span>
+        <h3>إضافة بطاقة هدايا جديدة</h3>
+        
+        <form id="addGiftCardForm" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="giftCardTitle">عنوان البطاقة:</label>
+                <input type="text" id="giftCardTitle" name="title" class="form-control" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="giftCardImage">صورة البطاقة:</label>
+                <input type="file" id="giftCardImage" name="image" class="form-control" accept="image/*" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="giftCardLink">رابط البطاقة:</label>
+                <input type="url" id="giftCardLink" name="link_url" class="form-control" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="giftCardOrder">ترتيب العرض:</label>
+                <input type="number" id="giftCardOrder" name="display_order" class="form-control" value="0">
+            </div>
+            
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save"></i>
+                إضافة البطاقة
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- نافذة إضافة ماركة أخرى -->
+<div id="addBrandModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <span class="close" onclick="closeAddBrandModal()">&times;</span>
+        <h3>إضافة ماركة جديدة</h3>
+        
+        <form id="addBrandForm" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="brandName">اسم الماركة:</label>
+                <input type="text" id="brandName" name="name" class="form-control" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="brandImage">صورة الماركة:</label>
+                <input type="file" id="brandImage" name="image" class="form-control" accept="image/*" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="brandLink">رابط الماركة:</label>
+                <input type="url" id="brandLink" name="link_url" class="form-control" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="brandOrder">ترتيب العرض:</label>
+                <input type="number" id="brandOrder" name="display_order" class="form-control" value="0">
+            </div>
+            
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save"></i>
+                إضافة الماركة
+            </button>
+        </form>
+    </div>
+</div>
+
+<style>
+/* تصميم أقسام الصفحة الرئيسية */
+.homepage-section {
+    background: #222;
+    padding: 30px;
+    border-radius: 15px;
+    margin-bottom: 30px;
+    border: 1px solid #333;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #333;
+}
+
+.section-header h3 {
+    color: #ff0033;
+    margin: 0;
+    font-size: 1.5em;
+}
+
+.section-header h3 i {
+    margin-left: 10px;
+}
+
+.section-header p {
+    color: #ccc;
+    margin: 5px 0 0 0;
+    font-size: 0.9em;
+}
+
+.items-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.homepage-item {
+    background: #333;
+    padding: 20px;
+    border-radius: 10px;
+    border: 1px solid #444;
+    transition: all 0.3s ease;
+}
+
+.homepage-item:hover {
+    background: #3a3a3a;
+    border-color: #ff0033;
+    transform: translateY(-2px);
+}
+
+.item-image {
+    width: 100%;
+    height: 150px;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 15px;
+}
+
+.item-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.item-icon {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 150px;
+    background: linear-gradient(135deg, #ff0033, #ff6b6b);
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.item-icon i {
+    font-size: 4em;
+    color: white;
+}
+
+.item-info {
+    margin-bottom: 15px;
+}
+
+.item-info h4 {
+    color: #fff;
+    margin: 0 0 10px 0;
+    font-size: 1.2em;
+}
+
+.item-info p {
+    color: #ccc;
+    margin: 5px 0;
+    font-size: 0.9em;
+}
+
+.item-actions {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+
+.btn-warning {
+    background: linear-gradient(135deg, #ffc107, #e0a800);
+    color: #212529;
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.btn-warning:hover {
+    background: linear-gradient(135deg, #e0a800, #d39e00);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(255, 193, 7, 0.3);
+}
+
+/* تصميم النوافذ المنبثقة */
+.modal {
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background-color: #222;
+    padding: 30px;
+    border-radius: 15px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    border: 1px solid #333;
+}
+
+.modal-content h3 {
+    color: #ff0033;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.close {
+    position: absolute;
+    top: 15px;
+    left: 20px;
+    color: #aaa;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close:hover {
+    color: #fff;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    color: #fff;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.form-control {
+    width: 100%;
+    padding: 12px;
+    background: #333;
+    border: 1px solid #444;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 14px;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #ff0033;
+    box-shadow: 0 0 10px rgba(255, 0, 51, 0.3);
+}
+
+.form-group small {
+    color: #ccc;
+    font-size: 0.8em;
+    margin-top: 5px;
+    display: block;
+}
+
+/* تحسينات responsive */
+@media (max-width: 768px) {
+    .section-header {
+        flex-direction: column;
+        text-align: center;
+        gap: 15px;
+    }
+    
+    .items-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .modal-content {
+        width: 95%;
+        margin: 20px;
+        padding: 20px;
+    }
+}
+
+/* تأثيرات التحميل */
+.loading {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.success-message {
+    background: #28a745;
+    color: white;
+    padding: 15px;
+    border-radius: 8px;
+    margin: 15px 0;
+    text-align: center;
+}
+
+.error-message {
+    background: #dc3545;
+    color: white;
+    padding: 15px;
+    border-radius: 8px;
+    margin: 15px 0;
+    text-align: center;
+}
+</style>
+
+<script>
+// نوافذ العروض الرئيسية
+function showAddOfferModal() {
+    document.getElementById('addOfferModal').style.display = 'flex';
+}
+
+function closeAddOfferModal() {
+    document.getElementById('addOfferModal').style.display = 'none';
+    document.getElementById('addOfferForm').reset();
+}
+
+// نوافذ تعديل العروض الرئيسية
+function editMainOffer(offerId, title, imageUrl, linkUrl, displayOrder) {
+    document.getElementById('editOfferId').value = offerId;
+    document.getElementById('editOfferTitle').value = title;
+    document.getElementById('editOfferLink').value = linkUrl;
+    document.getElementById('editOfferOrder').value = displayOrder;
+    
+    // عرض الصورة الحالية
+    document.getElementById('currentOfferImage').innerHTML = 
+        `<img src="/static/uploads/${imageUrl}" style="max-width: 200px; max-height: 100px; border-radius: 8px;" alt="الصورة الحالية">`;
+    
+    document.getElementById('editOfferModal').style.display = 'flex';
+}
+
+function closeEditOfferModal() {
+    document.getElementById('editOfferModal').style.display = 'none';
+    document.getElementById('editOfferForm').reset();
+}
+
+// نوافذ الفئات المختصرة
+function showAddCategoryModal() {
+    document.getElementById('addCategoryModal').style.display = 'flex';
+}
+
+function closeAddCategoryModal() {
+    document.getElementById('addCategoryModal').style.display = 'none';
+    document.getElementById('addCategoryForm').reset();
+}
+
+// نوافذ بطاقات الهدايا
+function showAddGiftCardModal() {
+    document.getElementById('addGiftCardModal').style.display = 'flex';
+}
+
+function closeAddGiftCardModal() {
+    document.getElementById('addGiftCardModal').style.display = 'none';
+    document.getElementById('addGiftCardForm').reset();
+}
+
+// نوافذ الماركات الأخرى
+function showAddBrandModal() {
+    document.getElementById('addBrandModal').style.display = 'flex';
+}
+
+function closeAddBrandModal() {
+    document.getElementById('addBrandModal').style.display = 'none';
+    document.getElementById('addBrandForm').reset();
+}
+
+// التحقق من صحة النماذج قبل الإرسال
+function validateOfferForm(form) {
+    const title = form.querySelector('[name="title"]').value.trim();
+    const linkUrl = form.querySelector('[name="link_url"]').value.trim();
+    const imageFile = form.querySelector('[name="image"]').files[0];
+    
+    if (!title) {
+        showNotification('يرجى إدخال عنوان العرض', 'error');
+        return false;
+    }
+    
+    if (!linkUrl) {
+        showNotification('يرجى إدخال رابط العرض', 'error');
+        return false;
+    }
+    
+    // التحقق من صحة الرابط
+    try {
+        new URL(linkUrl);
+    } catch (e) {
+        showNotification('يرجى إدخال رابط صحيح', 'error');
+        return false;
+    }
+    
+    // التحقق من الصورة (للنماذج التي تتطلب صورة)
+    if (form.id === 'addOfferForm' && !imageFile) {
+        showNotification('يرجى اختيار صورة للعرض', 'error');
+        return false;
+    }
+    
+    // التحقق من نوع الصورة
+    if (imageFile) {
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        if (!allowedTypes.includes(imageFile.type)) {
+            showNotification('يرجى اختيار صورة بصيغة صحيحة (JPG, PNG, GIF, WebP)', 'error');
+            return false;
+        }
+        
+        // التحقق من حجم الصورة (5MB max)
+        if (imageFile.size > 5 * 1024 * 1024) {
+            showNotification('حجم الصورة كبير جداً. الحد الأقصى 5 ميجابايت', 'error');
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+function validateCategoryForm(form) {
+    const name = form.querySelector('[name="name"]').value.trim();
+    const iconClass = form.querySelector('[name="icon_class"]').value.trim();
+    const linkUrl = form.querySelector('[name="link_url"]').value.trim();
+    
+    if (!name) {
+        showNotification('يرجى إدخال اسم الفئة', 'error');
+        return false;
+    }
+    
+    if (!iconClass) {
+        showNotification('يرجى إدخال أيقونة الفئة', 'error');
+        return false;
+    }
+    
+    if (!linkUrl) {
+        showNotification('يرجى إدخال رابط الفئة', 'error');
+        return false;
+    }
+    
+    // التحقق من صحة الرابط
+    try {
+        new URL(linkUrl);
+    } catch (e) {
+        showNotification('يرجى إدخال رابط صحيح', 'error');
+        return false;
+    }
+    
+    return true;
+}
+
+// معالجة النماذج مع التحقق من الصحة
+document.getElementById('addOfferForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    // التحقق من صحة البيانات
+    if (!validateOfferForm(this)) {
+        return;
+    }
+    
+    const formData = new FormData(this);
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    
+    // تأثير التحميل
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإضافة...';
+    submitBtn.disabled = true;
+    
+    // التحقق من صحة النموذج
+    if (!validateOfferForm(this)) {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+        return;
+    }
+    
+    fetch('/admin/homepage/main-offers/add', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            showNotification('تم إضافة العرض بنجاح', 'success');
+            closeAddOfferModal();
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
+        } else {
+            showNotification(data.message || 'حدث خطأ غير متوقع', 'error');
+        }
+    })
+    .catch(error => {
+        handleNetworkError(error);
+    })
+    .finally(() => {
+        // إعادة تعيين الزر
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    });
+});
+
+// معالجة نموذج تعديل العرض
+document.getElementById('editOfferForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const offerId = document.getElementById('editOfferId').value;
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    
+    // تأثير التحميل
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري التحديث...';
+    submitBtn.disabled = true;
+    
+    fetch(`/admin/homepage/main-offers/edit/${offerId}`, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            showNotification('تم تحديث العرض بنجاح', 'success');
+            closeEditOfferModal();
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
+        } else {
+            showNotification(data.message || 'حدث خطأ في التحديث', 'error');
+        }
+    })
+    .catch(error => {
+        handleNetworkError(error);
+    })
+    .finally(() => {
+        // إعادة تعيين الزر
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    });
+});
+
+document.getElementById('addCategoryForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    // التحقق من صحة البيانات
+    if (!validateCategoryForm(this)) {
+        return;
+    }
+    
+    const formData = new FormData(this);
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإضافة...';
+    submitBtn.disabled = true;
+    
+    // التحقق من صحة النموذج
+    if (!validateCategoryForm(this)) {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+        return;
+    }
+    
+    fetch('/admin/homepage/quick-categories/add', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            showNotification('تم إضافة الفئة بنجاح', 'success');
+            closeAddCategoryModal();
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
+        } else {
+            showNotification(data.message || 'حدث خطأ في إضافة الفئة', 'error');
+        }
+    })
+    .catch(error => {
+        handleNetworkError(error);
+    })
+    .finally(() => {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    });
+});
+
+document.getElementById('addGiftCardForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإضافة...';
+    submitBtn.disabled = true;
+    
+    fetch('/admin/homepage/gift-cards/add', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            showNotification('تم إضافة بطاقة الهدايا بنجاح', 'success');
+            closeAddGiftCardModal();
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
+        } else {
+            showNotification(data.message || 'حدث خطأ في إضافة البطاقة', 'error');
+        }
+    })
+    .catch(error => {
+        handleNetworkError(error);
+    })
+    .finally(() => {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    });
+});
+
+document.getElementById('addBrandForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإضافة...';
+    submitBtn.disabled = true;
+    
+    fetch('/admin/homepage/other-brands/add', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            showNotification('تم إضافة الماركة بنجاح', 'success');
+            closeAddBrandModal();
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
+        } else {
+            showNotification(data.message || 'حدث خطأ في إضافة الماركة', 'error');
+        }
+    })
+    .catch(error => {
+        handleNetworkError(error);
+    })
+    .finally(() => {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    });
+});
+
+// معالج خطأ عام للشبكة مع حماية من الأخطاء
+function handleNetworkError(error, customMessage = 'حدث خطأ في الشبكة') {
+    console.error('Network Error:', error);
+    
+    try {
+        // تحديد نوع الخطأ
+        if (error && error.name === 'TypeError' && error.message && error.message.includes('Failed to fetch')) {
+            showNotification('فشل في الاتصال بالخادم. تحقق من اتصال الإنترنت.', 'error');
+        } else if (error && error.message && error.message.includes('404')) {
+            showNotification('الصفحة المطلوبة غير موجودة.', 'error');
+        } else if (error && error.message && error.message.includes('500')) {
+            showNotification('خطأ في الخادم. يرجى المحاولة لاحقاً.', 'error');
+        } else {
+            showNotification(customMessage, 'error');
+        }
+    } catch (e) {
+        console.error('Error in handleNetworkError:', e);
+        // fallback في حالة الخطأ
+        alert(customMessage);
+    }
+}
+
+// إضافة مؤشر تحميل عام
+function showLoadingOverlay() {
+    const overlay = document.createElement('div');
+    overlay.id = 'loadingOverlay';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+    `;
+    overlay.innerHTML = `
+        <div style="background: white; padding: 20px; border-radius: 10px; text-align: center;">
+            <i class="fas fa-spinner fa-spin" style="font-size: 2em; color: #ff0033; margin-bottom: 10px;"></i>
+            <p style="margin: 0; color: #333;">جاري المعالجة...</p>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+}
+
+function hideLoadingOverlay() {
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) {
+        overlay.remove();
+    }
+}
+
+// وظائف الحذف
+function deleteMainOffer(offerId) {
+    if (confirm('هل أنت متأكد من حذف هذا العرض؟')) {
+        fetch(`/admin/homepage/main-offers/${offerId}/delete`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                showNotification('تم حذف العرض بنجاح', 'success');
+                setTimeout(() => {
+                    location.reload();
+                }, 1500);
+            } else {
+                showNotification(data.message || 'حدث خطأ في الحذف', 'error');
+            }
+        })
+        .catch(error => {
+            handleNetworkError(error);
+        });
+    }
+}
+
+function deleteQuickCategory(categoryId) {
+    if (confirm('هل أنت متأكد من حذف هذه الفئة؟')) {
+        fetch(`/admin/homepage/quick-categories/${categoryId}/delete`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                showNotification('تم حذف الفئة بنجاح', 'success');
+                setTimeout(() => {
+                    location.reload();
+                }, 1500);
+            } else {
+                showNotification(data.message || 'حدث خطأ في الحذف', 'error');
+            }
+        })
+        .catch(error => {
+            handleNetworkError(error);
+        });
+    }
+}
+
+function deleteGiftCard(cardId) {
+    if (confirm('هل أنت متأكد من حذف هذه البطاقة؟')) {
+        fetch(`/admin/homepage/gift-cards/${cardId}/delete`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                showNotification('تم حذف البطاقة بنجاح', 'success');
+                setTimeout(() => {
+                    location.reload();
+                }, 1500);
+            } else {
+                showNotification(data.message || 'حدث خطأ في الحذف', 'error');
+            }
+        })
+        .catch(error => {
+            handleNetworkError(error);
+        });
+    }
+}
+
+function deleteOtherBrand(brandId) {
+    if (confirm('هل أنت متأكد من حذف هذه الماركة؟')) {
+        fetch(`/admin/homepage/other-brands/${brandId}/delete`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                showNotification('تم حذف الماركة بنجاح', 'success');
+                setTimeout(() => {
+                    location.reload();
+                }, 1500);
+            } else {
+                showNotification(data.message || 'حدث خطأ في الحذف', 'error');
+            }
+        })
+        .catch(error => {
+            handleNetworkError(error);
+        });
+    }
+}
+
+// إغلاق النوافذ عند النقر خارجها
+window.onclick = function(event) {
+    const modals = document.querySelectorAll('.modal');
+    modals.forEach(modal => {
+        if (event.target === modal) {
+            modal.style.display = 'none';
+            // إعادة تعيين النماذج
+            const forms = modal.querySelectorAll('form');
+            forms.forEach(form => form.reset());
+        }
+    });
+}
+
+// دالة لإظهار الإشعارات مع حماية من الأخطاء
+function showNotification(message, type = 'success') {
+    try {
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.innerHTML = `
+            <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-triangle' : 'info-circle'}"></i>
+            <span>${message}</span>
+            <button onclick="this.parentElement.remove()">&times;</button>
+        `;
+        
+        // تصميم الإشعار
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: ${type === 'success' ? 'linear-gradient(135deg, #28a745, #20c997)' : 
+                         type === 'error' ? 'linear-gradient(135deg, #dc3545, #e83e8c)' : 
+                         'linear-gradient(135deg, #17a2b8, #6f42c1)'};
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            transform: translateX(400px);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+            max-width: 400px;
+        `;
+        
+        // التأكد من وجود body قبل إضافة الإشعار
+        if (document.body) {
+            document.body.appendChild(notification);
+            
+            // تأثير الدخول
+            setTimeout(() => {
+                notification.style.transform = 'translateX(0)';
+            }, 100);
+            
+            // إزالة الإشعار تلقائياً بعد 5 ثوان
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.style.transform = 'translateX(400px)';
+                    setTimeout(() => {
+                        if (notification.parentNode) {
+                            notification.remove();
+                        }
+                    }, 300);
+                }
+            }, 5000);
+        } else {
+            // fallback إذا لم يكن body متاحاً
+            console.log('Notification:', message);
+            alert(message);
+        }
+    } catch (error) {
+        console.error('Error in showNotification:', error);
+        // fallback في حالة الخطأ
+        alert(message);
+    }
+}
+</script>
+{% endblock %}

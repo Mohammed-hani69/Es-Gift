@@ -1,0 +1,654 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- الصفحة الرئيسية -->
+<section class="home-page">
+    <!-- الأيقونات المتحركة في الخلفية -->
+    <div class="floating-icons" id="floatingIcons">
+        <!-- سيتم إضافة الأيقونات هنا عبر JavaScript -->
+    </div>
+    
+
+
+    <div class="swiper home-swiper">
+        <div class="swiper-wrapper">
+            {% for offer in main_offers %}
+            <div class="swiper-slide">
+                <a href="{{ offer.link_url }}">
+                    <img src="{{ offer.image_url|image_url }}" alt="{{ offer.title }}">
+                    <div class="home-product-bottom">
+                        <img src="{{ url_for('static', filename='images/assets/icons/icons8-joystick-30.png') }}" alt="Gaming">
+                        <div class="product-info">
+                            <h3>{{ offer.title }}</h3>
+                        </div>
+                        <i class="fa-solid fa-play play-more"></i>
+                    </div>
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="custom-navigation">
+            <div class="custom-prev">
+                <i class="fa-solid fa-chevron-right"></i>
+            </div>
+            <div class="custom-next">
+                <i class="fa-solid fa-chevron-left"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Icon Slider - الأقسام الفرعية -->
+    <div class="swiper icon-slider">
+        <div class="swiper-wrapper">
+            {% for subcategory in subcategories %}
+            <div class="swiper-slide icon-box">
+                <a href="{{ url_for('main.subcategory_products', subcategory_id=subcategory.id, slug=subcategory.name|create_slug) }}">
+                    {% if subcategory.image_url %}
+                        <img src="{{ subcategory.image_url|image_url }}" alt="{{ subcategory.name }}">
+                    {% elif subcategory.icon_class %}
+                        <div class="subcategory-icon">
+                            <i class="{{ subcategory.icon_class }}"></i>
+                        </div>
+                    {% else %}
+                        <img src="{{ url_for('static', filename='images/default-product.jpg') }}" alt="{{ subcategory.name }}">
+                    {% endif %}
+                    <p>{{ subcategory.name }}</p>
+                    {% if subcategory.parent_category %}
+                        <span class="parent-category">{{ subcategory.parent_category.name }}</span>
+                    {% endif %}
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="custom-navigation">
+            <div class="custom-prev gift-swiper-custom-prev">
+                <i class="fa-solid fa-chevron-right"></i>
+            </div>
+            <div class="custom-next gift-swiper-custom-next">
+                <i class="fa-solid fa-chevron-left"></i>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- المنتجات -->
+<section class="products-container">
+    <h1 class="products-title">المنتجات الشعبية</h1>
+
+    <div class="swiper products-swiper">
+        <div class="swiper-wrapper">
+            {% for product in products %}
+            <div class="swiper-slide">
+                <div class="product-card" {% if product.regular_price|float > product.display_price|float %}data-has-discount="true"{% endif %}>
+                    <a href="{{ url_for('main.product_detail', product_id=product.id, slug=product.name|create_slug) }}">
+                        <img src="{{ product.image_url|image_url }}" 
+                             alt="{{ product.name }}" class="product-image">
+                            <h3 class="product-card-name">{{ product.name }}</h3>
+                            <p class="product-global-symbol">{{ product.region }}</p>
+                                <span class="product-price">{{ product.display_price }} {{ session.get('currency', 'SAR') }}</span>
+                                {% if product.regular_price|float > product.display_price|float %}
+                                <span class="product-discounted-price">{{ product.regular_price }}</span>
+                                <span class="product-discounted-percentage">
+                                    -{{ (((product.regular_price|float - product.display_price|float) / product.regular_price|float * 100)|round|int) }}%
+                                </span>
+                                {% endif %}
+                            <button style="margin-top: 10px ;" class="add-to-cart-btn" onclick="addToCart({{ product.id }})">
+                                <i class="fa-solid fa-cart-plus"></i> إضافة للسلة
+                            </button>
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+    </div>
+</section>
+
+<!-- بطاقات الهدايا -->
+<section class="Gift-cards">
+    <p class="products-title">بطاقات الهدايا</p>
+    <div class="tabs">
+        <button class="tab active" data-filter="gift">بطاقات هدايا الألعاب</button>
+        <button class="tab" data-filter="shopping">التسوق</button>
+        <button class="tab" data-filter="mobile">الموبايل والإنترنت</button>
+        <button class="tab" data-filter="films">الأغاني والأفلام</button>
+        <button class="tab" data-filter="pc">بلايستيشن</button>
+        <button class="tab" data-filter="xbox">اكس بوكس</button>
+        <button class="tab" data-filter="stc">STC سوا</button>
+    </div>
+
+    <div class="swiper gift-swiper">
+        <div class="swiper-wrapper">
+            {% for product in gift_products %}
+            <div class="swiper-slide item shopping gift">
+                <div class="gift-card">
+                    <a href="{{ url_for('main.product_detail', product_id=product.id, slug=product.name|create_slug) }}">
+                        <img src="{% if product.image_url %}{{ url_for('static', filename='uploads/' + product.image_url) }}{% else %}{{ url_for('static', filename='images/default-product.jpg') }}{% endif %}" 
+                             alt="{{ product.name }}">
+                        <div class="gift-card-info">
+                            <h4>{{ product.name }}</h4>
+                            <p>{{ product.display_price }} {{ session.get('currency', 'SAR') }}</p>
+                        </div>
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="custom-navigation">
+            <div class="custom-prev gift-swiper-custom-prev">
+                <i class="fa-solid fa-chevron-right"></i>
+            </div>
+            <div class="custom-next gift-swiper-custom-next">
+                <i class="fa-solid fa-chevron-left"></i>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- عروض -->
+<section class="products-container">
+    <h1 class="products-title">عروض</h1>
+
+    <div class="swiper offers-swiper" dir="rtl">
+        <div class="swiper-wrapper">
+            {% for product in offer_products %}
+            <div class="swiper-slide">
+                <div class="offer-card">
+                    <a href="{{ url_for('main.product_detail', product_id=product.id, slug=product.name|create_slug) }}">
+                        <img src="{{ product.image_url or url_for('static', filename='images/default-product.jpg') }}" alt="{{ product.name }}">
+                        {% if product.regular_price|float > product.display_price|float %}
+                        <div class="offer-badge">خصم {{ (((product.regular_price|float - product.display_price|float) / product.regular_price|float * 100)|round|int) }}%</div>
+                        {% endif %}
+                        <div class="offer-info">
+                            <h4>{{ product.name }}</h4>
+                            <p>{{ product.description[:50] }}...</p>
+                        </div>
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="custom-navigation">
+            <div class="custom-prev offers-swiper-custom-prev">
+                <i class="fa-solid fa-chevron-right"></i>
+            </div>
+            <div class="custom-next offers-swiper-custom-next">
+                <i class="fa-solid fa-chevron-left"></i>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- العملات الرقمية -->
+<section class="digital-currencies">
+    <h3 class="section-title">العملات الرقمية</h3>
+    <div class="row-digital">
+        <div class="digital-item">
+            <img src="{{ url_for('static', filename='images/binance.jpg') }}" alt="بينانس">
+            <p>بينانس</p>
+        </div>
+        <div class="digital-item">
+            <img src="{{ url_for('static', filename='images/binance2.jpg') }}" alt="بيتكوين">
+            <p>بيتكوين</p>
+        </div>
+        <div class="digital-item">
+            <img src="{{ url_for('static', filename='images/binance.jpg') }}" alt="إيثريوم">
+            <p>إيثريوم</p>
+        </div>
+        <div class="digital-item">
+            <img src="{{ url_for('static', filename='images/binance2.jpg') }}" alt="دوجكوين">
+            <p>دوجكوين</p>
+        </div>
+    </div>
+</section>
+
+<!-- ماركات أخرى -->
+<section class="another-marks">
+    <h3 class="section-title">ماركات أخرى</h3>
+    <div class="row-marks">
+        {% for product in other_products %}
+        <div class="digital-item">
+            <a href="{{ url_for('main.product_detail', product_id=product.id, slug=product.name|create_slug) }}">
+                <img src="{{ product.image_url or url_for('static', filename='images/default-product.jpg') }}" alt="{{ product.name }}">
+                <p>{{ product.name }}</p>
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <div class="btn-container">
+        <button class="btn">
+            <span class="btn-text">اعرض اكتر</span>
+            <i class="fa-solid fa-arrow-down changed-icon"></i>
+        </button>
+    </div>
+</section>
+
+<!-- لماذا Es-Gift؟ -->
+<section class="why-us">
+    <h3 class="section-title">لماذا Es-Gift؟</h3>
+    <div class="why-row">
+        <div class="why-item">
+            <i class="fa-solid fa-shield-alt"></i>
+            <h4>أمان وموثوقية</h4>
+            <p class="first-why-para">نضمن لك أعلى مستويات الأمان في جميع عملياتك</p>
+        </div>
+        <div class="why-item">
+            <i class="fa-solid fa-clock"></i>
+            <h4>توصيل فوري</h4>
+            <p class="second-why-para">احصل على مشترياتك فوراً عبر البريد الإلكتروني</p>
+        </div>
+        <div class="why-item">
+            <i class="fa-solid fa-headset"></i>
+            <h4>دعم فني 24/7</h4>
+            <p class="second-why-para">فريق دعم فني متاح على مدار الساعة لمساعدتك</p>
+        </div>
+    </div>
+</section>
+
+<!-- عروض محدودة -->
+<section class="limited-offers">
+    <h3 class="section-title">عروض محدودة</h3>
+    <div class="limited-offers-row">
+        {% for product in limited_offers %}
+        <div class="limited-offers-item">
+            <a href="{{ url_for('main.product_detail', product_id=product.id, slug=product.name|create_slug) }}">
+                <img src="{{ product.image_url or url_for('static', filename='images/default-product.jpg') }}" alt="{{ product.name }}">
+                <div class="limited-bottom-text">
+                    <h4>{{ product.name }}</h4>
+                    <p>عرض محدود</p>
+                </div>
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+
+<!-- تعرف على المزيد -->
+<section class="know-more">
+    <h3 class="section-title">تعرف على المزيد في مدونتنا</h3>
+    <div class="row-digital">
+        {% for i in range(4) %}
+        <div class="digital-item">
+            <img src="{{ url_for('static', filename='images/game' + (i+1)|string + '.jpeg') }}" alt="مقال {{ i+1 }}">
+            <p>مقال مفيد عن الألعاب {{ i+1 }}</p>
+        </div>
+        {% endfor %}
+    </div>
+    <div class="more-btn-container">
+        <button class="more-btn">
+            <span>اقرأ المزيد</span>
+            <i class="fa-solid fa-arrow-left"></i>
+        </button>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* الأيقونات المتحركة للصفحة الرئيسية */
+.home-page {
+    position: relative;
+    overflow: hidden;
+}
+
+.floating-icons {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+    overflow: hidden;
+}
+
+.floating-icon {
+    position: absolute;
+    opacity: 0.7;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+}
+
+.floating-icon img {
+    width: 100%;
+    height: 100%;
+    filter: brightness(2) contrast(1) invert(1) drop-shadow(0 0 15px rgba(255, 255, 255, 0.5));
+    transition: all 0.3s ease;
+}
+
+.floating-icon:hover img {
+    filter: brightness(2.5) contrast(1.2) invert(1) drop-shadow(0 0 25px rgba(255, 255, 255, 0.8));
+    transform: scale(1.2);
+}
+
+/* أحجام مختلفة للأيقونات */
+.icon-small {
+    width: 30px;
+    height: 30px;
+}
+
+.icon-medium {
+    width: 50px;
+    height: 50px;
+}
+
+.icon-large {
+    width: 70px;
+    height: 70px;
+}
+
+/* حركات مختلفة للأيقونات */
+.float-up {
+    animation-name: floatUp;
+}
+
+.float-diagonal {
+    animation-name: floatDiagonal;
+}
+
+.float-horizontal {
+    animation-name: floatHorizontal;
+}
+
+.float-rotate {
+    animation-name: floatRotate;
+}
+
+@keyframes floatUp {
+    0% {
+        transform: translateY(100vh) rotate(0deg);
+        opacity: 0;
+    }
+    10% {
+        opacity: 0.7;
+    }
+    50% {
+        transform: translateY(50vh) rotate(180deg);
+        opacity: 0.9;
+    }
+    90% {
+        opacity: 0.7;
+    }
+    100% {
+        transform: translateY(-50px) rotate(360deg);
+        opacity: 0;
+    }
+}
+
+@keyframes floatDiagonal {
+    0% {
+        transform: translate(0, 0) rotate(0deg);
+        opacity: 0;
+    }
+    10% {
+        opacity: 0.6;
+    }
+    50% {
+        transform: translate(-50vw, -50vh) rotate(180deg);
+        opacity: 0.9;
+    }
+    90% {
+        opacity: 0.6;
+    }
+    100% {
+        transform: translate(-100vw, -100vh) rotate(-360deg);
+        opacity: 0;
+    }
+}
+
+@keyframes floatHorizontal {
+    0% {
+        transform: translateX(0) rotate(0deg);
+        opacity: 0;
+    }
+    10% {
+        opacity: 0.8;
+    }
+    50% {
+        transform: translateX(50vw) rotate(90deg);
+        opacity: 0.9;
+    }
+    90% {
+        opacity: 0.8;
+    }
+    100% {
+        transform: translateX(100vw) rotate(180deg);
+        opacity: 0;
+    }
+}
+
+@keyframes floatRotate {
+    0% {
+        transform: translate(0, 0) rotate(0deg) scale(0.5);
+        opacity: 0;
+    }
+    10% {
+        opacity: 0.5;
+    }
+    25% {
+        transform: translate(-20vw, -20vh) rotate(90deg) scale(0.8);
+        opacity: 0.7;
+    }
+    50% {
+        transform: translate(-40vw, 0) rotate(180deg) scale(1);
+        opacity: 0.9;
+    }
+    75% {
+        transform: translate(-60vw, 20vh) rotate(270deg) scale(0.8);
+        opacity: 0.7;
+    }
+    90% {
+        opacity: 0.5;
+    }
+    100% {
+        transform: translate(-80vw, 40vh) rotate(360deg) scale(0.5);
+        opacity: 0;
+    }
+}
+
+/* التأكد من أن المحتوى في المقدمة */
+.home-swiper,
+.icon-slider {
+    position: relative;
+    z-index: 10;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// تفعيل الأيقونات المتحركة عند تحميل الصفحة
+document.addEventListener('DOMContentLoaded', function() {
+    // إنشاء الأيقونات المتحركة
+    createFloatingIcons();
+});
+
+// إنشاء الأيقونات المتحركة
+function createFloatingIcons() {
+    const floatingContainer = document.getElementById('floatingIcons');
+    
+    // قائمة الأيقونات المتاحة
+    const icons = [
+        '/static/images/assets/icons/icons8-joystick-30.png',
+        '/static/images/assets/icons/icons8-joystick-90.png',
+        '/static/images/assets/icons/icons8-minecraft-creeper-30.png',
+        '/static/images/assets/icons/icons8-minecraft-creeper-90.png',
+        '/static/images/assets/icons/icons8-pubg-32.png',
+        '/static/images/assets/icons/icons8-pubg-96.png',
+        '/static/images/assets/icons/icons8-xbox-controller-30.png',
+        '/static/images/assets/icons/icons8-xbox-controller-90.png',
+        '/static/images/assets/icons/icons8-xbox-cross-30.png',
+        '/static/images/assets/icons/icons8-xbox-cross-90.png'
+    ];
+    
+    // ألوان بيضاء للأيقونات
+    const iconColors = [
+        'brightness(2) invert(1)',
+        'brightness(2.2) invert(1)',
+        'brightness(1.8) invert(1)',
+        'brightness(2.4) invert(1)',
+        'brightness(2.1) invert(1)',
+        'brightness(1.9) invert(1)'
+    ];
+    
+    // أنواع الحركة
+    const animations = ['float-up', 'float-diagonal', 'float-horizontal', 'float-rotate'];
+    
+    // أحجام الأيقونات
+    const sizes = ['icon-small', 'icon-medium', 'icon-large'];
+    
+    // إنشاء أيقونات أولية
+    function createIcon() {
+        const icon = document.createElement('div');
+        icon.className = 'floating-icon';
+        
+        // اختيار أيقونة عشوائية
+        const randomIcon = icons[Math.floor(Math.random() * icons.length)];
+        
+        // اختيار حجم عشوائي
+        const randomSize = sizes[Math.floor(Math.random() * sizes.length)];
+        icon.classList.add(randomSize);
+        
+        // اختيار حركة عشوائية
+        const randomAnimation = animations[Math.floor(Math.random() * animations.length)];
+        icon.classList.add(randomAnimation);
+        
+        // إنشاء صورة
+        const img = document.createElement('img');
+        img.src = randomIcon;
+        img.alt = 'Gaming Icon';
+        
+        // إضافة لون أبيض
+        const randomColor = iconColors[Math.floor(Math.random() * iconColors.length)];
+        img.style.filter = randomColor + ' drop-shadow(0 0 15px rgba(255, 255, 255, 0.6))';
+        
+        // إضافة تأثير hover
+        img.style.transition = 'all 0.3s ease';
+        
+        icon.appendChild(img);
+        
+        // موضع بداية عشوائي - مركز في المنتصف
+        const centerX = window.innerWidth / 2;
+        const centerY = window.innerHeight / 2;
+        const radius = 200; // نطاق حول المنتصف
+        
+        if (randomAnimation === 'float-up') {
+            // من أسفل المنتصف إلى أعلى المنتصف
+            icon.style.left = (centerX - radius/2 + Math.random() * radius) + 'px';
+            icon.style.bottom = '-100px';
+        } else if (randomAnimation === 'float-diagonal') {
+            // من الزوايا القريبة من المنتصف
+            const side = Math.random() > 0.5 ? 1 : -1;
+            icon.style.left = (centerX + side * (radius + 50)) + 'px';
+            icon.style.top = (centerY + side * (radius + 50)) + 'px';
+        } else if (randomAnimation === 'float-horizontal') {
+            // من اليسار واليمين نحو المنتصف
+            if (Math.random() > 0.5) {
+                icon.style.left = '-100px';
+            } else {
+                icon.style.right = '-100px';
+            }
+            icon.style.top = (centerY - radius/2 + Math.random() * radius) + 'px';
+        } else if (randomAnimation === 'float-rotate') {
+            // حركة دائرية حول المنتصف
+            const angle = Math.random() * 360;
+            const startRadius = radius + 100;
+            icon.style.left = (centerX + Math.cos(angle) * startRadius) + 'px';
+            icon.style.top = (centerY + Math.sin(angle) * startRadius) + 'px';
+        }
+        
+        // مدة الحركة أقصر للكثافة أكثر (بين 8-15 ثانية)
+        const duration = 8 + Math.random() * 7;
+        icon.style.animationDuration = duration + 's';
+        
+        // تأخير أقل في البداية
+        const delay = Math.random() * 2;
+        icon.style.animationDelay = delay + 's';
+        
+        floatingContainer.appendChild(icon);
+        
+        // إزالة الأيقونة بعد انتهاء الحركة
+        setTimeout(() => {
+            if (icon.parentNode) {
+                icon.parentNode.removeChild(icon);
+            }
+        }, (duration + delay) * 1000);
+    }
+    
+    // إنشاء أيقونات بشكل متتالي
+    function generateIcons() {
+        createIcon();
+        
+        // إنشاء أيقونة جديدة كل 0.5-1 ثانية (أكثر كثافة)
+        const nextIconDelay = 500 + Math.random() * 500;
+        setTimeout(generateIcons, nextIconDelay);
+    }
+    
+    // بدء إنشاء الأيقونات
+    generateIcons();
+    
+    // إنشاء مجموعة أولية مكثفة من الأيقونات
+    for (let i = 0; i < 15; i++) {
+        setTimeout(() => {
+            createIcon();
+        }, i * 300);
+    }
+}
+
+// إضافة منتج للسلة
+function addToCart(productId) {
+    {% if current_user.is_authenticated %}
+    fetch('/add-to-cart', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            product_id: productId,
+            quantity: 1
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('تمت إضافة المنتج إلى السلة', 'success');
+            updateCartCount();
+        } else {
+            showNotification('حدث خطأ، يرجى المحاولة مرة أخرى', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('حدث خطأ، يرجى المحاولة مرة أخرى', 'error');
+    });
+    {% else %}
+    showNotification('يجب تسجيل الدخول أولاً', 'warning');
+    // التأكد من وجود النافذة المنبثقة قبل عرضها
+    if (typeof showLoginForm === 'function') {
+        showLoginForm();
+    } else {
+        // إعادة توجيه لصفحة تسجيل الدخول إذا لم تكن النافذة متاحة
+        window.location.href = '{{ url_for("main.login") }}';
+    }
+    {% endif %}
+}
+
+// إظهار الإشعارات
+function showNotification(message, type) {
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.remove();
+    }, 3000);
+}
+
+// تحديث عدد العناصر في السلة
+function updateCartCount() {
+    // يمكن تحديث هذا من الخادم
+}
+</script>
+{% endblock %}

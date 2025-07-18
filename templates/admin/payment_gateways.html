@@ -1,0 +1,292 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}إدارة بوابات الدفع{% endblock %}
+
+{% block content %}
+<div class="content-card">
+    <h2>
+        <i class="fas fa-credit-card"></i>
+        إدارة بوابات الدفع
+    </h2>
+    <p style="color: #666; margin-bottom: 20px;">
+        تحكم في بوابات الدفع والعمولات المستحقة على كل عملية دفع.
+    </p>
+
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>اسم البوابة</th>
+                    <th>نسبة العمولة (%)</th>
+                    <th>الحالة</th>
+                    <th>الإجراءات</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for gateway in gateways %}
+                <tr>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <i class="fas fa-credit-card" style="color: #667eea;"></i>
+                            <strong>{{ gateway.name }}</strong>
+                        </div>
+                    </td>
+                    <td>
+                        <form method="POST" action="{{ url_for('admin.update_gateway_fee', gateway_id=gateway.id) }}" 
+                              class="gateway-fee-form" style="display: inline-flex; align-items: center; gap: 10px;">
+                            <input type="number" name="fee_percentage" 
+                                   value="{{ gateway.fee_percentage }}" 
+                                   step="0.01" 
+                                   min="0" 
+                                   max="100"
+                                   class="rate-input"
+                                   style="width: 80px; padding: 5px 10px; border: 1px solid #ddd; border-radius: 4px;">
+                            <span>%</span>
+                            <button type="submit" class="btn btn-success btn-sm save-rate-btn">
+                                <i class="fas fa-save"></i>
+                                حفظ
+                            </button>
+                        </form>
+                    </td>
+                    <td>
+                        <form method="POST" action="{{ url_for('admin.toggle_gateway_status', gateway_id=gateway.id) }}" 
+                              style="display: inline;">
+                            <label class="status-toggle">
+                                <input type="checkbox" 
+                                       {{ 'checked' if gateway.is_active else '' }}
+                                       onchange="this.form.submit()">
+                                <span class="status-badge {{ 'status-approved' if gateway.is_active else 'status-pending' }}">
+                                    {{ 'نشطة' if gateway.is_active else 'غير نشطة' }}
+                                </span>
+                            </label>
+                        </form>
+                    </td>
+                    <td>
+                        <button class="btn btn-primary btn-sm" onclick="calculateFee({{ gateway.fee_percentage }}, '{{ gateway.name }}')">
+                            <i class="fas fa-calculator"></i>
+                            حساب العمولة
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="content-card">
+    <h3>
+        <i class="fas fa-calculator"></i>
+        حاسبة العمولات
+    </h3>
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; align-items: end;">
+        <div class="form-group">
+            <label class="form-label">مبلغ الطلب:</label>
+            <input type="number" id="orderAmount" class="form-control" value="100" placeholder="أدخل مبلغ الطلب">
+        </div>
+        <div class="form-group">
+            <label class="form-label">بوابة الدفع:</label>
+            <select id="selectedGateway" class="form-control">
+                {% for gateway in gateways %}
+                <option value="{{ gateway.fee_percentage }}">{{ gateway.name }} ({{ gateway.fee_percentage }}%)</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <button onclick="calculateAllFees()" class="btn btn-primary">
+                <i class="fas fa-calculator"></i>
+                حساب العمولات
+            </button>
+        </div>
+    </div>
+    
+    <div id="feeCalculationResult" style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; display: none;">
+        <h4>نتيجة حساب العمولات:</h4>
+        <div id="feeResultText" style="font-size: 1.1em;"></div>
+    </div>
+</div>
+
+<div class="content-card">
+    <h3>
+        <i class="fas fa-plus"></i>
+        إضافة بوابة دفع جديدة
+    </h3>
+    <form method="POST" action="{{ url_for('admin.add_payment_gateway') }}" style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 15px; align-items: end;">
+        <div class="form-group">
+            <label class="form-label">اسم البوابة:</label>
+            <input type="text" name="gateway_name" class="form-control" placeholder="مثل: PayPal" required>
+        </div>
+        <div class="form-group">
+            <label class="form-label">نسبة العمولة (%):</label>
+            <input type="number" name="fee_percentage" class="form-control" step="0.01" min="0" max="100" placeholder="2.5" required>
+        </div>
+        <div class="form-group">
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-plus"></i>
+                إضافة
+            </button>
+        </div>
+    </form>
+</div>
+
+<div class="content-card">
+    <h3>
+        <i class="fas fa-info-circle"></i>
+        معلومات مهمة
+    </h3>
+    <div class="alert alert-info">
+        <ul>
+            <li><strong>نسبة العمولة:</strong> تُحسب كنسبة مئوية من إجمالي مبلغ الطلب</li>
+            <li><strong>المبلغ النهائي:</strong> مبلغ الطلب + العمولة = المبلغ النهائي المطلوب من العميل</li>
+            <li><strong>البوابات غير النشطة:</strong> لن تظهر للعملاء أثناء عملية الدفع</li>
+            <li><strong>تحديث العمولات:</strong> يؤثر على جميع الطلبات الجديدة فوراً</li>
+        </ul>
+    </div>
+</div>
+
+<script>
+function calculateFee(feePercentage, gatewayName) {
+    const amount = parseFloat(document.getElementById('orderAmount').value) || 100;
+    const fee = amount * (feePercentage / 100);
+    const total = amount + fee;
+    
+    const resultDiv = document.getElementById('feeCalculationResult');
+    const resultText = document.getElementById('feeResultText');
+    
+    resultText.innerHTML = `
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; text-align: center;">
+            <div>
+                <strong>مبلغ الطلب:</strong><br>
+                <span style="color: #667eea; font-size: 1.2em;">${amount.toFixed(2)} ريال</span>
+            </div>
+            <div>
+                <strong>عمولة ${gatewayName}:</strong><br>
+                <span style="color: #ffa502; font-size: 1.2em;">${fee.toFixed(2)} ريال</span>
+            </div>
+            <div>
+                <strong>المبلغ النهائي:</strong><br>
+                <span style="color: #2ed573; font-size: 1.2em;">${total.toFixed(2)} ريال</span>
+            </div>
+        </div>
+    `;
+    
+    resultDiv.style.display = 'block';
+}
+
+function calculateAllFees() {
+    const amount = parseFloat(document.getElementById('orderAmount').value);
+    const selectedFee = parseFloat(document.getElementById('selectedGateway').value);
+    const gatewayName = document.getElementById('selectedGateway').options[document.getElementById('selectedGateway').selectedIndex].text;
+    
+    if (!amount || amount <= 0) {
+        alert('يرجى إدخال مبلغ صحيح');
+        return;
+    }
+    
+    calculateFee(selectedFee, gatewayName.split(' (')[0]);
+}
+
+// حساب العمولة عند تغيير المبلغ
+document.getElementById('orderAmount').addEventListener('input', function() {
+    if (this.value > 0) {
+        calculateAllFees();
+    }
+});
+</script>
+
+<style>
+    .alert {
+        padding: 15px;
+        border-radius: 8px;
+        margin-top: 20px;
+    }
+    
+    .alert-info {
+        background: #e3f2fd;
+        border: 1px solid #2196f3;
+        color: #1976d2;
+    }
+    
+    .form-control {
+        margin-bottom: 15px;
+    }
+    
+    /* تحسينات للنماذج */
+    .gateway-fee-form {
+        transition: all 0.3s ease;
+    }
+    
+    .gateway-fee-form:hover {
+        background: rgba(255, 0, 51, 0.02);
+        border-radius: 8px;
+        padding: 5px;
+    }
+    
+    .rate-input {
+        transition: all 0.3s ease;
+        text-align: center;
+        font-weight: 600;
+    }
+    
+    .rate-input:focus {
+        border-color: #ff0033 !important;
+        box-shadow: 0 0 0 2px rgba(255, 0, 51, 0.2);
+        transform: scale(1.05);
+    }
+    
+    .save-rate-btn {
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .save-rate-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+    }
+    
+    .save-rate-btn::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+        transition: left 0.5s;
+    }
+    
+    .save-rate-btn:hover::before {
+        left: 100%;
+    }
+    
+    .status-toggle {
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .status-toggle:hover {
+        transform: scale(1.05);
+    }
+    
+    .data-table tbody tr {
+        transition: all 0.3s ease;
+    }
+    
+    .data-table tbody tr:hover {
+        background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+        transform: translateX(5px);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .btn-success {
+        background: #28a745;
+        border-color: #28a745;
+    }
+    
+    .btn-success:hover {
+        background: #218838;
+        border-color: #1e7e34;
+    }
+</style>
+{% endblock %}

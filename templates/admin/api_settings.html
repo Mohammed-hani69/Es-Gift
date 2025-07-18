@@ -1,0 +1,81 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}إعدادات API{% endblock %}
+
+{% block content %}
+<div class="content-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2>
+            <i class="fas fa-cog"></i>
+            إعدادات API
+        </h2>
+        <a href="{{ url_for('admin.api_settings') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i>
+            إضافة API جديد
+        </a>
+    </div>
+
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>اسم API</th>
+                    <th>URL</th>
+                    <th>الحالة</th>
+                    <th>آخر تحديث</th>
+                    <th>الإجراءات</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for api in api_settings %}
+                <tr>
+                    <td>{{ api.api_name }}</td>
+                    <td>
+                        <code style="background: #f8f9fa; padding: 2px 6px; border-radius: 3px;">
+                            {{ api.api_url[:50] }}...
+                        </code>
+                    </td>
+                    <td>
+                        <span class="status-badge {{ 'status-approved' if api.is_active else 'status-pending' }}">
+                            {{ 'نشط' if api.is_active else 'غير نشط' }}
+                        </span>
+                    </td>
+                    <td>{{ moment().format('YYYY-MM-DD') }}</td>
+                    <td>
+                        <a href="{{ url_for('admin.edit_api_setting', setting_id=api.id) }}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-edit"></i>
+                            تعديل
+                        </a>
+                        {% if api.is_active %}
+                        <form method="POST" action="{{ url_for('sync_products_from_api', setting_id=api.id) }}" 
+                              style="display: inline;">
+                            <button type="submit" class="btn btn-success btn-sm">
+                                <i class="fas fa-sync"></i>
+                                مزامنة المنتجات
+                            </button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="content-card">
+    <h3>
+        <i class="fas fa-info-circle"></i>
+        معلومات API
+    </h3>
+    <div class="alert alert-info">
+        <p><strong>كيفية استخدام إعدادات API:</strong></p>
+        <ul>
+            <li>قم بإضافة تفاصيل API الخاص بمزود المنتجات</li>
+            <li>تأكد من صحة URL و API Key</li>
+            <li>قم بتفعيل API لبدء استقبال البيانات</li>
+            <li>استخدم زر "مزامنة المنتجات" لجلب المنتجات الجديدة</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

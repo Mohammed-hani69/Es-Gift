@@ -1,0 +1,679 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}إدارة المستخدمين{% endblock %}
+
+{% block content %}
+<div class="content-card">
+    <h2>
+        <i class="fas fa-users"></i>
+        إدارة المستخدمين
+    </h2>
+    <p style="color: #ccc; margin-bottom: 20px;">
+        إدارة جميع المستخدمين المسجلين في النظام وأنواع حساباتهم.
+    </p>
+
+    <!-- إحصائيات سريعة -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="stat-number">{{ users|length }}</div>
+            <div class="stat-label">إجمالي المستخدمين</div>
+        </div>
+        
+        <div class="stat-card success">
+            <div class="stat-icon">
+                <i class="fas fa-user-check"></i>
+            </div>
+            <div class="stat-number">{{ users|selectattr('customer_type', 'equalto', 'kyc')|list|length }}</div>
+            <div class="stat-label">مستخدمين موثقين</div>
+        </div>
+        
+        <div class="stat-card warning">
+            <div class="stat-icon">
+                <i class="fas fa-user-tie"></i>
+            </div>
+            <div class="stat-number">{{ users|selectattr('customer_type', 'equalto', 'reseller')|list|length }}</div>
+            <div class="stat-label">موزعين</div>
+        </div>
+        
+        <div class="stat-card info">
+            <div class="stat-icon">
+                <i class="fas fa-crown"></i>
+            </div>
+            <div class="stat-number">{{ users|selectattr('is_admin', 'equalto', True)|list|length }}</div>
+            <div class="stat-label">مدراء</div>
+        </div>
+    </div>
+
+    <!-- جدول المستخدمين -->
+    <div class="table-container">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <div class="search-filters">
+                <input type="text" id="searchUsers" placeholder="البحث عن مستخدم..." 
+                       class="search-input">
+                <select id="filterUserType" class="filter-select">
+                    <option value="">جميع الأنواع</option>
+                    <option value="regular">عادي</option>
+                    <option value="kyc">موثق</option>
+                    <option value="reseller">موزع</option>
+                </select>
+            </div>
+            <!-- يمكن إضافة مستخدمين جدد من صفحة التسجيل -->
+        </div>
+
+        <table class="data-table" id="usersTable">
+            <thead>
+                <tr>
+                    <th>المستخدم</th>
+                    <th>البريد الإلكتروني</th>
+                    <th>نوع الحساب</th>
+                    <th>حالة التوثيق</th>
+                    <th>تاريخ التسجيل</th>
+                    <th>الطلبات</th>
+                    <th>الإجراءات</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr data-user-type="{{ user.customer_type }}">
+                    <td>
+                        <div class="user-info">
+                            <div class="user-avatar-modern">
+                                {{ user.full_name[0].upper() if user.full_name else user.email[0].upper() }}
+                            </div>
+                            <div class="user-details">
+                                <strong>{{ user.full_name if user.full_name else 'غير محدد' }}</strong>
+                                {% if user.is_admin %}
+                                    <span class="badge badge-danger admin-badge">مدير</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </td>
+                    <td>{{ user.email }}</td>
+                    <td>
+                        <select class="customer-type-select modern-select" data-user-id="{{ user.id }}">
+                            <option value="regular" {{ 'selected' if user.customer_type == 'regular' else '' }}>عادي</option>
+                            <option value="kyc" {{ 'selected' if user.customer_type == 'kyc' else '' }}>موثق</option>
+                            <option value="reseller" {{ 'selected' if user.customer_type == 'reseller' else '' }}>موزع</option>
+                        </select>
+                    </td>
+                    <td>
+                        {% if user.kyc_status == 'approved' %}
+                            <span class="badge badge-success">موافق عليه</span>
+                        {% elif user.kyc_status == 'pending' %}
+                            <span class="badge badge-warning">في الانتظار</span>
+                        {% elif user.kyc_status == 'rejected' %}
+                            <span class="badge badge-danger">مرفوض</span>
+                        {% else %}
+                            <span class="badge badge-info">لم يتقدم</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ user.created_at.strftime('%Y-%m-%d') if user.created_at else 'غير محدد' }}</td>
+                    <td>
+                        <span class="badge badge-info">{{ user.orders|length }}</span>
+                    </td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn btn-sm btn-primary view-btn" onclick="viewUser({{ user.id }})" title="عرض التفاصيل">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            {% if not user.is_admin %}
+                            <button class="btn btn-sm btn-danger delete-btn" onclick="deleteUser({{ user.id }})" title="حذف">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+// البحث في المستخدمين
+document.getElementById('searchUsers').addEventListener('input', function() {
+    const searchTerm = this.value.toLowerCase();
+    const rows = document.querySelectorAll('#usersTable tbody tr');
+    
+    rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(searchTerm) ? '' : 'none';
+    });
+});
+
+// فلترة حسب نوع المستخدم
+document.getElementById('filterUserType').addEventListener('change', function() {
+    const filterType = this.value;
+    const rows = document.querySelectorAll('#usersTable tbody tr');
+    
+    rows.forEach(row => {
+        const userType = row.getAttribute('data-user-type');
+        row.style.display = (filterType === '' || userType === filterType) ? '' : 'none';
+    });
+});
+
+// تغيير نوع العميل
+document.querySelectorAll('.customer-type-select').forEach(select => {
+    select.addEventListener('change', function() {
+        const userId = this.getAttribute('data-user-id');
+        const newType = this.value;
+        
+        if (confirm('هل أنت متأكد من تغيير نوع العميل؟')) {
+            fetch('/admin/update-customer-type', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    user_id: userId,
+                    customer_type: newType
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('حدث خطأ: ' + data.message);
+                    this.value = this.getAttribute('data-original-value');
+                }
+            });
+        } else {
+            this.value = this.getAttribute('data-original-value');
+        }
+    });
+    
+    // حفظ القيمة الأصلية
+    select.setAttribute('data-original-value', select.value);
+});
+
+function viewUser(userId) {
+    // فتح نافذة تفاصيل المستخدم
+    window.open('/admin/user/' + userId, '_blank');
+}
+
+function deleteUser(userId) {
+    if (confirm('هل أنت متأكد من حذف هذا المستخدم؟ هذا الإجراء لا يمكن التراجع عنه.')) {
+        fetch('/admin/delete-user/' + userId, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('حدث خطأ: ' + data.message);
+            }
+        });
+    }
+}
+
+// تحسين وظائف البحث والفلترة
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchUsers');
+    const filterSelect = document.getElementById('filterUserType');
+    const table = document.getElementById('usersTable');
+    const rows = table.querySelectorAll('tbody tr');
+
+    // دالة البحث والفلترة
+    function filterTable() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const filterType = filterSelect.value;
+
+        rows.forEach(row => {
+            const email = row.cells[1].textContent.toLowerCase();
+            const name = row.cells[0].textContent.toLowerCase();
+            const userType = row.querySelector('.badge')?.textContent.trim();
+            
+            const matchesSearch = email.includes(searchTerm) || name.includes(searchTerm);
+            const matchesFilter = !filterType || (
+                (filterType === 'regular' && userType === 'عادي') ||
+                (filterType === 'kyc' && userType === 'موثق') ||
+                (filterType === 'reseller' && userType === 'موزع')
+            );
+
+            if (matchesSearch && matchesFilter) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        // عرض رسالة إذا لم توجد نتائج
+        const visibleRows = Array.from(rows).filter(row => row.style.display !== 'none');
+        if (visibleRows.length === 0) {
+            if (!document.getElementById('noResults')) {
+                const noResultsRow = document.createElement('tr');
+                noResultsRow.id = 'noResults';
+                noResultsRow.innerHTML = '<td colspan="6" style="text-align: center; color: #999; padding: 20px;">لا توجد نتائج مطابقة للبحث</td>';
+                table.querySelector('tbody').appendChild(noResultsRow);
+            }
+        } else {
+            const noResultsRow = document.getElementById('noResults');
+            if (noResultsRow) {
+                noResultsRow.remove();
+            }
+        }
+    }
+
+    // ربط الأحداث
+    searchInput.addEventListener('input', filterTable);
+    filterSelect.addEventListener('change', filterTable);
+
+    // تحسين تأثيرات الجدول
+    rows.forEach(row => {
+        row.addEventListener('mouseenter', function() {
+            this.style.backgroundColor = '#f8f9fa';
+            this.style.transform = 'scale(1.01)';
+            this.style.transition = 'all 0.2s ease';
+        });
+
+        row.addEventListener('mouseleave', function() {
+            this.style.backgroundColor = '';
+            this.style.transform = 'scale(1)';
+        });
+    });
+
+    // إضافة تأثير للأزرار
+    const buttons = document.querySelectorAll('.btn');
+    buttons.forEach(button => {
+        button.addEventListener('mousedown', function() {
+            this.style.transform = 'scale(0.95)';
+        });
+
+        button.addEventListener('mouseup', function() {
+            this.style.transform = 'scale(1)';
+        });
+
+        button.addEventListener('mouseleave', function() {
+            this.style.transform = 'scale(1)';
+        });
+    });
+});
+</script>
+
+<style>
+/* تحسينات عامة للصفحة */
+.content-card h2 {
+    color: #ff0033 !important;
+    border-bottom: 2px solid #333;
+    padding-bottom: 10px;
+    margin-bottom: 20px !important;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* شريط البحث والفلاتر */
+.search-filters {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.search-input {
+    padding: 12px 15px;
+    border: 2px solid #333;
+    border-radius: 10px;
+    width: 300px;
+    background: #333;
+    color: #fff;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: #ff0033;
+    box-shadow: 0 0 0 3px rgba(255, 0, 51, 0.1);
+    background: #444;
+    transform: scale(1.02);
+}
+
+.filter-select {
+    padding: 12px 15px;
+    border: 2px solid #333;
+    border-radius: 10px;
+    background: #333;
+    color: #fff;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.filter-select:focus {
+    outline: none;
+    border-color: #ff0033;
+    box-shadow: 0 0 0 3px rgba(255, 0, 51, 0.1);
+    background: #444;
+}
+
+.add-user-btn {
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.add-user-btn:hover {
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 0 8px 25px rgba(255, 0, 51, 0.3);
+}
+
+.add-user-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: left 0.5s ease;
+}
+
+.add-user-btn:hover::before {
+    left: 100%;
+}
+
+/* تحسين معلومات المستخدم */
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: all 0.3s ease;
+}
+
+.user-avatar-modern {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ff0033, #cc0029);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 16px;
+    border: 3px solid #333;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.user-avatar-modern::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: transform 0.5s ease;
+    transform: rotate(-45deg) translateX(-100%);
+}
+
+.user-info:hover .user-avatar-modern::before {
+    transform: rotate(-45deg) translateX(100%);
+}
+
+.user-details {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.admin-badge {
+    font-size: 0.7em;
+    padding: 2px 6px;
+    border-radius: 8px;
+    animation: adminGlow 2s ease-in-out infinite alternate;
+}
+
+@keyframes adminGlow {
+    from { box-shadow: 0 0 5px rgba(220, 53, 69, 0.5); }
+    to { box-shadow: 0 0 15px rgba(220, 53, 69, 0.8); }
+}
+
+/* تحسين القوائم المنسدلة */
+.modern-select {
+    padding: 8px 12px;
+    border: 2px solid #333;
+    border-radius: 8px;
+    background: #333;
+    color: #fff;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.modern-select:focus {
+    outline: none;
+    border-color: #ff0033;
+    box-shadow: 0 0 0 3px rgba(255, 0, 51, 0.1);
+    background: #444;
+    transform: scale(1.05);
+}
+
+.modern-select:hover {
+    border-color: #555;
+    background: #3a3a3a;
+}
+
+/* أزرار الإجراءات */
+.action-buttons {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+}
+
+.action-buttons .btn {
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    border-radius: 8px;
+    padding: 8px 10px;
+}
+
+.view-btn:hover {
+    transform: translateY(-2px) scale(1.1);
+    box-shadow: 0 5px 15px rgba(255, 0, 51, 0.4);
+}
+
+.delete-btn:hover {
+    transform: translateY(-2px) scale(1.1);
+    box-shadow: 0 5px 15px rgba(220, 53, 69, 0.4);
+}
+
+.action-buttons .btn::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: width 0.3s ease, height 0.3s ease;
+}
+
+.action-buttons .btn:active::before {
+    width: 100px;
+    height: 100px;
+}
+
+/* تحسينات الجدول */
+.data-table tbody tr {
+    transition: all 0.3s ease;
+    border-radius: 8px;
+}
+
+.data-table tbody tr:hover {
+    background: linear-gradient(135deg, #333, #444);
+    transform: translateX(5px) scale(1.01);
+    box-shadow: 0 4px 15px rgba(255, 0, 51, 0.2);
+}
+
+.data-table td {
+    padding: 15px;
+    vertical-align: middle;
+    border-bottom: 1px solid #333;
+    color: #fff;
+    transition: all 0.3s ease;
+}
+
+/* تحسين النتائج الفارغة */
+.no-results {
+    text-align: center;
+    color: #ccc;
+    padding: 40px 20px;
+    font-style: italic;
+}
+
+/* تأثيرات التحميل */
+.loading-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #ff0033;
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* تأثيرات الدخول */
+.content-card {
+    animation: fadeInUp 0.6s ease;
+}
+
+.stat-card {
+    animation: fadeInUp 0.6s ease;
+}
+
+.stat-card:nth-child(1) { animation-delay: 0.1s; }
+.stat-card:nth-child(2) { animation-delay: 0.2s; }
+.stat-card:nth-child(3) { animation-delay: 0.3s; }
+.stat-card:nth-child(4) { animation-delay: 0.4s; }
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* إشعارات التفاعل */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 15px 20px;
+    border-radius: 10px;
+    color: white;
+    font-weight: 600;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+    transform: translateX(400px);
+    transition: all 0.3s ease;
+}
+
+.notification.success {
+    background: linear-gradient(135deg, #28a745, #20c997);
+}
+
+.notification.error {
+    background: linear-gradient(135deg, #dc3545, #e83e8c);
+}
+
+.notification.show {
+    transform: translateX(0);
+}
+
+/* تحسينات للشاشات الصغيرة */
+@media (max-width: 768px) {
+    .search-filters {
+        flex-direction: column;
+        gap: 10px;
+        width: 100%;
+    }
+    
+    .search-input {
+        width: 100%;
+    }
+    
+    .action-buttons {
+        flex-direction: column;
+        gap: 5px;
+    }
+    
+    .user-info {
+        flex-direction: column;
+        text-align: center;
+        gap: 8px;
+    }
+    
+    .data-table {
+        font-size: 0.9em;
+    }
+    
+    .data-table td {
+        padding: 10px 8px;
+    }
+}
+
+/* تحسينات إضافية للتفاعل */
+.table-container {
+    position: relative;
+    overflow: hidden;
+    border-radius: 15px;
+}
+
+.data-table thead tr {
+    background: linear-gradient(135deg, #ff0033, #cc0029);
+}
+
+.data-table th {
+    position: relative;
+    overflow: hidden;
+}
+
+.data-table th::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
+}
+
+.data-table th:hover::before {
+    left: 100%;
+}
+
+/* تأثيرات اختيار الصف */
+.data-table tbody tr.selected {
+    background: linear-gradient(135deg, #ff0033, #cc0029);
+    color: white;
+    transform: scale(1.02);
+    box-shadow: 0 8px 25px rgba(255, 0, 51, 0.4);
+}
+
+.data-table tbody tr.selected .badge {
+    background: rgba(255, 255, 255, 0.2) !important;
+    color: white !important;
+}
+</style>
+{% endblock %}

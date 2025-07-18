@@ -1,0 +1,1008 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}إضافة مستخدم جديد{% endblock %}
+
+{% block content %}
+<div class="add-user-container-modern">
+    <div class="page-header-modern">
+        <div class="page-title-section">
+            <h2>
+                <i class="fas fa-user-plus"></i>
+                إضافة مستخدم جديد
+            </h2>
+            <p class="page-subtitle">
+                إضافة مستخدم جديد للنظام مع تحديد نوع الحساب والصلاحيات
+            </p>
+        </div>
+        <a href="{{ url_for('admin.users') }}" class="btn-back-modern">
+            <i class="fas fa-arrow-right"></i>
+            العودة للمستخدمين
+        </a>
+    </div>
+
+    <!-- عرض الرسائل -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert-modern alert-{{ 'success' if category == 'success' else 'danger' }}" role="alert">
+                    <div class="alert-icon">
+                        <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' }}"></i>
+                    </div>
+                    <div class="alert-content">
+                        <strong>{{ 'تم بنجاح!' if category == 'success' else 'خطأ!' }}</strong>
+                        <span>{{ message }}</span>
+                    </div>
+                    <button class="alert-close" onclick="this.parentElement.remove()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form method="POST" class="form-container-modern" id="add-user-form" onsubmit="return validateAddUserForm()">
+        <div class="form-section">
+            <h3 class="section-title">
+                <i class="fas fa-user-circle"></i>
+                المعلومات الأساسية
+            </h3>
+            
+            <div class="form-row-modern">
+                <div class="form-group-modern">
+                    <label class="form-label-modern">
+                        <i class="fas fa-envelope"></i>
+                        البريد الإلكتروني
+                    </label>
+                    <input type="email" name="email" class="form-control-modern" placeholder="example@domain.com" required>
+                    <div class="input-feedback"></div>
+                </div>
+                
+                <div class="form-group-modern">
+                    <label class="form-label-modern">
+                        <i class="fas fa-lock"></i>
+                        كلمة المرور
+                    </label>
+                    <div class="password-input-container">
+                        <input type="password" name="password" class="form-control-modern" placeholder="6 أحرف على الأقل" required minlength="6" onkeyup="updatePasswordStrength(this.value)">
+                        <button type="button" class="password-toggle" onclick="togglePassword(this)">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                    <div class="password-strength">
+                        <div class="strength-indicator">
+                            <div class="strength-bar"></div>
+                        </div>
+                        <span class="strength-text" id="password-strength">قوة كلمة المرور</span>
+                    </div>
+                    <div class="input-feedback"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3 class="section-title">
+                <i class="fas fa-info-circle"></i>
+                المعلومات الإضافية
+            </h3>
+            
+            <div class="form-row-modern">
+                <div class="form-group-modern">
+                    <label class="form-label-modern">
+                        <i class="fas fa-user"></i>
+                        الاسم الكامل
+                    </label>
+                    <input type="text" name="full_name" class="form-control-modern" placeholder="الاسم الكامل (اختياري)">
+                    <div class="input-feedback"></div>
+                </div>
+                
+                <div class="form-group-modern">
+                    <label class="form-label-modern">
+                        <i class="fas fa-phone"></i>
+                        رقم الهاتف
+                    </label>
+                    <input type="tel" name="phone" class="form-control-modern" placeholder="+966 5X XXX XXXX" dir="ltr">
+                    <div class="input-feedback"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3 class="section-title">
+                <i class="fas fa-shield-alt"></i>
+                نوع الحساب والصلاحيات
+            </h3>
+            
+            <div class="form-row-modern">
+                <div class="form-group-modern">
+                    <label class="form-label-modern">
+                        <i class="fas fa-tag"></i>
+                        نوع الحساب
+                    </label>
+                    <div class="select-wrapper-modern">
+                        <select name="customer_type" class="form-control-modern" required>
+                            <option value="regular" selected>عادي - حساب عادي للمستخدمين</option>
+                            <option value="reseller">موزع - حساب للموزعين والشركاء</option>
+                        </select>
+                        <i class="fas fa-chevron-down select-arrow"></i>
+                    </div>
+                    <div class="account-type-info">
+                        <div class="info-card regular-info active">
+                            <strong>الحساب العادي:</strong> صلاحيات أساسية للشراء والاستخدام العادي. يمكن للمستخدم تقديم طلب توثيق لاحقاً
+                        </div>
+                        <div class="info-card reseller-info">
+                            <strong>حساب الموزع:</strong> صلاحيات خاصة للموزعين مع إمكانية الحصول على أسعار خاصة
+                        </div>
+                        <div class="account-type-note">
+                            <i class="fas fa-info-circle"></i>
+                            <span>ملاحظة: جميع المستخدمين الجدد يبدؤون بحالة "غير موثق" ويمكنهم تقديم طلب التوثيق بأنفسهم</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Confirm Password Field -->
+        <div class="form-section">
+            <div class="form-row-modern">
+                <div class="form-group-modern">
+                    <label class="form-label-modern">
+                        <i class="fas fa-lock"></i>
+                        تأكيد كلمة المرور
+                    </label>
+                    <div class="password-input-container">
+                        <input type="password" name="confirm_password" class="form-control-modern" placeholder="أعد إدخال كلمة المرور" required minlength="6">
+                        <button type="button" class="password-toggle" onclick="togglePassword(this)">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                    <div class="input-feedback"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-actions-modern">
+            <button type="submit" class="btn-submit-modern">
+                <i class="fas fa-plus-circle"></i>
+                <span>إضافة المستخدم</span>
+                <div class="btn-loader">
+                    <div class="spinner"></div>
+                </div>
+            </button>
+            <a href="{{ url_for('admin.users') }}" class="btn-cancel-modern">
+                <i class="fas fa-arrow-left"></i>
+                العودة للقائمة
+            </a>
+        </div>
+    </form>
+</div>
+
+<style>
+/* Add User Modern Styles */
+.add-user-container-modern {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 0;
+}
+
+.page-header-modern {
+    background: linear-gradient(135deg, #111 0%, #222 100%);
+    padding: 30px;
+    border-radius: 20px;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+    border: 1px solid #333;
+    margin-bottom: 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
+    animation: slideInDown 0.6s ease-out;
+}
+
+.page-title-section h2 {
+    color: #ff0033;
+    margin: 0;
+    font-size: 1.8em;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.page-title-section h2 i {
+    font-size: 1.1em;
+    background: linear-gradient(135deg, #ff0033 0%, #cc0028 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.page-subtitle {
+    color: #999;
+    margin: 8px 0 0 0;
+    font-size: 1em;
+    font-weight: 400;
+    padding-right: 44px;
+}
+
+.btn-back-modern {
+    background: linear-gradient(135deg, #333 0%, #555 100%);
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 12px;
+    text-decoration: none;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+    border: 1px solid #444;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.btn-back-modern:hover {
+    background: linear-gradient(135deg, #555 0%, #777 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    color: #fff;
+    text-decoration: none;
+}
+
+/* Alert Modern Styles */
+.alert-modern {
+    background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+    border: 1px solid #333;
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 25px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    animation: slideInRight 0.5s ease-out;
+    position: relative;
+    overflow: hidden;
+}
+
+.alert-modern::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 4px;
+    height: 100%;
+}
+
+.alert-success::before {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+}
+
+.alert-danger::before {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+}
+
+.alert-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2em;
+    color: white;
+}
+
+.alert-success .alert-icon {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+}
+
+.alert-danger .alert-icon {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+}
+
+.alert-content {
+    flex: 1;
+    color: #fff;
+}
+
+.alert-content strong {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 1.1em;
+}
+
+.alert-content span {
+    color: #ccc;
+    font-size: 0.95em;
+}
+
+.alert-close {
+    background: none;
+    border: none;
+    color: #999;
+    font-size: 1.2em;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+}
+
+.alert-close:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Form Modern Styles */
+.form-container-modern {
+    background: linear-gradient(135deg, #111 0%, #222 100%);
+    padding: 40px;
+    border-radius: 20px;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+    border: 1px solid #333;
+    animation: fadeInUp 0.6s ease-out 0.2s both;
+}
+
+.form-section {
+    margin-bottom: 40px;
+    padding-bottom: 30px;
+    border-bottom: 1px solid #333;
+}
+
+.form-section:last-of-type {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.section-title {
+    color: #ff0033;
+    font-size: 1.3em;
+    font-weight: 600;
+    margin-bottom: 25px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.form-row-modern {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+}
+
+.form-group-modern {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-label-modern {
+    color: #ff0033;
+    font-weight: 600;
+    font-size: 0.95em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.form-control-modern {
+    background: #1a1a1a;
+    border: 2px solid #333;
+    color: #fff;
+    padding: 15px 18px;
+    border-radius: 12px;
+    font-size: 1em;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.form-control-modern:focus {
+    border-color: #ff0033;
+    box-shadow: 0 0 20px rgba(255, 0, 51, 0.3);
+    outline: none;
+    background: #222;
+}
+
+.form-control-modern::placeholder {
+    color: #666;
+    font-style: italic;
+}
+
+/* Password Input Styles */
+.password-input-container {
+    position: relative;
+}
+
+.password-toggle {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #666;
+    cursor: pointer;
+    padding: 5px;
+    transition: color 0.3s ease;
+}
+
+.password-toggle:hover {
+    color: #ff0033;
+}
+
+.password-strength {
+    margin-top: 8px;
+}
+
+.strength-indicator {
+    width: 100%;
+    height: 4px;
+    background: #333;
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 5px;
+}
+
+.strength-bar {
+    height: 100%;
+    width: 0%;
+    transition: all 0.3s ease;
+    border-radius: 2px;
+}
+
+.strength-text {
+    font-size: 0.8em;
+    color: #666;
+}
+
+/* Select Wrapper */
+.select-wrapper-modern {
+    position: relative;
+}
+
+.select-arrow {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #666;
+    pointer-events: none;
+    transition: transform 0.3s ease;
+}
+
+.form-control-modern:focus + .select-arrow {
+    transform: translateY(-50%) rotate(180deg);
+    color: #ff0033;
+}
+
+/* Account Type Info */
+.account-type-info {
+    margin-top: 15px;
+}
+
+.info-card {
+    background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 12px 15px;
+    margin-bottom: 8px;
+    color: #ccc;
+    font-size: 0.9em;
+    display: none;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.info-card.active {
+    display: block;
+}
+
+.info-card strong {
+    color: #ff0033;
+}
+
+/* Account Type Note */
+.account-type-note {
+    background: linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%);
+    border: 1px solid #444;
+    border-radius: 10px;
+    padding: 15px;
+    margin-top: 15px;
+    color: #ccc;
+    font-size: 0.9em;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.account-type-note i {
+    color: #ff0033;
+    margin-top: 2px;
+    font-size: 1.1em;
+}
+
+.account-type-note span {
+    flex: 1;
+    line-height: 1.5;
+}
+
+/* Input Feedback */
+.input-feedback {
+    font-size: 0.8em;
+    margin-top: 5px;
+    min-height: 18px;
+    transition: all 0.3s ease;
+}
+
+.input-feedback.success {
+    color: #28a745;
+}
+
+.input-feedback.error {
+    color: #dc3545;
+}
+
+/* Form Actions */
+.form-actions-modern {
+    display: flex;
+    gap: 20px;
+    justify-content: flex-start;
+    margin-top: 40px;
+    padding-top: 30px;
+    border-top: 1px solid #333;
+}
+
+.btn-submit-modern {
+    background: linear-gradient(135deg, #ff0033 0%, #cc0028 100%);
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 1em;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 5px 15px rgba(255, 0, 51, 0.3);
+}
+
+.btn-submit-modern:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(255, 0, 51, 0.4);
+}
+
+.btn-submit-modern:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-loader {
+    display: none;
+}
+
+.btn-submit-modern.loading .btn-loader {
+    display: block;
+}
+
+.btn-submit-modern.loading span {
+    opacity: 0;
+}
+
+.spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 1s ease-in-out infinite;
+}
+
+.btn-cancel-modern {
+    background: linear-gradient(135deg, #333 0%, #555 100%);
+    color: #fff;
+    padding: 15px 25px;
+    border-radius: 12px;
+    text-decoration: none;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+    border: 1px solid #444;
+}
+
+.btn-cancel-modern:hover {
+    background: linear-gradient(135deg, #555 0%, #777 100%);
+    transform: translateY(-2px);
+    color: #fff;
+    text-decoration: none;
+}
+
+/* Animations */
+@keyframes slideInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .page-header-modern {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+    
+    .form-container-modern {
+        padding: 25px 20px;
+    }
+    
+    .form-row-modern {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .form-actions-modern {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .btn-submit-modern,
+    .btn-cancel-modern {
+        justify-content: center;
+        width: 100%;
+    }
+    
+    .page-subtitle {
+        padding-right: 0;
+    }
+}
+
+@media (max-width: 480px) {
+    .form-container-modern {
+        padding: 20px 15px;
+    }
+    
+    .section-title {
+        font-size: 1.1em;
+    }
+    
+    .form-control-modern {
+        padding: 12px 15px;
+    }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Enhanced User Addition JavaScript
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize form animations
+    $('.form-container-modern').addClass('animate__animated animate__fadeInUp');
+    
+    // Password strength checker
+    const passwordInput = document.querySelector('input[name="password"]');
+    const strengthBar = document.querySelector('.strength-bar');
+    const strengthText = document.querySelector('.strength-text');
+    
+    if (passwordInput && strengthBar) {
+        passwordInput.addEventListener('input', function() {
+            const password = this.value;
+            let strength = 0;
+            let color = '#dc3545';
+            let text = 'ضعيف';
+            
+            // Calculate password strength
+            if (password.length >= 6) strength += 1;
+            if (password.length >= 8) strength += 1;
+            if (/[A-Z]/.test(password)) strength += 1;
+            if (/[0-9]/.test(password)) strength += 1;
+            if (/[^A-Za-z0-9]/.test(password)) strength += 1;
+            
+            const percentage = (strength / 5) * 100;
+            
+            if (percentage >= 80) {
+                color = '#28a745';
+                text = 'قوي جداً';
+            } else if (percentage >= 60) {
+                color = '#20c997';
+                text = 'قوي';
+            } else if (percentage >= 40) {
+                color = '#ffc107';
+                text = 'متوسط';
+            } else if (percentage >= 20) {
+                color = '#fd7e14';
+                text = 'ضعيف';
+            }
+            
+            strengthBar.style.width = percentage + '%';
+            strengthBar.style.background = `linear-gradient(135deg, ${color}, ${color}AA)`;
+            strengthText.textContent = `قوة كلمة المرور: ${text}`;
+            strengthText.style.color = color;
+        });
+    }
+    
+    // Email validation with visual feedback
+    const emailInput = document.querySelector('input[name="email"]');
+    if (emailInput) {
+        emailInput.addEventListener('blur', function() {
+            const email = this.value;
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            const feedback = this.parentElement.querySelector('.input-feedback');
+            
+            if (email && emailRegex.test(email)) {
+                this.style.borderColor = '#28a745';
+                this.style.boxShadow = '0 0 10px rgba(40, 167, 69, 0.3)';
+                feedback.textContent = '✓ البريد الإلكتروني صالح';
+                feedback.className = 'input-feedback success';
+            } else if (email) {
+                this.style.borderColor = '#dc3545';
+                this.style.boxShadow = '0 0 10px rgba(220, 53, 69, 0.3)';
+                feedback.textContent = '✗ البريد الإلكتروني غير صالح';
+                feedback.className = 'input-feedback error';
+            } else {
+                this.style.borderColor = '#333';
+                this.style.boxShadow = 'none';
+                feedback.textContent = '';
+                feedback.className = 'input-feedback';
+            }
+        });
+    }
+    
+    // Phone number formatting
+    const phoneInput = document.querySelector('input[name="phone"]');
+    if (phoneInput) {
+        phoneInput.addEventListener('input', function() {
+            let value = this.value.replace(/\D/g, '');
+            if (value.startsWith('966')) {
+                value = '+966 ' + value.substring(3).replace(/(\d{2})(\d{3})(\d{4})/, '$1 $2 $3');
+            } else if (value.startsWith('05')) {
+                value = '+966 ' + value.substring(1).replace(/(\d{2})(\d{3})(\d{4})/, '$1 $2 $3');
+            }
+            this.value = value;
+        });
+    }
+    
+    // Account type selection handler
+    const customerTypeSelect = document.querySelector('select[name="customer_type"]');
+    const infoCards = document.querySelectorAll('.info-card');
+    
+    if (customerTypeSelect) {
+        customerTypeSelect.addEventListener('change', function() {
+            const selectedType = this.value;
+            
+            // Hide all info cards
+            infoCards.forEach(card => {
+                card.classList.remove('active');
+            });
+            
+            // Show relevant info card
+            if (selectedType) {
+                const targetCard = document.querySelector(`.${selectedType}-info`);
+                if (targetCard) {
+                    targetCard.classList.add('active');
+                }
+            }
+        });
+    }
+    
+    // Enhanced form submission
+    const form = document.querySelector('form');
+    const submitBtn = document.querySelector('.btn-submit-modern');
+    
+    if (form && submitBtn) {
+        form.addEventListener('submit', function(e) {
+            const email = document.querySelector('input[name="email"]').value;
+            const password = document.querySelector('input[name="password"]').value;
+            const customerType = document.querySelector('select[name="customer_type"]').value;
+            
+            // Validation
+            if (!email || !password || !customerType) {
+                e.preventDefault();
+                showNotification('يرجى ملء جميع الحقول المطلوبة', 'error');
+                return;
+            }
+            
+            if (password.length < 6) {
+                e.preventDefault();
+                showNotification('كلمة المرور يجب أن تكون 6 أحرف على الأقل', 'error');
+                return;
+            }
+            
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                e.preventDefault();
+                showNotification('البريد الإلكتروني غير صالح', 'error');
+                return;
+            }
+            
+            // Show loading state
+            submitBtn.classList.add('loading');
+            submitBtn.disabled = true;
+            
+            // Add success message after delay (for demo)
+            setTimeout(() => {
+                showNotification('جاري إضافة المستخدم...', 'info');
+            }, 500);
+        });
+    }
+    
+    // Auto-hide alerts
+    setTimeout(function() {
+        const alerts = document.querySelectorAll('.alert-modern');
+        alerts.forEach(alert => {
+            alert.style.opacity = '0';
+            alert.style.transform = 'translateX(100px)';
+            setTimeout(() => alert.remove(), 300);
+        });
+    }, 8000);
+    
+    // Add ripple effect to buttons
+    document.querySelectorAll('.btn-submit-modern, .btn-cancel-modern').forEach(button => {
+        button.addEventListener('click', function(e) {
+            const ripple = document.createElement('span');
+            const rect = this.getBoundingClientRect();
+            const size = Math.max(rect.width, rect.height);
+            const x = e.clientX - rect.left - size / 2;
+            const y = e.clientY - rect.top - size / 2;
+            
+            ripple.style.cssText = `
+                position: absolute;
+                border-radius: 50%;
+                background: rgba(255, 255, 255, 0.6);
+                transform: scale(0);
+                animation: ripple 0.6s linear;
+                width: ${size}px;
+                height: ${size}px;
+                left: ${x}px;
+                top: ${y}px;
+                pointer-events: none;
+            `;
+            
+            this.appendChild(ripple);
+            setTimeout(() => ripple.remove(), 600);
+        });
+    });
+});
+
+// Password toggle function
+function togglePassword(button) {
+    const input = button.parentElement.querySelector('input');
+    const icon = button.querySelector('i');
+    
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'fas fa-eye-slash';
+    } else {
+        input.type = 'password';
+        icon.className = 'fas fa-eye';
+    }
+}
+
+// Notification system
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.innerHTML = `
+        <div class="notification-content">
+            <i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'times' : 'info'}-circle"></i>
+            <span>${message}</span>
+        </div>
+    `;
+    
+    // Add notification styles
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: linear-gradient(135deg, ${type === 'success' ? '#28a745, #20c997' : type === 'error' ? '#dc3545, #c82333' : '#17a2b8, #20c997'});
+        color: white;
+        padding: 15px 20px;
+        border-radius: 10px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        z-index: 10000;
+        animation: slideInRight 0.5s ease-out;
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.animation = 'slideOutRight 0.5s ease-in forwards';
+        setTimeout(() => notification.remove(), 500);
+    }, 4000);
+}
+
+// Add CSS for animations
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes ripple {
+        to {
+            transform: scale(4);
+            opacity: 0;
+        }
+    }
+    
+    @keyframes slideInRight {
+        from {
+            opacity: 0;
+            transform: translateX(100px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+    
+    @keyframes slideOutRight {
+        from {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        to {
+            opacity: 0;
+            transform: translateX(100px);
+        }
+    }
+    
+    .notification-content {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 600;
+    }
+`;
+document.head.appendChild(style);
+</script>
+{% endblock %}

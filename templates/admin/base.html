@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}لوحة التحكم - Es-Gift{% endblock %}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        *::-webkit-scrollbar {
+            width: 10px;
+            height: 3px;
+        }
+
+        *::-webkit-scrollbar-thumb {
+            background-color: #ff0033;
+            border-radius: 20px;
+            border: 0px solid #f5f5f5;
+        }
+
+        *::-webkit-scrollbar-track {
+            background: #0a0909;
+            border-radius: 5px;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #111;
+            min-height: 100vh;
+            color: #fff;
+        }
+
+        .admin-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 280px;
+            background-color: #222;
+            border-right: 3px solid #ff0033;
+            box-shadow: 2px 0 20px rgba(255, 0, 51, 0.3);
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar-header {
+            padding: 30px 20px;
+            text-align: center;
+            border-bottom: 2px solid #333;
+            background: linear-gradient(135deg, #ff0033, #cc0029);
+        }
+
+        .sidebar-header h2 {
+            color: #fff;
+            font-size: 1.8em;
+            margin-bottom: 5px;
+        }
+
+        .sidebar-header p {
+            color: #ffcccc;
+            font-size: 0.9em;
+        }
+
+        .sidebar-nav {
+            padding: 20px 0;
+        }
+
+        .nav-item {
+            margin-bottom: 5px;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            padding: 15px 25px;
+            color: #ccc;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            border-left: 4px solid transparent;
+            border-radius: 8px;
+            margin: 5px 10px;
+        }
+
+        .nav-link:hover,
+        .nav-link.active {
+            background: linear-gradient(135deg, #ff0033, #cc0029);
+            color: white;
+            border-left-color: #fff;
+            transform: translateX(5px);
+            box-shadow: 0 4px 15px rgba(255, 0, 51, 0.4);
+        }
+
+        .nav-link i {
+            margin-left: 15px;
+            font-size: 1.2em;
+            width: 20px;
+        }
+
+        .main-content {
+            flex: 1;
+            margin-right: 280px;
+            padding: 30px;
+        }
+
+        .top-bar {
+            background-color: #222;
+            border: 2px solid #333;
+            padding: 20px 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .page-title {
+            font-size: 2em;
+            color: #fff;
+            margin: 0;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ff0033, #cc0029);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5em;
+            border: 3px solid #333;
+        }
+
+        .user-info div {
+            color: #fff;
+        }
+
+        .user-info div:last-child {
+            color: #ccc;
+        }
+
+        .content-card {
+            background-color: #222;
+            border: 2px solid #333;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #ff0033, #cc0029);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(255, 0, 51, 0.3);
+            transition: transform 0.3s ease;
+            border: 2px solid #ff0033;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-card.success {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            border: 2px solid #28a745;
+            box-shadow: 0 10px 30px rgba(40, 167, 69, 0.3);
+        }
+
+        .stat-card.warning {
+            background: linear-gradient(135deg, #ffc107, #fd7e14);
+            border: 2px solid #ffc107;
+            box-shadow: 0 10px 30px rgba(255, 193, 7, 0.3);
+        }
+
+        .stat-card.danger {
+            background: linear-gradient(135deg, #dc3545, #e83e8c);
+            border: 2px solid #dc3545;
+            box-shadow: 0 10px 30px rgba(220, 53, 69, 0.3);
+        }
+
+        .stat-card.info {
+            background: linear-gradient(135deg, #17a2b8, #6f42c1);
+            border: 2px solid #17a2b8;
+            box-shadow: 0 10px 30px rgba(23, 162, 184, 0.3);
+        }
+
+        .stat-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+            opacity: 0.8;
+        }
+
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .stat-label {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 15px;
+            text-align: right;
+            border-bottom: 1px solid #333;
+            color: #fff;
+        }
+
+        .data-table th {
+            background: linear-gradient(135deg, #ff0033, #cc0029);
+            color: white;
+            font-weight: bold;
+        }
+
+        .data-table tr:hover {
+            background: #333;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            box-shadow: 0 5px 15px rgba(255, 0, 51, 0.3);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #ff0033, #cc0029);
+            color: white;
+            border: 2px solid #ff0033;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #cc0029, #990022);
+            border-color: #cc0029;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 0, 51, 0.4);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            border: 2px solid #28a745;
+        }
+
+        .btn-success:hover {
+            background: linear-gradient(135deg, #218838, #1ea188);
+            border-color: #218838;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #ffc107, #fd7e14);
+            color: #000;
+            border: 2px solid #ffc107;
+        }
+
+        .btn-warning:hover {
+            background: linear-gradient(135deg, #e0a800, #e8590c);
+            border-color: #e0a800;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 193, 7, 0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #dc3545, #e83e8c);
+            color: white;
+            border: 2px solid #dc3545;
+        }
+
+        .btn-danger:hover {
+            background: linear-gradient(135deg, #c82333, #d91a72);
+            border-color: #c82333;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(220, 53, 69, 0.4);
+        }
+
+        .btn-sm {
+            padding: 5px 10px;
+            font-size: 0.8em;
+        }
+
+        .badge {
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.8em;
+            font-weight: bold;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .badge-success {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+        }
+
+        .badge-warning {
+            background: linear-gradient(135deg, #ffc107, #fd7e14);
+            color: #000;
+        }
+
+        .badge-danger {
+            background: linear-gradient(135deg, #dc3545, #e83e8c);
+            color: white;
+        }
+
+        .badge-info {
+            background: linear-gradient(135deg, #17a2b8, #6f42c1);
+            color: white;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #333;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+            background-color: #333;
+            color: #fff;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #ff0033;
+            background-color: #444;
+        }
+
+        .search-bar {
+            margin-bottom: 20px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #333;
+            border-radius: 10px;
+            font-size: 16px;
+            background: #333;
+            color: #fff;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #ff0033;
+            background: #444;
+        }
+
+        /* تصميم الرسائل التحذيرية */
+        .alert {
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            border-left: 4px solid;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .alert-success {
+            background: linear-gradient(135deg, #1e7e34, #28a745);
+            color: white;
+            border-left-color: #28a745;
+        }
+
+        .alert-error {
+            background: linear-gradient(135deg, #bd2130, #dc3545);
+            color: white;
+            border-left-color: #dc3545;
+        }
+
+        .alert-warning {
+            background: linear-gradient(135deg, #d39e00, #ffc107);
+            color: #000;
+            border-left-color: #ffc107;
+        }
+
+        .alert-info {
+            background: linear-gradient(135deg, #138496, #17a2b8);
+            color: white;
+            border-left-color: #17a2b8;
+        }
+
+        .alert button {
+            background: none;
+            border: none;
+            color: inherit;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 0 5px;
+        }
+
+        /* Enhanced Notification System */
+        .notification-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            max-width: 400px;
+        }
+
+        .notification {
+            background: #2a2a2a;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            overflow: hidden;
+            transform: translateX(400px);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border-left: 4px solid;
+            position: relative;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        .notification.hide {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+
+        .success-notification {
+            border-left-color: #00d4aa;
+        }
+
+        .error-notification {
+            border-left-color: #ff4757;
+        }
+
+        .warning-notification {
+            border-left-color: #ffa502;
+        }
+
+        .notification-content {
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .notification i {
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .success-notification i {
+            color: #00d4aa;
+        }
+
+        .error-notification i {
+            color: #ff4757;
+        }
+
+        .warning-notification i {
+            color: #ffa502;
+        }
+
+        .notification-text {
+            flex: 1;
+            color: #ffffff;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .notification-close {
+            background: none;
+            border: none;
+            color: #999;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 50%;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .notification-close:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        .notification-progress {
+            height: 3px;
+            background: rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .notification-progress::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            animation: notificationProgress 4s linear;
+        }
+
+        .success-notification .notification-progress::after {
+            background: linear-gradient(90deg, #00d4aa, #00d4aa);
+        }
+
+        .error-notification .notification-progress::after {
+            background: linear-gradient(90deg, #ff4757, #ff4757);
+        }
+
+        .warning-notification .notification-progress::after {
+            background: linear-gradient(90deg, #ffa502, #ffa502);
+        }
+
+        @keyframes notificationProgress {
+            from {
+                transform: translateX(-100%);
+            }
+            to {
+                transform: translateX(0);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                z-index: 1000;
+            }
+
+            .sidebar.active {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-right: 0;
+                padding: 20px;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .top-bar {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div class="admin-container">
+        <!-- Sidebar -->
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h2>Es-Gift</h2>
+                <p>لوحة التحكم</p>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <div class="nav-item">
+                    <a href="{{ url_for('admin.dashboard') }}" class="nav-link">
+                        <i class="fas fa-tachometer-alt"></i>
+                        الرئيسية
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a href="{{ url_for('admin.homepage_management') }}" class="nav-link">
+                        <i class="fas fa-home"></i>
+                        إدارة الصفحة الرئيسية
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a href="{{ url_for('admin.categories') }}" class="nav-link">
+                        <i class="fas fa-tags"></i>
+                        الأقسام والفئات
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a href="{{ url_for('admin.products') }}" class="nav-link">
+                        <i class="fas fa-box"></i>
+                        المنتجات
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a href="{{ url_for('admin.users') }}" class="nav-link">
+                        <i class="fas fa-users"></i>
+                        العملاء
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a href="{{ url_for('admin.kyc_requests') }}" class="nav-link">
+                        <i class="fas fa-user-check"></i>
+                        طلبات التحقق
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a href="{{ url_for('admin.orders')}}" class="nav-link">
+                        <i class="fas fa-shopping-cart"></i>
+                        الطلبات
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a href="{{ url_for('admin.currencies') }}" class="nav-link">
+                        <i class="fas fa-coins"></i>
+                        العملات
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a href="{{ url_for('admin.payment_gateways') }}" class="nav-link">
+                        <i class="fas fa-credit-card"></i>
+                        بوابات الدفع
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a href="{{ url_for('admin.api_settings') }}" class="nav-link">
+                        <i class="fas fa-cog"></i>
+                        الإعدادات
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a href="{{ url_for('admin.articles') }}" class="nav-link">
+                        <i class="fas fa-blog"></i>
+                        المقالات
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a href="{{ url_for('admin.reports') }}" class="nav-link">
+                        <i class="fas fa-chart-bar"></i>
+                        التقارير
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a href="{{ url_for('admin.system_test') }}" class="nav-link">
+                        <i class="fas fa-vial"></i>
+                        اختبار النظام
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a href="{{ url_for('main.index') }}" class="nav-link">
+                        <i class="fas fa-globe"></i>
+                        عرض الموقع
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a href="{{ url_for('main.logout') }}" class="nav-link">
+                        <i class="fas fa-sign-out-alt"></i>
+                        تسجيل الخروج
+                    </a>
+                </div>
+            </nav>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="top-bar">
+                <h1 class="page-title">{% block page_title %}لوحة التحكم{% endblock %}</h1>
+                <div class="user-info">
+                    <div class="user-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div>
+                        <div style="font-weight: bold;">{{ current_user.email }}</div>
+                        <div style="font-size: 0.8em; color: #ccc;">مدير النظام</div>
+                    </div>
+                </div>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            <span>{{ message }}</span>
+                            <button onclick="this.parentElement.style.display='none'">&times;</button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <!-- Enhanced Notification System -->
+            <div id="notification-container" class="notification-container">
+                <!-- Success Notification -->
+                <div id="success-notification" class="notification success-notification" style="display: none;">
+                    <div class="notification-content">
+                        <i class="fas fa-check-circle"></i>
+                        <span class="notification-text"></span>
+                        <button class="notification-close" onclick="hideNotification('success-notification')">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="notification-progress"></div>
+                </div>
+                
+                <!-- Error Notification -->
+                <div id="error-notification" class="notification error-notification" style="display: none;">
+                    <div class="notification-content">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <span class="notification-text"></span>
+                        <button class="notification-close" onclick="hideNotification('error-notification')">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="notification-progress"></div>
+                </div>
+                
+                <!-- Warning Notification -->
+                <div id="warning-notification" class="notification warning-notification" style="display: none;">
+                    <div class="notification-content">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span class="notification-text"></span>
+                        <button class="notification-close" onclick="hideNotification('warning-notification')">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="notification-progress"></div>
+                </div>
+            </div>
+
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+
+    <script>
+        // Set active navigation link
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentPath = window.location.pathname;
+            const navLinks = document.querySelectorAll('.nav-link');
+            
+            navLinks.forEach(link => {
+                if (link.getAttribute('href') === currentPath) {
+                    link.classList.add('active');
+                }
+            });
+        });
+
+        // Mobile sidebar toggle
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('active');
+        }
+
+        // Notification system
+        function showNotification(type, message, duration = 4000) {
+            const notification = document.getElementById(`${type}-notification`);
+            const textElement = notification.querySelector('.notification-text');
+            
+            textElement.textContent = message;
+            notification.style.display = 'block';
+            
+            // Trigger animation
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 10);
+            
+            // Auto hide
+            setTimeout(() => {
+                hideNotification(`${type}-notification`);
+            }, duration);
+            
+            // Sound effect
+            playNotificationSound(type);
+        }
+
+        function hideNotification(notificationId) {
+            const notification = document.getElementById(notificationId);
+            notification.classList.remove('show');
+            notification.classList.add('hide');
+            
+            setTimeout(() => {
+                notification.style.display = 'none';
+                notification.classList.remove('hide');
+            }, 400);
+        }
+
+        function playNotificationSound(type) {
+            // Create audio context for notification sounds
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                // Different frequencies for different notification types
+                const frequencies = {
+                    'success': 800,
+                    'error': 400,
+                    'warning': 600
+                };
+                
+                oscillator.frequency.setValueAtTime(frequencies[type] || 600, audioContext.currentTime);
+                oscillator.type = 'sine';
+                
+                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.2);
+            } catch (e) {
+                // Audio not supported, ignore
+            }
+        }
+
+        // Handle Flask flash messages
+        document.addEventListener('DOMContentLoaded', function() {
+            // Handle existing flash messages
+            const flashMessages = document.querySelectorAll('.alert');
+            flashMessages.forEach(function(alert) {
+                const message = alert.textContent.trim();
+                let type = 'success';
+                
+                if (alert.classList.contains('alert-danger') || alert.classList.contains('alert-error')) {
+                    type = 'error';
+                } else if (alert.classList.contains('alert-warning')) {
+                    type = 'warning';
+                }
+                
+                // Hide original alert and show enhanced notification
+                alert.style.display = 'none';
+                showNotification(type, message);
+            });
+        });
+
+        // Enhanced Form Validation for Add User
+        function validateAddUserForm() {
+            const form = document.getElementById('add-user-form');
+            if (!form) return true;
+
+            const email = form.querySelector('input[name="email"]').value;
+            const password = form.querySelector('input[name="password"]').value;
+            const confirmPassword = form.querySelector('input[name="confirm_password"]').value;
+            const fullName = form.querySelector('input[name="full_name"]').value;
+            const phone = form.querySelector('input[name="phone"]').value;
+
+            // Email validation
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                showNotification('error', 'يرجى إدخال بريد إلكتروني صحيح');
+                return false;
+            }
+
+            // Password validation
+            if (password.length < 6) {
+                showNotification('error', 'كلمة المرور يجب أن تكون 6 أحرف على الأقل');
+                return false;
+            }
+
+            // Password confirmation
+            if (password !== confirmPassword) {
+                showNotification('error', 'كلمة المرور وتأكيد كلمة المرور غير متطابقتان');
+                return false;
+            }
+
+            // Full name validation
+            if (fullName.trim().length < 2) {
+                showNotification('error', 'يرجى إدخال الاسم الكامل (حرفين على الأقل)');
+                return false;
+            }
+
+            // Phone validation (optional but if provided should be valid)
+            if (phone && !/^[0-9+\-\s()]{7,15}$/.test(phone)) {
+                showNotification('error', 'يرجى إدخال رقم هاتف صحيح');
+                return false;
+            }
+
+            return true;
+        }
+
+        // Password strength indicator
+        function updatePasswordStrength(password) {
+            const strengthIndicator = document.getElementById('password-strength');
+            if (!strengthIndicator) return;
+
+            let strength = 0;
+            let text = '';
+            let color = '';
+
+            if (password.length >= 6) strength++;
+            if (password.match(/[a-z]/)) strength++;
+            if (password.match(/[A-Z]/)) strength++;
+            if (password.match(/[0-9]/)) strength++;
+            if (password.match(/[^a-zA-Z0-9]/)) strength++;
+
+            switch (strength) {
+                case 0:
+                case 1:
+                    text = 'ضعيف جداً';
+                    color = '#ff4757';
+                    break;
+                case 2:
+                    text = 'ضعيف';
+                    color = '#ffa502';
+                    break;
+                case 3:
+                    text = 'متوسط';
+                    color = '#fffa65';
+                    break;
+                case 4:
+                    text = 'قوي';
+                    color = '#7bed9f';
+                    break;
+                case 5:
+                    text = 'قوي جداً';
+                    color = '#00d4aa';
+                    break;
+            }
+
+            strengthIndicator.textContent = text;
+            strengthIndicator.style.color = color;
+        }
+
+        // Enhanced Notification System
+        function showNotification(type, message, duration = 4000) {
+            const notification = document.getElementById(`${type}-notification`);
+            const textElement = notification.querySelector('.notification-text');
+            
+            textElement.textContent = message;
+            notification.style.display = 'block';
+            
+            // Trigger animation
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 10);
+            
+            // Auto hide
+            setTimeout(() => {
+                hideNotification(`${type}-notification`);
+            }, duration);
+            
+            // Sound effect
+            playNotificationSound(type);
+        }
+
+        function hideNotification(notificationId) {
+            const notification = document.getElementById(notificationId);
+            notification.classList.remove('show');
+            notification.classList.add('hide');
+            
+            setTimeout(() => {
+                notification.style.display = 'none';
+                notification.classList.remove('hide');
+            }, 400);
+        }
+
+        function playNotificationSound(type) {
+            // Create audio context for notification sounds
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                // Different frequencies for different notification types
+                const frequencies = {
+                    'success': 800,
+                    'error': 400,
+                    'warning': 600
+                };
+                
+                oscillator.frequency.setValueAtTime(frequencies[type] || 600, audioContext.currentTime);
+                oscillator.type = 'sine';
+                
+                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.2);
+            } catch (e) {
+                // Audio not supported, ignore
+            }
+        }
+
+        // Handle Flask flash messages
+        document.addEventListener('DOMContentLoaded', function() {
+            // Handle existing flash messages
+            const flashMessages = document.querySelectorAll('.alert');
+            flashMessages.forEach(function(alert) {
+                const message = alert.textContent.trim();
+                let type = 'success';
+                
+                if (alert.classList.contains('alert-danger') || alert.classList.contains('alert-error')) {
+                    type = 'error';
+                } else if (alert.classList.contains('alert-warning')) {
+                    type = 'warning';
+                }
+                
+                // Hide original alert and show enhanced notification
+                alert.style.display = 'none';
+                showNotification(type, message);
+            });
+        });
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

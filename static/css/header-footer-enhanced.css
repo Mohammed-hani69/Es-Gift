@@ -1,0 +1,589 @@
+/* تحسينات الهيدر والفوتر للموبايل - Es-Gift */
+
+/* تحسينات عامة للهيدر */
+.header {
+  background: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%);
+  box-shadow: 0 4px 20px rgba(255, 0, 51, 0.15);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  transition: all 0.3s ease;
+}
+
+/* تحسين ترتيب عناصر الهيدر */
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: rgba(17, 17, 17, 0.95);
+  backdrop-filter: blur(10px);
+  gap: 15px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.header-center {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  max-width: 500px;
+  margin: 0 15px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+/* تحسين اللوجو */
+.logo-image {
+  width: 65px;
+  height: 65px;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(255, 0, 51, 0.2);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.logo-image:hover {
+  box-shadow: 0 8px 30px rgba(255, 0, 51, 0.4);
+  transform: scale(1.05);
+}
+
+/* تحسين البحث */
+.search-box {
+  flex: 1;
+  position: relative;
+  max-width: 450px;
+}
+
+.search-box input {
+  width: 100%;
+  padding: 14px 45px 14px 18px;
+  border-radius: 25px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  font-size: 16px;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.search-box input:focus {
+  outline: none;
+  border-color: #ff0033;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 20px rgba(255, 0, 51, 0.3);
+}
+
+.search-box i {
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 18px;
+  transition: color 0.3s ease;
+}
+
+.search-box:hover i {
+  color: #ff0033;
+}
+
+/* تحسين منطقة العملة */
+.lang-currency {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 15px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+}
+
+.lang-currency:hover {
+  background: rgba(255, 0, 51, 0.1);
+  border-color: rgba(255, 0, 51, 0.3);
+  transform: translateY(-2px);
+}
+
+.global-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 35px;
+  height: 35px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  background: rgba(27, 27, 27, 0.8);
+  transition: all 0.3s ease;
+}
+
+.global-container:hover {
+  border-color: rgba(255, 0, 51, 0.5);
+  background: rgba(31, 28, 28, 0.8);
+}
+
+.currency-selector-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 0 30px 0 12px;
+  min-width: 120px;
+  transition: all 0.3s ease;
+}
+
+.currency-selector-wrapper:hover {
+  background: rgba(255, 255, 255, 0.12);
+  transform: translateY(-1px);
+}
+
+.currency-selector-wrapper select {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  outline: none;
+  cursor: pointer;
+  padding: 8px 0;
+  width: 100%;
+  appearance: none;
+}
+
+.currency-arrow {
+  position: absolute;
+  right: 8px;
+  pointer-events: none;
+  font-size: 12px;
+  transition: transform 0.3s ease;
+}
+
+.currency-selector-wrapper:hover .currency-arrow {
+  transform: rotate(180deg);
+}
+
+/* تحسين منطقة المستخدم */
+.user-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cart-btn,
+.menu-btn,
+.support-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  text-decoration: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.cart-btn:hover,
+.menu-btn:hover,
+.support-icon:hover {
+  background: rgba(255, 0, 51, 0.15);
+  color: #ff0033;
+  transform: scale(1.1);
+  border-color: rgba(255, 0, 51, 0.3);
+}
+
+.cart-count {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background: linear-gradient(135deg, #ff0033, #cc0028);
+  color: white;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: bold;
+  min-width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(255, 0, 51, 0.4);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+.login-btn-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #ff0033 0%, #cc0028 100%);
+  color: white;
+  border: none;
+  border-radius: 25px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(255, 0, 51, 0.3);
+  text-decoration: none;
+}
+
+.login-btn-header:hover {
+  background: linear-gradient(135deg, #cc0028 0%, #990020 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 25px rgba(255, 0, 51, 0.5);
+  color: white;
+}
+
+/* قائمة المستخدم المنسدلة */
+.user-menu {
+  position: relative;
+}
+
+.user-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: rgba(0, 0, 0, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 10px 0;
+  min-width: 160px;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+  transition: all 0.3s ease;
+  z-index: 1000;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.user-dropdown.show {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.user-dropdown a {
+  display: block;
+  padding: 12px 20px;
+  color: #fff;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 14px;
+}
+
+.user-dropdown a:last-child {
+  border-bottom: none;
+}
+
+.user-dropdown a:hover {
+  background: rgba(255, 0, 51, 0.1);
+  color: #ff0033;
+  padding-right: 25px;
+}
+
+/* البحث السفلي للموبايل */
+.bottom-search-box {
+  display: none;
+  position: relative;
+  margin: 15px 20px;
+}
+
+.bottom-search-box input {
+  width: 100%;
+  padding: 14px 45px 14px 18px;
+  border-radius: 25px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  font-size: 16px;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.bottom-search-box input:focus {
+  outline: none;
+  border-color: #ff0033;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 20px rgba(255, 0, 51, 0.3);
+}
+
+.bottom-search-box i {
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 18px;
+}
+
+/* تحسينات الموبايل */
+@media (max-width: 768px) {
+  .top-bar {
+    padding: 12px 15px;
+    gap: 10px;
+  }
+
+  .header-left {
+    order: 1;
+  }
+
+  .header-center {
+    display: none;
+  }
+
+  .header-right {
+    order: 2;
+    gap: 8px;
+    flex: 1;
+    justify-content: flex-end;
+  }
+
+  .logo-image {
+    width: 50px;
+    height: 50px;
+  }
+
+  .bottom-search-box {
+    display: block;
+    margin: 12px 15px;
+  }
+
+  .lang-currency {
+    padding: 8px 12px;
+    gap: 6px;
+  }
+
+  .global-container {
+    width: 30px;
+    height: 30px;
+  }
+
+  .currency-selector-wrapper {
+    min-width: 85px;
+    padding: 0 25px 0 8px;
+  }
+
+  .currency-selector-wrapper select {
+    font-size: 13px;
+  }
+
+  .cart-btn,
+  .menu-btn,
+  .support-icon {
+    width: 35px;
+    height: 35px;
+    font-size: 16px;
+  }
+
+  .login-btn-header {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  .login-text {
+    display: none;
+  }
+
+  .admin-text {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .top-bar {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  .header-right {
+    gap: 6px;
+  }
+
+  .logo-image {
+    width: 45px;
+    height: 45px;
+  }
+
+  .lang-currency {
+    padding: 6px 8px;
+    gap: 4px;
+  }
+
+  .global-container {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+
+  .currency-selector-wrapper {
+    min-width: 75px;
+    padding: 0 20px 0 6px;
+  }
+
+  .currency-selector-wrapper select {
+    font-size: 12px;
+  }
+
+  .cart-btn,
+  .menu-btn,
+  .support-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+  }
+
+  .login-btn-header {
+    padding: 6px 8px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+  }
+
+  .bottom-search-box {
+    margin: 10px 12px;
+  }
+}
+
+/* تحسينات الفوتر */
+.footer {
+  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0f0f0f 100%);
+  border-top: 2px solid rgba(255, 0, 51, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+/* تحسينات الفوتر للموبايل */
+@media (max-width: 768px) {
+  .footer {
+    padding: 25px 15px 20px;
+  }
+
+  .footer-first-row {
+    flex-direction: column;
+    gap: 25px;
+    align-items: center;
+    text-align: center;
+  }
+
+  .payment-icons {
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 18px;
+  }
+
+  .payment-icon-item {
+    font-size: 24px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .payment-icon-item:hover {
+    background: rgba(255, 0, 51, 0.1);
+    border-color: rgba(255, 0, 51, 0.3);
+    transform: scale(1.05);
+  }
+
+  .trustpilot-btn {
+    padding: 12px 25px;
+    font-size: 15px;
+    border-radius: 25px;
+    background: linear-gradient(135deg, #00b67a 0%, #00a86b 100%);
+    border: none;
+    color: white;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 182, 122, 0.3);
+  }
+
+  .social-section {
+    text-align: center;
+    margin: 30px 0;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 15px;
+  }
+
+  .social-icons {
+    justify-content: center;
+    gap: 20px;
+  }
+
+  .social-icons img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    padding: 5px;
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .social-icons img:hover {
+    transform: scale(1.1);
+    border-color: #ff0033;
+  }
+
+  .footer-links {
+    flex-direction: column;
+    gap: 20px;
+    text-align: center;
+  }
+
+  .footer-links div {
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 15px;
+  }
+
+  .footer-links p {
+    font-size: 15px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .footer-links p:hover {
+    color: #ff0033;
+  }
+}
+
+@media (max-width: 480px) {
+  .footer {
+    padding: 20px 12px 15px;
+  }
+
+  .payment-icon-item {
+    font-size: 20px;
+    padding: 8px;
+  }
+
+  .social-icons img {
+    width: 35px;
+    height: 35px;
+  }
+}

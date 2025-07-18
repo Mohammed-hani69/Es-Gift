@@ -1,0 +1,427 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}لوحة التحكم الرئيسية{% endblock %}
+
+{% block content %}
+<!-- إحصائيات سريعة -->
+<div class="stats-grid">
+    <div class="stat-card success">
+        <div class="stat-icon">
+            <i class="fas fa-users"></i>
+        </div>
+        <div class="stat-number">{{ total_users }}</div>
+        <div class="stat-label">إجمالي العملاء</div>
+    </div>
+    
+    <div class="stat-card info">
+        <div class="stat-icon">
+            <i class="fas fa-box"></i>
+        </div>
+        <div class="stat-number">{{ total_products }}</div>
+        <div class="stat-label">إجمالي المنتجات</div>
+    </div>
+    
+    <div class="stat-card warning">
+        <div class="stat-icon">
+            <i class="fas fa-shopping-cart"></i>
+        </div>
+        <div class="stat-number">{{ total_orders }}</div>
+        <div class="stat-label">إجمالي الطلبات</div>
+    </div>
+    
+    <div class="stat-card danger">
+        <div class="stat-icon">
+            <i class="fas fa-user-check"></i>
+        </div>
+        <div class="stat-number">{{ pending_kyc }}</div>
+        <div class="stat-label">طلبات التحقق المعلقة</div>
+    </div>
+</div>
+
+<!-- أحدث الطلبات -->
+<div class="content-card">
+    <h2 style="color: #ff0033; margin-bottom: 20px;">
+        <i class="fas fa-shopping-cart"></i>
+        أحدث الطلبات
+    </h2>
+    
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>رقم الطلب</th>
+                    <th>العميل</th>
+                    <th>المبلغ</th>
+                    <th>الحالة</th>
+                    <th>التاريخ</th>
+                    <th>الإجراءات</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in recent_orders %}
+                <tr>
+                    <td>#{{ order.order_number }}</td>
+                    <td>{{ order.user.full_name or order.user.email }}</td>
+                    <td>{{ order.total_amount }} {{ order.currency }}</td>
+                    <td>
+                        {% if order.status == 'completed' %}
+                            <span class="badge badge-success">مكتمل</span>
+                        {% elif order.status == 'pending' %}
+                            <span class="badge badge-warning">معلق</span>
+                        {% elif order.status == 'cancelled' %}
+                            <span class="badge badge-danger">ملغي</span>
+                        {% else %}
+                            <span class="badge badge-info">جديد</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ order.created_at.strftime('%Y-%m-%d') }}</td>
+                    <td>
+                        <a href="{{ url_for('admin.order_detail', order_id=order.id) }}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-eye"></i>
+                            عرض
+                        </a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" style="text-align: center; color: #ccc;">لا توجد طلبات حالياً</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- أحدث العملاء -->
+<div class="content-card">
+    <h2 style="color: #ff0033; margin-bottom: 20px;">
+        <i class="fas fa-users"></i>
+        أحدث العملاء
+    </h2>
+    
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>الاسم</th>
+                    <th>البريد الإلكتروني</th>
+                    <th>نوع العميل</th>
+                    <th>تاريخ التسجيل</th>
+                    <th>الإجراءات</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in recent_users %}
+                <tr>
+                    <td>{{ user.full_name or 'غير محدد' }}</td>
+                    <td>{{ user.email }}</td>
+                    <td>
+                        {% if user.customer_type == 'regular' %}
+                            <span class="badge badge-info">عادي</span>
+                        {% elif user.customer_type == 'kyc' %}
+                            <span class="badge badge-success">موثق</span>
+                        {% elif user.customer_type == 'reseller' %}
+                            <span class="badge badge-warning">موزع</span>
+                        {% elif user.is_admin %}
+                            <span class="badge badge-danger">مدير</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ user.created_at.strftime('%Y-%m-%d') }}</td>
+                    <td>
+                        <a href="{{ url_for('admin.user_detail', user_id=user.id) }}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-eye"></i>
+                            عرض
+                        </a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" style="text-align: center; color: #ccc;">لا توجد عملاء حالياً</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- المنتجات الأكثر مبيعاً -->
+<div class="content-card">
+    <h2 style="color: #ff0033; margin-bottom: 20px;">
+        <i class="fas fa-fire"></i>
+        المنتجات الأكثر مبيعاً
+    </h2>
+    
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>المنتج</th>
+                    <th>الفئة</th>
+                    <th>عدد المبيعات</th>
+                    <th>الإيرادات</th>
+                    <th>الحالة</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for i in range(5) %}
+                <tr>
+                    <td>منتج {{ i + 1 }}</td>
+                    <td>ألعاب</td>
+                    <td>{{ 100 - i * 10 }}</td>
+                    <td>{{ (2500 - i * 250) }} ر.س</td>
+                    <td>
+                        <span class="badge badge-success">نشط</span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- إجراءات سريعة -->
+<div class="content-card">
+    <h2 style="color: #ff0033; margin-bottom: 20px;">
+        <i class="fas fa-bolt"></i>
+        إجراءات سريعة
+    </h2>
+    
+    <div class="stats-grid">
+        <div class="stat-card" style="background: linear-gradient(135deg, #28a745, #20c997); border: 2px solid #28a745;">
+            <div class="stat-icon">
+                <i class="fas fa-plus"></i>
+            </div>
+            <div class="stat-label">إضافة منتج جديد</div>
+            <a href="{{ url_for('admin.products') }}" class="btn btn-success" style="margin-top: 15px;">
+                <i class="fas fa-plus"></i>
+                إضافة
+            </a>
+        </div>
+        
+        <div class="stat-card" style="background: linear-gradient(135deg, #17a2b8, #6f42c1); border: 2px solid #17a2b8;">
+            <div class="stat-icon">
+                <i class="fas fa-user-plus"></i>
+            </div>
+            <div class="stat-label">إضافة عميل جديد</div>
+            <a href="{{ url_for('admin.users') }}" class="btn btn-primary" style="margin-top: 15px; background: linear-gradient(135deg, #17a2b8, #6f42c1);">
+                <i class="fas fa-user-plus"></i>
+                إدارة
+            </a>
+        </div>
+        
+        <div class="stat-card" style="background: linear-gradient(135deg, #ffc107, #fd7e14); border: 2px solid #ffc107;">
+            <div class="stat-icon">
+                <i class="fas fa-cog"></i>
+            </div>
+            <div class="stat-label">إعدادات النظام</div>
+            <a href="{{ url_for('admin.currencies') }}" class="btn btn-warning" style="margin-top: 15px;">
+                <i class="fas fa-cog"></i>
+                إعدادات
+            </a>
+        </div>
+        
+        <div class="stat-card" style="background: linear-gradient(135deg, #dc3545, #e83e8c); border: 2px solid #dc3545;">
+            <div class="stat-icon">
+                <i class="fas fa-chart-line"></i>
+            </div>
+            <div class="stat-label">عرض التقارير</div>
+            <a href="{{ url_for('admin.orders') }}" class="btn btn-danger" style="margin-top: 15px;">
+                <i class="fas fa-chart-line"></i>
+                تقارير
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- تنبيهات النظام -->
+<div class="content-card">
+    <h2 style="color: #ff0033; margin-bottom: 20px;">
+        <i class="fas fa-bell"></i>
+        تنبيهات النظام
+    </h2>
+    
+    <div style="display: flex; flex-direction: column; gap: 15px;">
+        <div class="alert alert-warning">
+            <span>
+                <i class="fas fa-exclamation-triangle"></i>
+                <strong>تنبيه:</strong> يوجد {{ pending_kyc }} طلبات تحقق معلقة تحتاج للمراجعة.
+            </span>
+        </div>
+        
+        <div class="alert alert-success">
+            <span>
+                <i class="fas fa-check-circle"></i>
+                <strong>نجح:</strong> تم تحديث النظام بنجاح إلى أحدث إصدار.
+            </span>
+        </div>
+        
+        <div class="alert alert-info">
+            <span>
+                <i class="fas fa-info-circle"></i>
+                <strong>معلومة:</strong> تم إضافة {{ total_products }} منتج جديد هذا الأسبوع.
+            </span>
+        </div>
+    </div>
+</div>
+
+<style>
+.alert {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.alert i {
+    font-size: 1.2em;
+    margin-left: 8px;
+}
+
+.stats-grid .stat-card a {
+    text-decoration: none;
+}
+
+.table-container {
+    overflow-x: auto;
+}
+
+/* تحسينات إضافية للتصميم المظلم */
+.content-card h2 {
+    color: #ff0033 !important;
+    border-bottom: 2px solid #333;
+    padding-bottom: 10px;
+    margin-bottom: 20px !important;
+}
+
+.stat-card .btn {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+}
+
+.stat-card .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 0, 51, 0.4);
+}
+
+/* تحسين عرض البيانات في الجداول */
+.data-table td {
+    border-bottom: 1px solid #333;
+    color: #fff;
+}
+
+.data-table tbody tr:hover {
+    background-color: #333;
+    transition: background-color 0.3s ease;
+}
+
+/* تحسين Badge التصميم */
+.badge {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+@media (max-width: 768px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .table-container {
+        font-size: 0.9em;
+    }
+    
+    .data-table th,
+    .data-table td {
+        padding: 8px;
+    }
+    
+    .content-card {
+        padding: 20px;
+    }
+    
+    .stat-card {
+        padding: 20px;
+    }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// تحديث الإحصائيات كل دقيقة
+setInterval(function() {
+    // يمكن إضافة AJAX call هنا لتحديث الإحصائيات
+}, 60000);
+
+// إضافة تأثيرات تفاعلية للبطاقات
+document.addEventListener('DOMContentLoaded', function() {
+    const statCards = document.querySelectorAll('.stat-card');
+    
+    statCards.forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-10px) scale(1.02)';
+            this.style.boxShadow = '0 15px 40px rgba(255, 0, 51, 0.4)';
+        });
+        
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0) scale(1)';
+            this.style.boxShadow = '0 10px 30px rgba(255, 0, 51, 0.3)';
+        });
+    });
+    
+    // تأثيرات على الجداول
+    const tableRows = document.querySelectorAll('.data-table tbody tr');
+    tableRows.forEach(row => {
+        row.addEventListener('mouseenter', function() {
+            this.style.backgroundColor = '#444';
+            this.style.borderLeft = '4px solid #ff0033';
+        });
+        
+        row.addEventListener('mouseleave', function() {
+            this.style.backgroundColor = '';
+            this.style.borderLeft = '';
+        });
+    });
+    
+    // تأثيرات على الأزرار
+    const buttons = document.querySelectorAll('.btn');
+    buttons.forEach(button => {
+        button.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-2px)';
+        });
+        
+        button.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+        });
+    });
+    
+    // تأثيرات على التنبيهات
+    const alerts = document.querySelectorAll('.alert');
+    alerts.forEach(alert => {
+        alert.style.transition = 'all 0.3s ease';
+        alert.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateX(5px)';
+            this.style.boxShadow = '0 6px 20px rgba(0, 0, 0, 0.4)';
+        });
+        
+        alert.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateX(0)';
+            this.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
+        });
+    });
+});
+
+// إضافة تأثير fade-in للعناصر عند التحميل
+window.addEventListener('load', function() {
+    const elements = document.querySelectorAll('.content-card, .stat-card');
+    elements.forEach((element, index) => {
+        element.style.opacity = '0';
+        element.style.transform = 'translateY(20px)';
+        element.style.transition = 'all 0.6s ease';
+        
+        setTimeout(() => {
+            element.style.opacity = '1';
+            element.style.transform = 'translateY(0)';
+        }, index * 100);
+    });
+});
+</script>
+{% endblock %}

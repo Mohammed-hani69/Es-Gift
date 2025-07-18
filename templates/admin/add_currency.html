@@ -1,0 +1,289 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}إضافة عملة جديدة{% endblock %}
+
+{% block content %}
+<div class="content-card">
+    <h2>
+        <i class="fas fa-plus-circle"></i>
+        إضافة عملة جديدة
+    </h2>
+    <p style="color: #ccc; margin-bottom: 20px;">
+        أضف عملة جديدة لنظام تحويل العملات
+    </p>
+
+    <form method="POST" action="{{ url_for('admin.add_currency') }}" class="currency-form">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+            <div class="form-group">
+                <label class="form-label" for="code">رمز العملة (3 أحرف):</label>
+                <input type="text" 
+                       id="code" 
+                       name="code" 
+                       class="form-control" 
+                       placeholder="USD, EUR, GBP" 
+                       maxlength="3" 
+                       required
+                       style="text-transform: uppercase;">
+                <small class="form-text">مثال: USD للدولار الأمريكي</small>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="name">اسم العملة:</label>
+                <input type="text" 
+                       id="name" 
+                       name="name" 
+                       class="form-control" 
+                       placeholder="الدولار الأمريكي" 
+                       required>
+                <small class="form-text">الاسم الكامل للعملة</small>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+            <div class="form-group">
+                <label class="form-label" for="symbol">رمز العملة:</label>
+                <input type="text" 
+                       id="symbol" 
+                       name="symbol" 
+                       class="form-control" 
+                       placeholder="$ أو €" 
+                       required>
+                <small class="form-text">الرمز المستخدم لعرض العملة</small>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="exchange_rate">سعر الصرف (مقابل الريال السعودي):</label>
+                <input type="number" 
+                       id="exchange_rate" 
+                       name="exchange_rate" 
+                       class="form-control" 
+                       placeholder="0.27" 
+                       step="0.0001" 
+                       min="0"
+                       required>
+                <small class="form-text">كم وحدة من هذه العملة تساوي ريال واحد</small>
+            </div>
+        </div>
+
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i>
+            <div>
+                <strong>ملاحظة هامة:</strong>
+                <ul style="margin: 10px 0 0 0; padding-right: 20px;">
+                    <li>سعر الصرف محسوب مقابل الريال السعودي</li>
+                    <li>إذا كان الدولار = 3.75 ريال، فسعر الصرف هو 0.27 (1 ÷ 3.75)</li>
+                    <li>للعملات الأقوى من الريال، سعر الصرف أقل من 1</li>
+                    <li>للعملات الأضعف من الريال، سعر الصرف أكبر من 1</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-success">
+                <i class="fas fa-save"></i>
+                إضافة العملة
+            </button>
+            <a href="{{ url_for('admin.currencies') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i>
+                العودة إلى قائمة العملات
+            </a>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const codeInput = document.getElementById('code');
+    const nameInput = document.getElementById('name');
+    const symbolInput = document.getElementById('symbol');
+    const exchangeRateInput = document.getElementById('exchange_rate');
+    
+    // تحويل رمز العملة إلى أحرف كبيرة
+    codeInput.addEventListener('input', function() {
+        this.value = this.value.toUpperCase();
+    });
+    
+    // اقتراحات تلقائية للعملات الشائعة
+    const commonCurrencies = {
+        'USD': { name: 'الدولار الأمريكي', symbol: '$', rate: '0.27' },
+        'EUR': { name: 'اليورو', symbol: '€', rate: '0.24' },
+        'GBP': { name: 'الجنيه الإسترليني', symbol: '£', rate: '0.21' },
+        'AED': { name: 'الدرهم الإماراتي', symbol: 'د.إ', rate: '0.98' },
+        'KWD': { name: 'الدينار الكويتي', symbol: 'د.ك', rate: '0.08' },
+        'QAR': { name: 'الريال القطري', symbol: 'ر.ق', rate: '0.97' },
+        'BHD': { name: 'الدينار البحريني', symbol: 'د.ب', rate: '0.10' },
+        'OMR': { name: 'الريال العماني', symbol: 'ر.ع', rate: '0.10' },
+        'EGP': { name: 'الجنيه المصري', symbol: 'ج.م', rate: '13.0' },
+        'JOD': { name: 'الدينار الأردني', symbol: 'د.أ', rate: '0.19' },
+        'TRY': { name: 'الليرة التركية', symbol: '₺', rate: '8.5' },
+        'JPY': { name: 'الين الياباني', symbol: '¥', rate: '40.0' },
+        'CNY': { name: 'اليوان الصيني', symbol: '¥', rate: '1.9' },
+        'INR': { name: 'الروبية الهندية', symbol: '₹', rate: '22.0' }
+    };
+    
+    codeInput.addEventListener('blur', function() {
+        const code = this.value.trim();
+        if (code && commonCurrencies[code]) {
+            const currency = commonCurrencies[code];
+            
+            if (!nameInput.value) {
+                nameInput.value = currency.name;
+            }
+            if (!symbolInput.value) {
+                symbolInput.value = currency.symbol;
+            }
+            if (!exchangeRateInput.value) {
+                exchangeRateInput.value = currency.rate;
+            }
+            
+            // تأثير بصري للتأكيد
+            [nameInput, symbolInput, exchangeRateInput].forEach(input => {
+                if (input.value) {
+                    input.style.borderColor = '#28a745';
+                    setTimeout(() => {
+                        input.style.borderColor = '';
+                    }, 2000);
+                }
+            });
+        }
+    });
+    
+    // تحسين تجربة المستخدم
+    const inputs = document.querySelectorAll('.form-control');
+    inputs.forEach(input => {
+        input.addEventListener('focus', function() {
+            this.parentElement.style.transform = 'scale(1.02)';
+            this.style.boxShadow = '0 0 0 3px rgba(255, 0, 51, 0.1)';
+        });
+        
+        input.addEventListener('blur', function() {
+            this.parentElement.style.transform = '';
+            this.style.boxShadow = '';
+        });
+    });
+});
+</script>
+
+<style>
+.currency-form {
+    max-width: 800px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+    transition: all 0.3s ease;
+}
+
+.form-label {
+    color: #fff;
+    font-weight: 600;
+    margin-bottom: 8px;
+    display: block;
+}
+
+.form-control {
+    width: 100%;
+    padding: 12px 15px;
+    border: 2px solid #444;
+    border-radius: 8px;
+    background: #333;
+    color: #fff;
+    font-size: 1em;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus {
+    border-color: #ff0033;
+    background: #444;
+    outline: none;
+}
+
+.form-text {
+    color: #aaa;
+    font-size: 0.9em;
+    margin-top: 5px;
+    display: block;
+}
+
+.form-actions {
+    margin-top: 30px;
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.btn {
+    padding: 12px 25px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+}
+
+.btn-success:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
+}
+
+.btn-secondary {
+    background: linear-gradient(135deg, #6c757d, #495057);
+    color: white;
+}
+
+.btn-secondary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(108, 117, 125, 0.4);
+}
+
+.alert {
+    padding: 15px;
+    border-radius: 8px;
+    margin: 20px 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.alert-info {
+    background: linear-gradient(135deg, rgba(23, 162, 184, 0.1), rgba(111, 66, 193, 0.1));
+    border: 1px solid #17a2b8;
+    color: #17a2b8;
+}
+
+.content-card h2 {
+    color: #ff0033;
+    border-bottom: 2px solid #333;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* تحسينات للشاشات الصغيرة */
+@media (max-width: 768px) {
+    .currency-form > div[style*="grid"] {
+        grid-template-columns: 1fr !important;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .btn {
+        justify-content: center;
+    }
+}
+</style>
+{% endblock %}
