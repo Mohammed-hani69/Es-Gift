@@ -18,8 +18,8 @@
             {% for item in cart_items %}
             <div class="cart-item" data-product-id="{{ item.product.id }}">
                 <div class="item-image">
-                    <img src="{{ item.product.image_url|image_url }}" 
-                         alt="{{ item.product.name }}">
+                    <img src="/static/uploads/{{ item.product.image_url }}" 
+                         alt="{{ item.product.name }}" onerror="this.src='/static/images/default-product.jpg'">
                 </div>
                 
                 <div class="item-details">
@@ -611,6 +611,10 @@ function updateQuantity(productId, quantity) {
     .then(data => {
         if (data.success) {
             updateCartDisplay();
+            // تحديث عداد السلة في الهيدر
+            if (typeof updateCartCount === 'function' && data.cart_count !== undefined) {
+                updateCartCount(data.cart_count);
+            }
         } else {
             showNotification('حدث خطأ في تحديث الكمية', 'error');
         }
@@ -637,6 +641,10 @@ function removeItem(productId) {
             if (data.success) {
                 document.querySelector(`[data-product-id="${productId}"]`).remove();
                 updateCartDisplay();
+                // تحديث عداد السلة في الهيدر
+                if (typeof updateCartCount === 'function' && data.cart_count !== undefined) {
+                    updateCartCount(data.cart_count);
+                }
                 showNotification('تم حذف المنتج من السلة', 'success');
             } else {
                 showNotification('حدث خطأ في حذف المنتج', 'error');

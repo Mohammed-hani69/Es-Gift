@@ -51,7 +51,7 @@ python test_run.py
 git add .
 
 # 2. عمل commit مع رسالة توضيحية (غيّر الرسالة لما يناسب التحديث)
-git commit -m "v 1.1.0"
+git commit -m "v 1.1.1"
 
 # 3. رفع التحديثات إلى الريموت (GitHub)
 git push origin main

@@ -6,7 +6,7 @@
 """
 
 from app import create_app
-from models import db, MainOffer, GiftCard, OtherBrand
+from models import db, MainOffer, GiftCardSection, OtherBrand
 
 def clean_image_paths():
     """تنظيف مسارات الصور الخاطئة في قاعدة البيانات"""
@@ -30,7 +30,7 @@ def clean_image_paths():
         
         # تنظيف بطاقات الهدايا
         print("\n🎁 تنظيف بطاقات الهدايا...")
-        gift_cards = GiftCard.query.all()
+        gift_cards = GiftCardSection.query.all()
         for card in gift_cards:
             if card.image_url and card.image_url.startswith('/static/'):
                 old_path = card.image_url
@@ -78,7 +78,7 @@ def check_missing_images():
                     print(f"   ✅ صورة موجودة: {offer.title}")
         
         # فحص بطاقات الهدايا
-        gift_cards = GiftCard.query.all()
+        gift_cards = GiftCardSection.query.all()
         for card in gift_cards:
             if card.image_url and not card.image_url.startswith('http'):
                 file_path = os.path.join(uploads_path, card.image_url)

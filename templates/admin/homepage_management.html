@@ -30,59 +30,26 @@
             {% for offer in main_offers %}
             <div class="homepage-item">
                 <div class="item-image">
-                    <img src="{{ offer.image_url|image_url }}" alt="{{ offer.title }}">
+                    <img src="/static/uploads/main-offers/{{ offer.image_url }}" alt="{{ offer.title }}" onerror="this.src='/static/images/default-product.jpg'">
                 </div>
                 <div class="item-info">
                     <h4>{{ offer.title }}</h4>
-                    <p><strong>الرابط:</strong> {{ offer.link_url }}</p>
                     <p><strong>ترتيب العرض:</strong> {{ offer.display_order }}</p>
                 </div>
                 <div class="item-actions">
-                    <button class="btn btn-warning btn-sm" onclick="editMainOffer({{ offer.id }}, '{{ offer.title }}', '{{ offer.image_url }}', '{{ offer.link_url }}', {{ offer.display_order }})" style="margin-left: 10px;">
-                        <i class="fas fa-edit"></i>
-                        تعديل
-                    </button>
-                    <button class="btn btn-danger btn-sm" onclick="deleteMainOffer({{ offer.id }})">
-                        <i class="fas fa-trash"></i>
-                        حذف
-                    </button>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-    </section>
-
-    <!-- السكشن الثاني: الفئات المختصرة -->
-    <section class="homepage-section">
-        <div class="section-header">
-            <h3>
-                <i class="fas fa-th-large"></i>
-                فئات مختصرة
-            </h3>
-            <p>إضافة اسم مع رابط مع أيقونة للفئات السريعة</p>
-            <button class="btn btn-primary" onclick="showAddCategoryModal()">
-                <i class="fas fa-plus"></i>
-                إضافة فئة جديدة
-            </button>
-        </div>
-        
-        <div class="items-grid">
-            {% for category in quick_categories %}
-            <div class="homepage-item">
-                <div class="item-icon">
-                    <i class="{{ category.icon_class }}"></i>
-                </div>
-                <div class="item-info">
-                    <h4>{{ category.name }}</h4>
-                    <p><strong>الأيقونة:</strong> {{ category.icon_class }}</p>
-                    <p><strong>الرابط:</strong> {{ category.link_url }}</p>
-                    <p><strong>ترتيب العرض:</strong> {{ category.display_order }}</p>
-                </div>
-                <div class="item-actions">
-                    <button class="btn btn-danger btn-sm" onclick="deleteQuickCategory({{ category.id }})">
-                        <i class="fas fa-trash"></i>
-                        حذف
-                    </button>
+                    <form method="GET" action="{{ url_for('admin.edit_main_offer_form', offer_id=offer.id) }}" style="display: inline;">
+                        <button type="submit" class="btn btn-warning btn-sm" style="margin-left: 10px;">
+                            <i class="fas fa-edit"></i>
+                            تعديل
+                        </button>
+                    </form>
+                    <form method="POST" action="{{ url_for('admin.delete_main_offer', offer_id=offer.id) }}" style="display: inline;" onsubmit="return confirm('هل أنت متأكد من حذف هذا العرض؟')">
+                        <input type="hidden" name="_method" value="DELETE">
+                        <button type="submit" class="btn btn-danger btn-sm">
+                            <i class="fas fa-trash"></i>
+                            حذف
+                        </button>
+                    </form>
                 </div>
             </div>
             {% endfor %}
@@ -104,17 +71,22 @@
         </div>
         
         <div class="items-grid">
-            {% for gift_card in gift_cards %}
+            {% for gift_card in gift_card_sections %}
             <div class="homepage-item">
                 <div class="item-image">
-                    <img src="{{ url_for('static', filename='uploads/' + gift_card.image_url) }}" alt="{{ gift_card.title }}">
+                    <img src="/static/uploads/gift-cards/{{ gift_card.image_url }}" 
+                         alt="{{ gift_card.title }}" 
+                         onerror="this.src='/static/images/default-product.jpg'">
                 </div>
                 <div class="item-info">
                     <h4>{{ gift_card.title }}</h4>
-                    <p><strong>الرابط:</strong> {{ gift_card.link_url }}</p>
                     <p><strong>ترتيب العرض:</strong> {{ gift_card.display_order }}</p>
                 </div>
                 <div class="item-actions">
+                    <button class="btn btn-warning btn-sm" onclick="editGiftCard({{ gift_card.id }})" style="margin-left: 5px;">
+                        <i class="fas fa-edit"></i>
+                        تعديل
+                    </button>
                     <button class="btn btn-danger btn-sm" onclick="deleteGiftCard({{ gift_card.id }})">
                         <i class="fas fa-trash"></i>
                         حذف
@@ -170,7 +142,7 @@
         <span class="close" onclick="closeAddOfferModal()">&times;</span>
         <h3>إضافة عرض رئيسي جديد</h3>
         
-        <form id="addOfferForm" enctype="multipart/form-data">
+        <form id="addOfferForm" action="{{ url_for('admin.add_main_offer') }}" method="POST" enctype="multipart/form-data">
             <div class="form-group">
                 <label for="offerTitle">عنوان العرض:</label>
                 <input type="text" id="offerTitle" name="title" class="form-control" required>
@@ -179,6 +151,7 @@
             <div class="form-group">
                 <label for="offerImage">صورة العرض:</label>
                 <input type="file" id="offerImage" name="image" class="form-control" accept="image/*" required>
+                <small>الحد الأقصى لحجم الصورة: 5 ميجابايت. الصيغ المدعومة: PNG, JPG, JPEG, GIF, WEBP</small>
             </div>
             
             <div class="form-group">
@@ -200,35 +173,45 @@
 </div>
 
 <!-- نافذة تعديل عرض رئيسي -->
-<div id="editOfferModal" class="modal" style="display: none;">
+<div id="editOfferModal" class="modal" style="display: {% if edit_offer %}flex{% else %}none{% endif %};">
     <div class="modal-content">
         <span class="close" onclick="closeEditOfferModal()">&times;</span>
         <h3>تعديل العرض الرئيسي</h3>
         
-        <form id="editOfferForm" enctype="multipart/form-data">
-            <input type="hidden" id="editOfferId" name="offer_id">
+        <form id="editOfferForm" action="{{ url_for('admin.edit_main_offer', offer_id=edit_offer.id if edit_offer else 0) }}" method="POST" enctype="multipart/form-data">
             
             <div class="form-group">
                 <label for="editOfferTitle">عنوان العرض:</label>
-                <input type="text" id="editOfferTitle" name="title" class="form-control" required>
+                <input type="text" id="editOfferTitle" name="title" class="form-control" value="{{ edit_offer.title if edit_offer else '' }}" required>
             </div>
             
+            {% if edit_offer and edit_offer.image_url %}
             <div class="form-group">
-                <label for="editOfferImage">صورة العرض الحالية:</label>
-                <div id="currentOfferImage" style="margin-bottom: 10px;"></div>
-                <label for="editOfferImageFile">تغيير الصورة (اختياري):</label>
-                <input type="file" id="editOfferImageFile" name="image" class="form-control" accept="image/*">
-                <small>اتركه فارغاً للاحتفاظ بالصورة الحالية</small>
+                <label>صورة العرض الحالية:</label>
+                <div style="margin-bottom: 10px;">
+                    <img src="/static/uploads/main-offers/{{ edit_offer.image_url }}" 
+                         style="max-width: 200px; max-height: 100px; border-radius: 8px; object-fit: cover;" 
+                         alt="الصورة الحالية"
+                         onerror="this.src='/static/images/default-product.jpg'">
+                </div>
+            </div>
+            {% endif %}
+            
+            <div class="form-group">
+                <label for="editOfferImageFile">{% if edit_offer %}تغيير الصورة (اختياري):{% else %}صورة العرض:{% endif %}</label>
+                <input type="file" id="editOfferImageFile" name="image" class="form-control" accept="image/*" {% if not edit_offer %}required{% endif %}>
+                {% if edit_offer %}<small>اتركه فارغاً للاحتفاظ بالصورة الحالية</small>{% endif %}
+                <small>الحد الأقصى لحجم الصورة: 5 ميجابايت. الصيغ المدعومة: PNG, JPG, JPEG, GIF, WEBP</small>
             </div>
             
             <div class="form-group">
                 <label for="editOfferLink">رابط العرض:</label>
-                <input type="url" id="editOfferLink" name="link_url" class="form-control" required>
+                <input type="url" id="editOfferLink" name="link_url" class="form-control" value="{{ edit_offer.link_url if edit_offer else '' }}" required>
             </div>
             
             <div class="form-group">
                 <label for="editOfferOrder">ترتيب العرض:</label>
-                <input type="number" id="editOfferOrder" name="display_order" class="form-control">
+                <input type="number" id="editOfferOrder" name="display_order" class="form-control" value="{{ edit_offer.display_order if edit_offer else 0 }}">
             </div>
             
             <button type="submit" class="btn btn-success">
@@ -239,41 +222,7 @@
     </div>
 </div>
 
-<!-- نافذة إضافة فئة مختصرة -->
-<div id="addCategoryModal" class="modal" style="display: none;">
-    <div class="modal-content">
-        <span class="close" onclick="closeAddCategoryModal()">&times;</span>
-        <h3>إضافة فئة مختصرة جديدة</h3>
-        
-        <form id="addCategoryForm">
-            <div class="form-group">
-                <label for="categoryName">اسم الفئة:</label>
-                <input type="text" id="categoryName" name="name" class="form-control" required>
-            </div>
-            
-            <div class="form-group">
-                <label for="categoryIcon">أيقونة الفئة (FontAwesome):</label>
-                <input type="text" id="categoryIcon" name="icon_class" class="form-control" placeholder="fas fa-gamepad" required>
-                <small>مثال: fas fa-gamepad, fas fa-mobile-alt, fas fa-gift</small>
-            </div>
-            
-            <div class="form-group">
-                <label for="categoryLink">رابط الفئة:</label>
-                <input type="url" id="categoryLink" name="link_url" class="form-control" required>
-            </div>
-            
-            <div class="form-group">
-                <label for="categoryOrder">ترتيب العرض:</label>
-                <input type="number" id="categoryOrder" name="display_order" class="form-control" value="0">
-            </div>
-            
-            <button type="submit" class="btn btn-primary">
-                <i class="fas fa-save"></i>
-                إضافة الفئة
-            </button>
-        </form>
-    </div>
-</div>
+
 
 <!-- نافذة إضافة بطاقة هدايا -->
 <div id="addGiftCardModal" class="modal" style="display: none;">
@@ -281,7 +230,7 @@
         <span class="close" onclick="closeAddGiftCardModal()">&times;</span>
         <h3>إضافة بطاقة هدايا جديدة</h3>
         
-        <form id="addGiftCardForm" enctype="multipart/form-data">
+        <form id="addGiftCardForm" action="{{ url_for('admin.add_gift_card') }}" method="POST" enctype="multipart/form-data">
             <div class="form-group">
                 <label for="giftCardTitle">عنوان البطاقة:</label>
                 <input type="text" id="giftCardTitle" name="title" class="form-control" required>
@@ -290,11 +239,25 @@
             <div class="form-group">
                 <label for="giftCardImage">صورة البطاقة:</label>
                 <input type="file" id="giftCardImage" name="image" class="form-control" accept="image/*" required>
+                <small>الحد الأقصى لحجم الصورة: 5 ميجابايت. الصيغ المدعومة: PNG, JPG, JPEG, GIF, WEBP</small>
             </div>
             
             <div class="form-group">
                 <label for="giftCardLink">رابط البطاقة:</label>
                 <input type="url" id="giftCardLink" name="link_url" class="form-control" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="giftCardType">نوع البطاقة:</label>
+                <select id="giftCardType" name="card_type" class="form-control">
+                    <option value="gift">بطاقات هدايا الألعاب</option>
+                    <option value="shopping">التسوق</option>
+                    <option value="mobile">الموبايل والإنترنت</option>
+                    <option value="films">الأغاني والأفلام</option>
+                    <option value="pc">بلايستيشن</option>
+                    <option value="xbox">اكس بوكس</option>
+                    <option value="stc">STC سوا</option>
+                </select>
             </div>
             
             <div class="form-group">
@@ -305,6 +268,68 @@
             <button type="submit" class="btn btn-primary">
                 <i class="fas fa-save"></i>
                 إضافة البطاقة
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- نافذة تعديل بطاقة هدايا -->
+<div id="editGiftCardModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <span class="close" onclick="closeEditGiftCardModal()">&times;</span>
+        <h3>تعديل بطاقة الهدايا</h3>
+        
+        <form id="editGiftCardForm" method="POST" enctype="multipart/form-data">
+            <input type="hidden" id="editGiftCardId" name="card_id">
+            
+            <div class="form-group">
+                <label for="editGiftCardTitle">عنوان البطاقة:</label>
+                <input type="text" id="editGiftCardTitle" name="title" class="form-control" required>
+            </div>
+            
+            <div class="form-group" id="currentGiftCardImageDiv" style="display: none;">
+                <label>صورة البطاقة الحالية:</label>
+                <div style="margin-bottom: 10px;">
+                    <img id="currentGiftCardImage" 
+                         style="max-width: 200px; max-height: 100px; border-radius: 8px; object-fit: cover;" 
+                         alt="الصورة الحالية"
+                         onerror="this.src='/static/images/default-product.jpg'">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="editGiftCardImage">تغيير الصورة (اختياري):</label>
+                <input type="file" id="editGiftCardImage" name="image" class="form-control" accept="image/*">
+                <small>اتركه فارغاً للاحتفاظ بالصورة الحالية</small>
+                <small>الحد الأقصى لحجم الصورة: 5 ميجابايت. الصيغ المدعومة: PNG, JPG, JPEG, GIF, WEBP</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="editGiftCardLink">رابط البطاقة:</label>
+                <input type="url" id="editGiftCardLink" name="link_url" class="form-control" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="editGiftCardType">نوع البطاقة:</label>
+                <select id="editGiftCardType" name="card_type" class="form-control">
+                    <option value="gift">بطاقات هدايا الألعاب</option>
+                    <option value="shopping">التسوق</option>
+                    <option value="mobile">الموبايل والإنترنت</option>
+                    <option value="films">الأغاني والأفلام</option>
+                    <option value="pc">بلايستيشن</option>
+                    <option value="xbox">اكس بوكس</option>
+                    <option value="stc">STC سوا</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="editGiftCardOrder">ترتيب العرض:</label>
+                <input type="number" id="editGiftCardOrder" name="display_order" class="form-control">
+            </div>
+            
+            <button type="submit" class="btn btn-success">
+                <i class="fas fa-save"></i>
+                حفظ التعديلات
             </button>
         </form>
     </div>
@@ -387,17 +412,37 @@
 }
 
 .homepage-item {
-    background: #333;
-    padding: 20px;
-    border-radius: 10px;
+    background: linear-gradient(135deg, #2a2a2a 0%, #333 100%);
+    padding: 25px;
+    border-radius: 15px;
     border: 1px solid #444;
     transition: all 0.3s ease;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.homepage-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #ff0033, #ff6b6b);
+    transform: scaleX(0);
+    transition: transform 0.3s ease;
 }
 
 .homepage-item:hover {
-    background: #3a3a3a;
+    background: linear-gradient(135deg, #3a3a3a 0%, #444 100%);
     border-color: #ff0033;
-    transform: translateY(-2px);
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(255, 0, 51, 0.2);
+}
+
+.homepage-item:hover::before {
+    transform: scaleX(1);
 }
 
 .item-image {
@@ -406,12 +451,23 @@
     border-radius: 8px;
     overflow: hidden;
     margin-bottom: 15px;
+    position: relative;
+    background: #1a1a1a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .item-image img {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    transition: transform 0.3s ease;
+    border-radius: 8px;
+}
+
+.homepage-item:hover .item-image img {
+    transform: scale(1.05);
 }
 
 .item-icon {
@@ -438,12 +494,17 @@
     color: #fff;
     margin: 0 0 10px 0;
     font-size: 1.2em;
+    font-weight: 600;
 }
 
 .item-info p {
     color: #ccc;
     margin: 5px 0;
     font-size: 0.9em;
+}
+
+.item-info p strong {
+    color: #ff0033;
 }
 
 .item-actions {
@@ -564,6 +625,54 @@
     }
 }
 
+/* تصميم التنبيهات المحسن */
+.notification-toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: #333;
+    color: white;
+    padding: 15px 20px;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    z-index: 10000;
+    transform: translateX(400px);
+    opacity: 0;
+    transition: all 0.3s ease;
+    border-left: 4px solid #ff0033;
+    max-width: 350px;
+}
+
+.notification-toast.show {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.notification-toast.success {
+    border-left-color: #28a745;
+    background: linear-gradient(135deg, #28a745, #20c997);
+}
+
+.notification-toast.error {
+    border-left-color: #dc3545;
+    background: linear-gradient(135deg, #dc3545, #c82333);
+}
+
+.notification-toast.info {
+    border-left-color: #17a2b8;
+    background: linear-gradient(135deg, #17a2b8, #138496);
+}
+
+.notification-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.notification-content i {
+    font-size: 1.2em;
+}
+
 /* تأثيرات التحميل */
 .loading {
     opacity: 0.5;
@@ -590,7 +699,7 @@
 </style>
 
 <script>
-// نوافذ العروض الرئيسية
+// دوال بسيطة لفتح وإغلاق النوافذ
 function showAddOfferModal() {
     document.getElementById('addOfferModal').style.display = 'flex';
 }
@@ -600,36 +709,10 @@ function closeAddOfferModal() {
     document.getElementById('addOfferForm').reset();
 }
 
-// نوافذ تعديل العروض الرئيسية
-function editMainOffer(offerId, title, imageUrl, linkUrl, displayOrder) {
-    document.getElementById('editOfferId').value = offerId;
-    document.getElementById('editOfferTitle').value = title;
-    document.getElementById('editOfferLink').value = linkUrl;
-    document.getElementById('editOfferOrder').value = displayOrder;
-    
-    // عرض الصورة الحالية
-    document.getElementById('currentOfferImage').innerHTML = 
-        `<img src="/static/uploads/${imageUrl}" style="max-width: 200px; max-height: 100px; border-radius: 8px;" alt="الصورة الحالية">`;
-    
-    document.getElementById('editOfferModal').style.display = 'flex';
-}
-
 function closeEditOfferModal() {
     document.getElementById('editOfferModal').style.display = 'none';
-    document.getElementById('editOfferForm').reset();
 }
 
-// نوافذ الفئات المختصرة
-function showAddCategoryModal() {
-    document.getElementById('addCategoryModal').style.display = 'flex';
-}
-
-function closeAddCategoryModal() {
-    document.getElementById('addCategoryModal').style.display = 'none';
-    document.getElementById('addCategoryForm').reset();
-}
-
-// نوافذ بطاقات الهدايا
 function showAddGiftCardModal() {
     document.getElementById('addGiftCardModal').style.display = 'flex';
 }
@@ -639,7 +722,70 @@ function closeAddGiftCardModal() {
     document.getElementById('addGiftCardForm').reset();
 }
 
-// نوافذ الماركات الأخرى
+function editGiftCard(cardId) {
+    // جلب بيانات البطاقة من الخادم
+    fetch(`/admin/homepage/gift-cards/${cardId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const card = data.card;
+                
+                // تعبئة النموذج
+                document.getElementById('editGiftCardId').value = card.id;
+                document.getElementById('editGiftCardTitle').value = card.title;
+                document.getElementById('editGiftCardLink').value = card.link_url;
+                document.getElementById('editGiftCardType').value = card.card_type || 'gift';
+                document.getElementById('editGiftCardOrder').value = card.display_order;
+                
+                // إظهار الصورة الحالية إذا كانت موجودة
+                if (card.image_url) {
+                    document.getElementById('currentGiftCardImage').src = '/static/uploads/gift-cards/' + card.image_url;
+                    document.getElementById('currentGiftCardImageDiv').style.display = 'block';
+                } else {
+                    document.getElementById('currentGiftCardImageDiv').style.display = 'none';
+                }
+                
+                // تحديث action للنموذج
+                document.getElementById('editGiftCardForm').action = `/admin/homepage/gift-cards/${cardId}/edit`;
+                
+                // إظهار النافذة
+                document.getElementById('editGiftCardModal').style.display = 'flex';
+            } else {
+                alert('حدث خطأ في جلب بيانات البطاقة');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('حدث خطأ في الشبكة');
+        });
+}
+
+function closeEditGiftCardModal() {
+    document.getElementById('editGiftCardModal').style.display = 'none';
+    document.getElementById('editGiftCardForm').reset();
+}
+
+function deleteGiftCard(cardId) {
+    if (confirm('هل أنت متأكد من حذف هذه البطاقة؟')) {
+        fetch(`/admin/homepage/gift-cards/${cardId}/delete`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification('تم حذف البطاقة بنجاح', 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                alert('حدث خطأ: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('حدث خطأ في الشبكة');
+        });
+    }
+}
+
 function showAddBrandModal() {
     document.getElementById('addBrandModal').style.display = 'flex';
 }
@@ -649,567 +795,75 @@ function closeAddBrandModal() {
     document.getElementById('addBrandForm').reset();
 }
 
-// التحقق من صحة النماذج قبل الإرسال
-function validateOfferForm(form) {
-    const title = form.querySelector('[name="title"]').value.trim();
-    const linkUrl = form.querySelector('[name="link_url"]').value.trim();
-    const imageFile = form.querySelector('[name="image"]').files[0];
-    
-    if (!title) {
-        showNotification('يرجى إدخال عنوان العرض', 'error');
-        return false;
-    }
-    
-    if (!linkUrl) {
-        showNotification('يرجى إدخال رابط العرض', 'error');
-        return false;
-    }
-    
-    // التحقق من صحة الرابط
-    try {
-        new URL(linkUrl);
-    } catch (e) {
-        showNotification('يرجى إدخال رابط صحيح', 'error');
-        return false;
-    }
-    
-    // التحقق من الصورة (للنماذج التي تتطلب صورة)
-    if (form.id === 'addOfferForm' && !imageFile) {
-        showNotification('يرجى اختيار صورة للعرض', 'error');
-        return false;
-    }
-    
-    // التحقق من نوع الصورة
-    if (imageFile) {
-        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-        if (!allowedTypes.includes(imageFile.type)) {
-            showNotification('يرجى اختيار صورة بصيغة صحيحة (JPG, PNG, GIF, WebP)', 'error');
-            return false;
-        }
-        
-        // التحقق من حجم الصورة (5MB max)
-        if (imageFile.size > 5 * 1024 * 1024) {
-            showNotification('حجم الصورة كبير جداً. الحد الأقصى 5 ميجابايت', 'error');
-            return false;
-        }
-    }
-    
-    return true;
-}
-
-function validateCategoryForm(form) {
-    const name = form.querySelector('[name="name"]').value.trim();
-    const iconClass = form.querySelector('[name="icon_class"]').value.trim();
-    const linkUrl = form.querySelector('[name="link_url"]').value.trim();
-    
-    if (!name) {
-        showNotification('يرجى إدخال اسم الفئة', 'error');
-        return false;
-    }
-    
-    if (!iconClass) {
-        showNotification('يرجى إدخال أيقونة الفئة', 'error');
-        return false;
-    }
-    
-    if (!linkUrl) {
-        showNotification('يرجى إدخال رابط الفئة', 'error');
-        return false;
-    }
-    
-    // التحقق من صحة الرابط
-    try {
-        new URL(linkUrl);
-    } catch (e) {
-        showNotification('يرجى إدخال رابط صحيح', 'error');
-        return false;
-    }
-    
-    return true;
-}
-
-// معالجة النماذج مع التحقق من الصحة
-document.getElementById('addOfferForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    // التحقق من صحة البيانات
-    if (!validateOfferForm(this)) {
-        return;
-    }
-    
-    const formData = new FormData(this);
-    const submitBtn = this.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
-    
-    // تأثير التحميل
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإضافة...';
-    submitBtn.disabled = true;
-    
-    // التحقق من صحة النموذج
-    if (!validateOfferForm(this)) {
-        submitBtn.innerHTML = originalText;
-        submitBtn.disabled = false;
-        return;
-    }
-    
-    fetch('/admin/homepage/main-offers/add', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.json();
-    })
-    .then(data => {
-        if (data.success) {
-            showNotification('تم إضافة العرض بنجاح', 'success');
-            closeAddOfferModal();
-            setTimeout(() => {
-                location.reload();
-            }, 1500);
-        } else {
-            showNotification(data.message || 'حدث خطأ غير متوقع', 'error');
-        }
-    })
-    .catch(error => {
-        handleNetworkError(error);
-    })
-    .finally(() => {
-        // إعادة تعيين الزر
-        submitBtn.innerHTML = originalText;
-        submitBtn.disabled = false;
-    });
-});
-
-// معالجة نموذج تعديل العرض
-document.getElementById('editOfferForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    const formData = new FormData(this);
-    const offerId = document.getElementById('editOfferId').value;
-    const submitBtn = this.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
-    
-    // تأثير التحميل
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري التحديث...';
-    submitBtn.disabled = true;
-    
-    fetch(`/admin/homepage/main-offers/edit/${offerId}`, {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.json();
-    })
-    .then(data => {
-        if (data.success) {
-            showNotification('تم تحديث العرض بنجاح', 'success');
-            closeEditOfferModal();
-            setTimeout(() => {
-                location.reload();
-            }, 1500);
-        } else {
-            showNotification(data.message || 'حدث خطأ في التحديث', 'error');
-        }
-    })
-    .catch(error => {
-        handleNetworkError(error);
-    })
-    .finally(() => {
-        // إعادة تعيين الزر
-        submitBtn.innerHTML = originalText;
-        submitBtn.disabled = false;
-    });
-});
-
-document.getElementById('addCategoryForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    // التحقق من صحة البيانات
-    if (!validateCategoryForm(this)) {
-        return;
-    }
-    
-    const formData = new FormData(this);
-    const submitBtn = this.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
-    
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإضافة...';
-    submitBtn.disabled = true;
-    
-    // التحقق من صحة النموذج
-    if (!validateCategoryForm(this)) {
-        submitBtn.innerHTML = originalText;
-        submitBtn.disabled = false;
-        return;
-    }
-    
-    fetch('/admin/homepage/quick-categories/add', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.json();
-    })
-    .then(data => {
-        if (data.success) {
-            showNotification('تم إضافة الفئة بنجاح', 'success');
-            closeAddCategoryModal();
-            setTimeout(() => {
-                location.reload();
-            }, 1500);
-        } else {
-            showNotification(data.message || 'حدث خطأ في إضافة الفئة', 'error');
-        }
-    })
-    .catch(error => {
-        handleNetworkError(error);
-    })
-    .finally(() => {
-        submitBtn.innerHTML = originalText;
-        submitBtn.disabled = false;
-    });
-});
-
-document.getElementById('addGiftCardForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    const formData = new FormData(this);
-    const submitBtn = this.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
-    
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإضافة...';
-    submitBtn.disabled = true;
-    
-    fetch('/admin/homepage/gift-cards/add', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.json();
-    })
-    .then(data => {
-        if (data.success) {
-            showNotification('تم إضافة بطاقة الهدايا بنجاح', 'success');
-            closeAddGiftCardModal();
-            setTimeout(() => {
-                location.reload();
-            }, 1500);
-        } else {
-            showNotification(data.message || 'حدث خطأ في إضافة البطاقة', 'error');
-        }
-    })
-    .catch(error => {
-        handleNetworkError(error);
-    })
-    .finally(() => {
-        submitBtn.innerHTML = originalText;
-        submitBtn.disabled = false;
-    });
-});
-
-document.getElementById('addBrandForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    const formData = new FormData(this);
-    const submitBtn = this.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
-    
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإضافة...';
-    submitBtn.disabled = true;
-    
-    fetch('/admin/homepage/other-brands/add', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.json();
-    })
-    .then(data => {
-        if (data.success) {
-            showNotification('تم إضافة الماركة بنجاح', 'success');
-            closeAddBrandModal();
-            setTimeout(() => {
-                location.reload();
-            }, 1500);
-        } else {
-            showNotification(data.message || 'حدث خطأ في إضافة الماركة', 'error');
-        }
-    })
-    .catch(error => {
-        handleNetworkError(error);
-    })
-    .finally(() => {
-        submitBtn.innerHTML = originalText;
-        submitBtn.disabled = false;
-    });
-});
-
-// معالج خطأ عام للشبكة مع حماية من الأخطاء
-function handleNetworkError(error, customMessage = 'حدث خطأ في الشبكة') {
-    console.error('Network Error:', error);
-    
-    try {
-        // تحديد نوع الخطأ
-        if (error && error.name === 'TypeError' && error.message && error.message.includes('Failed to fetch')) {
-            showNotification('فشل في الاتصال بالخادم. تحقق من اتصال الإنترنت.', 'error');
-        } else if (error && error.message && error.message.includes('404')) {
-            showNotification('الصفحة المطلوبة غير موجودة.', 'error');
-        } else if (error && error.message && error.message.includes('500')) {
-            showNotification('خطأ في الخادم. يرجى المحاولة لاحقاً.', 'error');
-        } else {
-            showNotification(customMessage, 'error');
-        }
-    } catch (e) {
-        console.error('Error in handleNetworkError:', e);
-        // fallback في حالة الخطأ
-        alert(customMessage);
-    }
-}
-
-// إضافة مؤشر تحميل عام
-function showLoadingOverlay() {
-    const overlay = document.createElement('div');
-    overlay.id = 'loadingOverlay';
-    overlay.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.5);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 9999;
-    `;
-    overlay.innerHTML = `
-        <div style="background: white; padding: 20px; border-radius: 10px; text-align: center;">
-            <i class="fas fa-spinner fa-spin" style="font-size: 2em; color: #ff0033; margin-bottom: 10px;"></i>
-            <p style="margin: 0; color: #333;">جاري المعالجة...</p>
-        </div>
-    `;
-    document.body.appendChild(overlay);
-}
-
-function hideLoadingOverlay() {
-    const overlay = document.getElementById('loadingOverlay');
-    if (overlay) {
-        overlay.remove();
-    }
-}
-
-// وظائف الحذف
-function deleteMainOffer(offerId) {
-    if (confirm('هل أنت متأكد من حذف هذا العرض؟')) {
-        fetch(`/admin/homepage/main-offers/${offerId}/delete`, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                showNotification('تم حذف العرض بنجاح', 'success');
-                setTimeout(() => {
-                    location.reload();
-                }, 1500);
-            } else {
-                showNotification(data.message || 'حدث خطأ في الحذف', 'error');
-            }
-        })
-        .catch(error => {
-            handleNetworkError(error);
-        });
-    }
-}
-
-function deleteQuickCategory(categoryId) {
-    if (confirm('هل أنت متأكد من حذف هذه الفئة؟')) {
-        fetch(`/admin/homepage/quick-categories/${categoryId}/delete`, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                showNotification('تم حذف الفئة بنجاح', 'success');
-                setTimeout(() => {
-                    location.reload();
-                }, 1500);
-            } else {
-                showNotification(data.message || 'حدث خطأ في الحذف', 'error');
-            }
-        })
-        .catch(error => {
-            handleNetworkError(error);
-        });
-    }
-}
-
-function deleteGiftCard(cardId) {
-    if (confirm('هل أنت متأكد من حذف هذه البطاقة؟')) {
-        fetch(`/admin/homepage/gift-cards/${cardId}/delete`, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                showNotification('تم حذف البطاقة بنجاح', 'success');
-                setTimeout(() => {
-                    location.reload();
-                }, 1500);
-            } else {
-                showNotification(data.message || 'حدث خطأ في الحذف', 'error');
-            }
-        })
-        .catch(error => {
-            handleNetworkError(error);
-        });
-    }
-}
-
-function deleteOtherBrand(brandId) {
-    if (confirm('هل أنت متأكد من حذف هذه الماركة؟')) {
-        fetch(`/admin/homepage/other-brands/${brandId}/delete`, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                showNotification('تم حذف الماركة بنجاح', 'success');
-                setTimeout(() => {
-                    location.reload();
-                }, 1500);
-            } else {
-                showNotification(data.message || 'حدث خطأ في الحذف', 'error');
-            }
-        })
-        .catch(error => {
-            handleNetworkError(error);
-        });
-    }
-}
-
-// إغلاق النوافذ عند النقر خارجها
-window.onclick = function(event) {
-    const modals = document.querySelectorAll('.modal');
-    modals.forEach(modal => {
-        if (event.target === modal) {
-            modal.style.display = 'none';
-            // إعادة تعيين النماذج
-            const forms = modal.querySelectorAll('form');
-            forms.forEach(form => form.reset());
-        }
-    });
-}
-
-// دالة لإظهار الإشعارات مع حماية من الأخطاء
+// دالة لإظهار الإشعارات
 function showNotification(message, type = 'success') {
-    try {
-        const notification = document.createElement('div');
-        notification.className = `notification ${type}`;
-        notification.innerHTML = `
-            <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-triangle' : 'info-circle'}"></i>
-            <span>${message}</span>
-            <button onclick="this.parentElement.remove()">&times;</button>
-        `;
-        
-        // تصميم الإشعار
-        notification.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: ${type === 'success' ? 'linear-gradient(135deg, #28a745, #20c997)' : 
-                         type === 'error' ? 'linear-gradient(135deg, #dc3545, #e83e8c)' : 
-                         'linear-gradient(135deg, #17a2b8, #6f42c1)'};
-            color: white;
-            padding: 15px 20px;
-            border-radius: 10px;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
-            z-index: 1000;
-            transform: translateX(400px);
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-weight: 600;
-            max-width: 400px;
-        `;
-        
-        // التأكد من وجود body قبل إضافة الإشعار
-        if (document.body) {
-            document.body.appendChild(notification);
-            
-            // تأثير الدخول
-            setTimeout(() => {
-                notification.style.transform = 'translateX(0)';
-            }, 100);
-            
-            // إزالة الإشعار تلقائياً بعد 5 ثوان
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.style.transform = 'translateX(400px)';
-                    setTimeout(() => {
-                        if (notification.parentNode) {
-                            notification.remove();
-                        }
-                    }, 300);
-                }
-            }, 5000);
-        } else {
-            // fallback إذا لم يكن body متاحاً
-            console.log('Notification:', message);
-            alert(message);
-        }
-    } catch (error) {
-        console.error('Error in showNotification:', error);
-        // fallback في حالة الخطأ
-        alert(message);
-    }
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${type === 'success' ? '#28a745' : '#dc3545'};
+        color: white;
+        padding: 15px 20px;
+        border-radius: 10px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        z-index: 10000;
+        max-width: 350px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    `;
+    notification.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'}"></i>
+        <span>${message}</span>
+        <button onclick="this.remove()" style="background: none; border: none; color: white; font-size: 18px; cursor: pointer;">&times;</button>
+    `;
+    
+    document.body.appendChild(notification);
+    setTimeout(() => notification.remove(), 5000);
 }
+
+// معالجة النماذج بشكل مبسط
+document.addEventListener('DOMContentLoaded', function() {
+    // إظهار رسائل النجاح/الخطأ
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                showNotification('{{ message }}', '{{ "success" if category == "success" else "error" }}');
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    
+    // معالجة جميع النماذج
+    const forms = document.querySelectorAll('form');
+    forms.forEach(form => {
+        form.addEventListener('submit', function(e) {
+            const submitBtn = this.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                const originalText = submitBtn.innerHTML;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري المعالجة...';
+                submitBtn.disabled = true;
+                
+                // إعادة تفعيل الزر بعد 10 ثوان في حالة عدم انتهاء العملية
+                setTimeout(() => {
+                    if (submitBtn.disabled) {
+                        submitBtn.innerHTML = originalText;
+                        submitBtn.disabled = false;
+                    }
+                }, 10000);
+            }
+        });
+    });
+    
+    // إغلاق النوافذ عند النقر خارجها
+    window.onclick = function(event) {
+        const modals = document.querySelectorAll('.modal');
+        modals.forEach(modal => {
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+    }
+});
 </script>
 {% endblock %}

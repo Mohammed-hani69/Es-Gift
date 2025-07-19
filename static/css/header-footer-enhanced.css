@@ -5,10 +5,48 @@
   background: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%);
   box-shadow: 0 4px 20px rgba(255, 0, 51, 0.15);
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 1000;
-  transition: all 0.3s ease;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
+  transform: translateY(0);
+  will-change: transform;
+  backdrop-filter: blur(10px);
+}
+
+/* تأثير عند التمرير */
+.header.scrolled {
+  background: linear-gradient(135deg, rgba(15, 15, 15, 0.95) 0%, rgba(26, 26, 26, 0.95) 100%);
+  backdrop-filter: blur(20px);
+}
+
+/* تعويض مساحة الهيدر الثابت */
+body {
+  padding-top: 140px; /* ارتفاع الهيدر التقريبي */
+  scroll-behavior: smooth;
+}
+
+/* تحسين للأجهزة المحمولة */
+@media (max-width: 768px) {
+  body {
+    padding-top: 120px;
+  }
+  
+  .header {
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
+@media (max-width: 480px) {
+  body {
+    padding-top: 110px;
+  }
+  
+  .header {
+    transition: transform 0.2s ease-out;
+  }
 }
 
 /* تحسين ترتيب عناصر الهيدر */
@@ -182,7 +220,9 @@
 
 .cart-btn,
 .menu-btn,
-.support-icon {
+.support-icon,
+.logout-btn,
+.search-icon {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -195,15 +235,39 @@
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   border: 1px solid transparent;
   cursor: pointer;
+  position: relative;
 }
 
 .cart-btn:hover,
 .menu-btn:hover,
-.support-icon:hover {
+.support-icon:hover,
+.search-icon:hover {
   background: rgba(255, 0, 51, 0.15);
   color: #ff0033;
   transform: scale(1.1);
   border-color: rgba(255, 0, 51, 0.3);
+}
+
+.logout-btn:hover {
+  background: rgba(255, 69, 58, 0.15);
+  color: #ff453a;
+  transform: scale(1.1);
+  border-color: rgba(255, 69, 58, 0.3);
+}
+
+.logout-text {
+  display: none;
+  position: absolute;
+  bottom: -25px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.9);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  white-space: nowrap;
+  z-index: 1000;
 }
 
 .cart-count {
@@ -217,11 +281,38 @@
   font-weight: bold;
   min-width: 18px;
   height: 18px;
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: center;
   box-shadow: 0 2px 8px rgba(255, 0, 51, 0.4);
-  animation: pulse 2s infinite;
+  transition: all 0.3s ease;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.cart-count.animate {
+  animation: cartBounce 0.6s ease-out;
+}
+
+.cart-count.show {
+  display: flex;
+}
+
+@keyframes cartBounce {
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.3);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.logout-btn:hover .logout-text {
+  display: block;
 }
 
 @keyframes pulse {
@@ -447,10 +538,28 @@
 
   .cart-btn,
   .menu-btn,
-  .support-icon {
+  .support-icon,
+  .logout-btn,
+  .search-icon {
     width: 32px;
     height: 32px;
     font-size: 14px;
+  }
+
+  .cart-count {
+    min-width: 16px;
+    height: 16px;
+    font-size: 10px;
+    top: -3px;
+    right: -3px;
+  }
+
+  .logout-text {
+    display: none !important;
+  }
+
+  .admin-text {
+    display: none;
   }
 
   .login-btn-header {
@@ -462,6 +571,247 @@
 
   .bottom-search-box {
     margin: 10px 12px;
+  }
+}
+
+/* تحسين عداد السلة للأجهزة المختلفة */
+@media (max-width: 375px) {
+  .user-actions {
+    gap: 4px;
+  }
+  
+  .cart-btn,
+  .menu-btn,
+  .support-icon,
+  .logout-btn,
+  .search-icon {
+    width: 30px;
+    height: 30px;
+    font-size: 12px;
+  }
+
+  .cart-count {
+    min-width: 14px;
+    height: 14px;
+    font-size: 9px;
+    top: -2px;
+    right: -2px;
+  }
+
+  .logo-image {
+    width: 40px;
+    height: 40px;
+  }
+
+  .admin-text,
+  .login-text {
+    display: none;
+  }
+}
+
+/* إضافة hover effect لجميع الأزرار */
+.user-actions a,
+.user-actions button {
+  transition: all 0.3s ease;
+}
+
+.user-actions a:hover,
+.user-actions button:hover {
+  transform: translateY(-2px);
+}
+
+/* شريط البحث المنبثق */
+.search-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
+  z-index: 2000;
+  display: none;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 10vh;
+  opacity: 0;
+  transition: all 0.3s ease;
+}
+
+.search-overlay.active {
+  display: flex;
+  opacity: 1;
+}
+
+.search-popup {
+  background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+  border-radius: 20px;
+  padding: 30px;
+  width: 90%;
+  max-width: 600px;
+  box-shadow: 0 20px 60px rgba(255, 0, 51, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transform: translateY(-30px);
+  transition: all 0.3s ease;
+}
+
+.search-overlay.active .search-popup {
+  transform: translateY(0);
+}
+
+.search-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.search-header h3 {
+  color: #fff;
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.close-search {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close-search:hover {
+  background: rgba(255, 0, 51, 0.2);
+  transform: scale(1.1);
+}
+
+.search-input-container {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+#popupSearchInput {
+  flex: 1;
+  padding: 15px 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 15px;
+  color: #fff;
+  font-size: 1.1rem;
+  transition: all 0.3s ease;
+}
+
+#popupSearchInput:focus {
+  outline: none;
+  border-color: #ff0033;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+#popupSearchInput::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.search-btn {
+  background: linear-gradient(135deg, #ff0033, #cc0028);
+  border: none;
+  border-radius: 15px;
+  padding: 15px 20px;
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 60px;
+}
+
+.search-btn:hover {
+  background: linear-gradient(135deg, #ff1a4a, #dd0030);
+  transform: scale(1.05);
+}
+
+.search-suggestions {
+  max-height: 300px;
+  overflow-y: auto;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 15px;
+  padding: 10px;
+}
+
+.search-suggestion-item {
+  padding: 12px 15px;
+  color: #fff;
+  cursor: pointer;
+  border-radius: 10px;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.search-suggestion-item:hover {
+  background: rgba(255, 0, 51, 0.1);
+}
+
+/* تحسينات البحث المنبثق للأجهزة المحمولة */
+@media (max-width: 768px) {
+  .search-popup {
+    width: 95%;
+    padding: 20px;
+    margin: 0 10px;
+  }
+  
+  .search-header h3 {
+    font-size: 1.3rem;
+  }
+  
+  #popupSearchInput {
+    padding: 12px 15px;
+    font-size: 1rem;
+  }
+  
+  .search-btn {
+    padding: 12px 15px;
+    min-width: 50px;
+  }
+}
+
+@media (max-width: 480px) {
+  .search-overlay {
+    padding-top: 5vh;
+  }
+  
+  .search-popup {
+    width: 98%;
+    padding: 15px;
+    border-radius: 15px;
+  }
+  
+  .search-header h3 {
+    font-size: 1.2rem;
+  }
+  
+  .close-search {
+    width: 35px;
+    height: 35px;
+  }
+  
+  #popupSearchInput {
+    padding: 10px 12px;
+    font-size: 0.9rem;
+  }
+  
+  .search-btn {
+    padding: 10px 12px;
+    min-width: 45px;
   }
 }
 

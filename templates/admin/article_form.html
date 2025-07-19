@@ -48,8 +48,9 @@
                 {% if article and article.image_url %}
                 <div class="current-image" style="margin-top: 15px;">
                     <p>الصورة الحالية:</p>
-                    <img src="{{ article.image_url|image_url }}" 
-                         alt="صورة المقال" style="max-width: 200px; height: auto; border-radius: 8px;">
+                    <img src="/static/uploads/articles/{{ article.image_url }}" 
+                         alt="صورة المقال" style="max-width: 200px; height: auto; border-radius: 8px;"
+                         onerror="this.src='/static/images/default-product.jpg'">
                 </div>
                 {% endif %}
                 <div id="imagePreview" class="image-preview" style="display: none; margin-top: 15px;">

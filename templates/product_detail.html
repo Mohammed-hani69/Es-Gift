@@ -17,12 +17,12 @@
         <!-- Product Image -->
         <div class="product-image-section">
             <div class="main-image" >
-                <img style="object-fit: contain;" src="{{ product.image_url|image_url }}" 
-                     alt="{{ product.name }}" id="mainProductImage">
+                <img style="object-fit: contain;" src="/static/uploads/gift-cards/{{ product.image_url }}" 
+                     alt="{{ product.name }}" id="mainProductImage" onerror="this.src='/static/images/default-product.jpg'">
             </div>
             <div class="image-thumbnails">
-                <img src="{{ product.image_url|image_url }}" 
-                     alt="{{ product.name }}" class="thumbnail active">
+                <img src="/static/uploads/gift-cards/{{ product.image_url }}" 
+                     alt="{{ product.name }}" class="thumbnail active" onerror="this.src='/static/images/default-product.jpg'">
                 <!-- يمكن إضافة المزيد من الصور المصغرة هنا -->
             </div>
         </div>
@@ -612,6 +612,10 @@ function addToCart() {
     .then(data => {
         if (data.success) {
             showNotification('تمت إضافة المنتج إلى السلة', 'success');
+            // تحديث عداد السلة بالعدد المُرسل من الخادم
+            if (typeof updateCartCount === 'function' && data.cart_count !== undefined) {
+                updateCartCount(data.cart_count);
+            }
         } else {
             showNotification('حدث خطأ، يرجى المحاولة مرة أخرى', 'error');
         }

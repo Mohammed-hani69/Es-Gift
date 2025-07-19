@@ -68,9 +68,6 @@ def index():
     # العروض الرئيسية
     main_offers = MainOffer.query.filter_by(is_active=True).order_by(MainOffer.display_order).all()
     
-    # الفئات المختصرة
-    quick_categories = QuickCategory.query.filter_by(is_active=True).order_by(QuickCategory.display_order).all()
-    
     # بطاقات الهدايا
     gift_card_sections = GiftCardSection.query.filter_by(is_active=True).order_by(GiftCardSection.display_order).all()
     
@@ -91,7 +88,6 @@ def index():
                          other_products=other_products,
                          limited_offers=limited_offers,
                          main_offers=main_offers,
-                         quick_categories=quick_categories,
                          gift_card_sections=gift_card_sections,
                          other_brands=other_brands,
                          main_categories=main_categories,
@@ -356,7 +352,14 @@ def add_to_cart():
     cart[str(product_id)] = cart.get(str(product_id), 0) + quantity
     session['cart'] = cart
     
-    return jsonify({'success': True, 'message': 'تمت إضافة المنتج إلى السلة'})
+    # حساب إجمالي عدد العناصر في السلة
+    cart_count = sum(cart.values())
+    
+    return jsonify({
+        'success': True, 
+        'message': 'تمت إضافة المنتج إلى السلة',
+        'cart_count': cart_count
+    })
 
 @main.route('/cart')
 @login_required
@@ -379,6 +382,50 @@ def cart():
             total += price * quantity
     
     return render_template('cart.html', cart_items=cart_items, total=total)
+
+@main.route('/update-cart-quantity', methods=['POST'])
+@login_required
+def update_cart_quantity():
+    data = request.get_json()
+    product_id = data.get('product_id')
+    quantity = data.get('quantity', 1)
+    
+    cart = session.get('cart', {})
+    if str(product_id) in cart:
+        if quantity > 0:
+            cart[str(product_id)] = quantity
+        else:
+            del cart[str(product_id)]
+        session['cart'] = cart
+        
+        cart_count = sum(cart.values())
+        return jsonify({
+            'success': True,
+            'message': 'تم تحديث الكمية',
+            'cart_count': cart_count
+        })
+    
+    return jsonify({'success': False, 'message': 'المنتج غير موجود في السلة'})
+
+@main.route('/remove-from-cart', methods=['POST'])
+@login_required
+def remove_from_cart():
+    data = request.get_json()
+    product_id = data.get('product_id')
+    
+    cart = session.get('cart', {})
+    if str(product_id) in cart:
+        del cart[str(product_id)]
+        session['cart'] = cart
+        
+        cart_count = sum(cart.values())
+        return jsonify({
+            'success': True,
+            'message': 'تم حذف المنتج من السلة',
+            'cart_count': cart_count
+        })
+    
+    return jsonify({'success': False, 'message': 'المنتج غير موجود في السلة'})
 
 @main.route('/checkout', methods=['POST'])
 @login_required

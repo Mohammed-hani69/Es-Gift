@@ -42,7 +42,9 @@ class Product(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text)
-    category = db.Column(db.String(100))
+    category = db.Column(db.String(100))  # للتوافق مع النظام القديم
+    category_id = db.Column(db.Integer, db.ForeignKey('category.id'))  # القسم الرئيسي الجديد
+    subcategory_id = db.Column(db.Integer, db.ForeignKey('subcategory.id'))  # القسم الفرعي
     region = db.Column(db.String(50))
     value = db.Column(db.String(50))
     regular_price = db.Column(db.Numeric(10, 2))
@@ -54,7 +56,8 @@ class Product(db.Model):
     is_active = db.Column(db.Boolean, default=True)
     stock_quantity = db.Column(db.Integer, default=0)
     # إضافة ميزات التحكم في الظهور والأسعار المخصصة
-    restricted_visibility = db.Column(db.Boolean, default=False)  # تحكم في الظهور
+    visibility = db.Column(db.String(20), default='public')  # public, restricted
+    restricted_visibility = db.Column(db.Boolean, default=False)  # للتوافق مع النظام القديم
     has_custom_pricing = db.Column(db.Boolean, default=False)  # أسعار مخصصة
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
@@ -63,6 +66,9 @@ class Product(db.Model):
     # إضافة العلاقات الجديدة
     allowed_users = db.relationship('ProductUserAccess', backref='product', lazy=True, cascade='all, delete-orphan')
     custom_prices = db.relationship('ProductCustomPrice', backref='product', lazy=True, cascade='all, delete-orphan')
+    # العلاقات مع الأقسام
+    main_category = db.relationship('Category', backref='products', lazy=True, foreign_keys=[category_id])
+    sub_category = db.relationship('Subcategory', backref='products', lazy=True, foreign_keys=[subcategory_id])
 
 class ProductCode(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -147,15 +153,7 @@ class MainOffer(db.Model):
     display_order = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-class QuickCategory(db.Model):
-    """فئات مختصرة - اسم مع رابط مع أيقونة"""
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    icon_class = db.Column(db.String(100), nullable=False)  # FontAwesome class
-    link_url = db.Column(db.String(500), nullable=False)
-    is_active = db.Column(db.Boolean, default=True)
-    display_order = db.Column(db.Integer, default=0)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 
 class GiftCardSection(db.Model):
     """بطاقات الهدايا - صورة مع رابط"""
@@ -163,6 +161,7 @@ class GiftCardSection(db.Model):
     title = db.Column(db.String(200), nullable=False)
     image_url = db.Column(db.String(500), nullable=False)
     link_url = db.Column(db.String(500), nullable=False)
+    card_type = db.Column(db.String(50), default='gift')  # نوع البطاقة للفلترة (gift, shopping, mobile, films, pc, xbox, stc)
     is_active = db.Column(db.Boolean, default=True)
     display_order = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -232,8 +231,11 @@ class ProductCustomPrice(db.Model):
     product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     user_email = db.Column(db.String(120), nullable=False)  # حفظ البريد للمرجعية
-    custom_price = db.Column(db.Numeric(10, 2), nullable=False)
-    price_note = db.Column(db.String(200))  # ملاحظة على السعر المخصص
+    regular_price = db.Column(db.Numeric(10, 2), nullable=False)  # السعر العادي المخصص
+    kyc_price = db.Column(db.Numeric(10, 2), nullable=False)  # سعر KYC المخصص
+    custom_price = db.Column(db.Numeric(10, 2))  # للتوافق مع النظام القديم
+    note = db.Column(db.String(200))  # ملاحظة على السعر المخصص
+    price_note = db.Column(db.String(200))  # للتوافق مع النظام القديم
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # علاقة مع المستخدم

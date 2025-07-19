@@ -26,10 +26,7 @@
             </div>
 
             <div class="header-center">
-                <div class="search-box">
-                    <input type="text" placeholder="بحث" id="search-input">
-                    <i class="fa-solid fa-magnifying-glass"></i>
-                </div>
+                <!-- تم إزالة شريط البحث من هنا -->
             </div>
 
             <div class="header-right">
@@ -66,10 +63,22 @@
                         {% endif %}
                         <a href="{{ url_for('main.cart') }}" class="cart-btn">
                             <i class="fa-solid fa-cart-shopping"></i>
-                            <span class="cart-count" id="cart-count">0</span>
+                            <span class="cart-count" id="cart-count">
+                                {% if current_user.is_authenticated %}
+                                    {% set cart = session.get('cart', {}) %}
+                                    {% set cart_count = cart.values()|sum %}
+                                    {{ cart_count if cart_count > 0 else 0 }}
+                                {% else %}
+                                    0
+                                {% endif %}
+                            </span>
                         </a>
-                        <a href="{{ url_for('main.profile') }}" class="cart-btn">
+                        <a href="{{ url_for('main.profile') }}" class="cart-btn" title="الملف الشخصي">
                             <i class="fa-regular fa-circle-user menu-btn"></i>
+                        </a>
+                        <a href="{{ url_for('main.logout') }}" class="logout-btn" title="تسجيل الخروج" onclick="return confirm('هل أنت متأكد من تسجيل الخروج؟')">
+                            <i class="fa-solid fa-sign-out-alt"></i>
+                            <span class="logout-text">تسجيل الخروج</span>
                         </a>
                         
                     {% else %}
@@ -80,8 +89,8 @@
                     {% endif %}
                 </div>
 
-                <div class="support-icon">
-                    <i class="fa-solid fa-headset" title="خدمة العملاء"></i>
+                <div class="search-icon" id="searchToggle" title="البحث">
+                    <i class="fa-solid fa-magnifying-glass"></i>
                 </div>
             </div>
         </div>
@@ -106,11 +115,29 @@
             </div>
         </nav>
 
-        <div class="bottom-search-box">
-            <input type="text" placeholder="بحث" />
-            <i class="fa-solid fa-magnifying-glass"></i>
-        </div>
+
     </header>
+
+    <!-- شريط البحث المنبثق -->
+    <div id="searchOverlay" class="search-overlay">
+        <div class="search-popup">
+            <div class="search-header">
+                <h3>البحث في المتجر</h3>
+                <button class="close-search" id="closeSearch">
+                    <i class="fa-solid fa-times"></i>
+                </button>
+            </div>
+            <div class="search-input-container">
+                <input type="text" id="popupSearchInput" placeholder="ابحث عن المنتجات..." autocomplete="off">
+                <button class="search-btn" id="searchBtn">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                </button>
+            </div>
+            <div class="search-suggestions" id="searchSuggestions">
+                <!-- اقتراحات البحث ستظهر هنا -->
+            </div>
+        </div>
+    </div>
 
     <!-- Sidebar for login -->
     {% if not current_user.is_authenticated %}
@@ -256,6 +283,183 @@
 
     <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        // تحديث عداد السلة عند تحميل الصفحة
+        document.addEventListener('DOMContentLoaded', function() {
+            {% if current_user.is_authenticated %}
+                const cartCountElement = document.getElementById('cart-count');
+                if (cartCountElement) {
+                    const count = parseInt(cartCountElement.textContent) || 0;
+                    if (count > 0) {
+                        cartCountElement.classList.add('show');
+                    }
+                }
+            {% endif %}
+        });
+
+        // إخفاء/إظهار الهيدر عند التمرير
+        let lastScrollTop = 0;
+        let scrollTimeout;
+        const header = document.querySelector('.header');
+        let isScrolling = false;
+        
+        function handleScroll() {
+            const currentScrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            
+            // تجنب القيم السالبة
+            if (currentScrollTop < 0) return;
+            
+            // إضافة/إزالة class للتمرير
+            if (currentScrollTop > 50) {
+                header.classList.add('scrolled');
+            } else {
+                header.classList.remove('scrolled');
+            }
+            
+            // إذا كان في أعلى الصفحة، أظهر الهيدر دائماً
+            if (currentScrollTop <= 50) {
+                header.style.transform = 'translateY(0)';
+            } else if (currentScrollTop > lastScrollTop && currentScrollTop > 100) {
+                // التمرير لأسفل - إخفاء الهيدر
+                header.style.transform = 'translateY(-100%)';
+            } else if (currentScrollTop < lastScrollTop) {
+                // التمرير لأعلى - إظهار الهيدر
+                header.style.transform = 'translateY(0)';
+            }
+            
+            lastScrollTop = currentScrollTop;
+            isScrolling = false;
+        }
+        
+        window.addEventListener('scroll', function() {
+            if (!isScrolling) {
+                isScrolling = true;
+                requestAnimationFrame(handleScroll);
+            }
+        });
+
+        // إظهار الهيدر عند توقف التمرير لفترة طويلة
+        let scrollStopTimeout;
+        window.addEventListener('scroll', function() {
+            clearTimeout(scrollStopTimeout);
+            scrollStopTimeout = setTimeout(function() {
+                if (window.pageYOffset > 100) {
+                    header.style.transform = 'translateY(0)';
+                }
+            }, 2000); // إظهار الهيدر بعد ثانيتين من توقف التمرير
+        });
+
+        // إظهار الهيدر عند تحريك الماوس لأعلى الشاشة
+        document.addEventListener('mousemove', function(e) {
+            if (e.clientY <= 50 && window.pageYOffset > 100) {
+                header.style.transform = 'translateY(0)';
+            }
+        });
+
+        // وظائف البحث المنبثق
+        const searchToggle = document.getElementById('searchToggle');
+        const searchOverlay = document.getElementById('searchOverlay');
+        const closeSearch = document.getElementById('closeSearch');
+        const popupSearchInput = document.getElementById('popupSearchInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const searchSuggestions = document.getElementById('searchSuggestions');
+
+        // فتح البحث
+        searchToggle.addEventListener('click', function() {
+            searchOverlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+            setTimeout(() => {
+                popupSearchInput.focus();
+            }, 300);
+        });
+
+        // إغلاق البحث
+        function closeSearchOverlay() {
+            searchOverlay.classList.remove('active');
+            document.body.style.overflow = 'auto';
+            popupSearchInput.value = '';
+            searchSuggestions.innerHTML = '';
+        }
+
+        closeSearch.addEventListener('click', closeSearchOverlay);
+
+        // إغلاق البحث بالضغط على الخلفية
+        searchOverlay.addEventListener('click', function(e) {
+            if (e.target === searchOverlay) {
+                closeSearchOverlay();
+            }
+        });
+
+        // إغلاق البحث بمفتاح Escape
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && searchOverlay.classList.contains('active')) {
+                closeSearchOverlay();
+            }
+        });
+
+        // البحث عند الكتابة
+        let searchTimeout;
+        popupSearchInput.addEventListener('input', function() {
+            const query = this.value.trim();
+            
+            clearTimeout(searchTimeout);
+            
+            if (query.length >= 2) {
+                searchTimeout = setTimeout(() => {
+                    performSearch(query);
+                }, 300);
+            } else {
+                searchSuggestions.innerHTML = '';
+            }
+        });
+
+        // البحث عند الضغط على زر البحث
+        searchBtn.addEventListener('click', function() {
+            const query = popupSearchInput.value.trim();
+            if (query) {
+                performFullSearch(query);
+            }
+        });
+
+        // البحث عند الضغط على Enter
+        popupSearchInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                const query = this.value.trim();
+                if (query) {
+                    performFullSearch(query);
+                }
+            }
+        });
+
+        // دالة البحث السريع (للاقتراحات)
+        function performSearch(query) {
+            // هنا يمكن إضافة استدعاء API للبحث
+            // مؤقتاً سنعرض رسالة
+            searchSuggestions.innerHTML = `
+                <div class="search-suggestion-item" onclick="selectSuggestion('${query}')">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    البحث عن "${query}"
+                </div>
+            `;
+        }
+
+        // دالة البحث الكامل
+        function performFullSearch(query) {
+            closeSearchOverlay();
+            // إعادة توجيه لصفحة البحث أو تنفيذ البحث
+            console.log('البحث عن:', query);
+            // يمكن إضافة window.location.href = '/search?q=' + encodeURIComponent(query);
+        }
+
+        // اختيار اقتراح
+        function selectSuggestion(query) {
+            popupSearchInput.value = query;
+            performFullSearch(query);
+        }
+
+        // جعل الدالة متاحة عالمياً
+        window.selectSuggestion = selectSuggestion;
+    </script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

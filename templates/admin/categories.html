@@ -26,97 +26,120 @@
         </div>
         
         <div class="categories-grid">
-            {% for category in categories %}
-            <div class="category-card">
-                <div class="category-header">
-                    {% if category.image_url %}
-                        <div class="category-image">
-                            <img src="{{ category.image_url|image_url }}" alt="{{ category.name }}">
-                        </div>
-                    {% else %}
-                        <div class="category-icon">
-                            <i class="{{ category.icon_class or 'fas fa-folder' }}"></i>
-                        </div>
-                    {% endif %}
-                    <div class="category-info">
-                        <h4>{{ category.name }}</h4>
-                        {% if category.name_en %}
-                            <p class="category-name-en">{{ category.name_en }}</p>
+            {% if categories %}
+                {% for category in categories %}
+                <div class="category-card">
+                    <div class="category-header">
+                        {% if category.image_url %}
+                            <div class="category-image">
+                                <img src="/static/uploads/categories/{{ category.image_url }}" alt="{{ category.name }}" onerror="this.src='/static/images/default-product.jpg'">
+                            </div>
+                        {% else %}
+                            <div class="category-icon">
+                                <i class="{{ category.icon_class or 'fas fa-folder' }}"></i>
+                            </div>
                         {% endif %}
-                        {% if category.description %}
-                            <p class="category-description">{{ category.description }}</p>
-                        {% endif %}
-                        <div class="category-meta">
-                            <span class="badge {{ 'badge-success' if category.is_active else 'badge-danger' }}">
-                                {{ 'نشط' if category.is_active else 'غير نشط' }}
-                            </span>
-                            <span class="subcategory-count">{{ category.subcategories|length }} قسم فرعي</span>
+                        <div class="category-info">
+                            <h4>{{ category.name }}</h4>
+                            {% if category.name_en %}
+                                <p class="category-name-en">{{ category.name_en }}</p>
+                            {% endif %}
+                            {% if category.description %}
+                                <p class="category-description">{{ category.description }}</p>
+                            {% endif %}
+                            <div class="category-meta">
+                                <span class="badge {{ 'badge-success' if category.is_active else 'badge-danger' }}">
+                                    {{ 'نشط' if category.is_active else 'غير نشط' }}
+                                </span>
+                                <span class="subcategory-count">{{ category.subcategories|length }} قسم فرعي</span>
+                            </div>
                         </div>
                     </div>
-                </div>
-                
-                <div class="category-actions">
-                    <button class="btn btn-info btn-sm" onclick="showSubcategories({{ category.id }})">
-                        <i class="fas fa-eye"></i>
-                        الأقسام الفرعية
-                    </button>
-                    <button class="btn btn-warning btn-sm" onclick="editCategory({{ category.id }})">
-                        <i class="fas fa-edit"></i>
-                        تعديل
-                    </button>
-                    <button class="btn btn-danger btn-sm" onclick="deleteCategory({{ category.id }})">
-                        <i class="fas fa-trash"></i>
-                        حذف
-                    </button>
-                </div>
-                
-                <!-- الأقسام الفرعية -->
-                <div class="subcategories-container" id="subcategories-{{ category.id }}" style="display: none;">
-                    <div class="subcategories-header">
-                        <h5>الأقسام الفرعية</h5>
-                        <button class="btn btn-success btn-sm" onclick="showAddSubcategoryModal({{ category.id }})">
-                            <i class="fas fa-plus"></i>
-                            إضافة قسم فرعي
+                    
+                    <div class="category-actions">
+                        <button class="btn btn-info btn-sm" onclick="showSubcategories({{ category.id }})">
+                            <i class="fas fa-eye"></i>
+                            الأقسام الفرعية
+                        </button>
+                        <button class="btn btn-warning btn-sm" onclick="editCategory({{ category.id }})">
+                            <i class="fas fa-edit"></i>
+                            تعديل
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteCategory({{ category.id }})">
+                            <i class="fas fa-trash"></i>
+                            حذف
                         </button>
                     </div>
                     
-                    <div class="subcategories-list">
-                        {% for subcategory in category.subcategories %}
-                        <div class="subcategory-item">
-                            {% if subcategory.image_url %}
-                                <div class="subcategory-image">
-                                    <img src="{{ subcategory.image_url|image_url }}" alt="{{ subcategory.name }}">
+                    <!-- الأقسام الفرعية -->
+                    <div class="subcategories-container" id="subcategories-{{ category.id }}" style="display: none;">
+                        <div class="subcategories-header">
+                            <h5>الأقسام الفرعية</h5>
+                            <button class="btn btn-success btn-sm" onclick="showAddSubcategoryModal({{ category.id }})">
+                                <i class="fas fa-plus"></i>
+                                إضافة قسم فرعي
+                            </button>
+                        </div>
+                        
+                        <div class="subcategories-list">
+                            {% if category.subcategories %}
+                                {% for subcategory in category.subcategories %}
+                                <div class="subcategory-item">
+                                    {% if subcategory.image_url %}
+                                        <div class="subcategory-image">
+                                            <img src="/static/uploads/subcategories/{{ subcategory.image_url }}" alt="{{ subcategory.name }}" onerror="this.src='/static/images/default-product.jpg'">
+                                        </div>
+                                    {% else %}
+                                        <div class="subcategory-icon">
+                                            <i class="{{ subcategory.icon_class or 'fas fa-tag' }}"></i>
+                                        </div>
+                                    {% endif %}
+                                    
+                                    <div class="subcategory-info">
+                                        <h6>{{ subcategory.name }}</h6>
+                                        {% if subcategory.name_en %}
+                                            <p class="subcategory-name-en">{{ subcategory.name_en }}</p>
+                                        {% endif %}
+                                        <span class="badge {{ 'badge-success' if subcategory.is_active else 'badge-danger' }}">
+                                            {{ 'نشط' if subcategory.is_active else 'غير نشط' }}
+                                        </span>
+                                    </div>
+                                    
+                                    <div class="subcategory-actions">
+                                        <button class="btn btn-warning btn-xs" onclick="editSubcategory({{ subcategory.id }})">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-danger btn-xs" onclick="deleteSubcategory({{ subcategory.id }})">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
                                 </div>
+                                {% endfor %}
                             {% else %}
-                                <div class="subcategory-icon">
-                                    <i class="{{ subcategory.icon_class or 'fas fa-tag' }}"></i>
+                                <div class="empty-state">
+                                    <i class="fas fa-inbox"></i>
+                                    <p>لا توجد أقسام فرعية في هذا القسم</p>
+                                    <button class="btn btn-primary btn-sm" onclick="showAddSubcategoryModal({{ category.id }})">
+                                        <i class="fas fa-plus"></i>
+                                        إضافة أول قسم فرعي
+                                    </button>
                                 </div>
                             {% endif %}
-                            
-                            <div class="subcategory-info">
-                                <h6>{{ subcategory.name }}</h6>
-                                {% if subcategory.name_en %}
-                                    <p class="subcategory-name-en">{{ subcategory.name_en }}</p>
-                                {% endif %}
-                                <span class="badge {{ 'badge-success' if subcategory.is_active else 'badge-danger' }}">
-                                    {{ 'نشط' if subcategory.is_active else 'غير نشط' }}
-                                </span>
-                            </div>
-                            
-                            <div class="subcategory-actions">
-                                <button class="btn btn-warning btn-xs" onclick="editSubcategory({{ subcategory.id }})">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                                <button class="btn btn-danger btn-xs" onclick="deleteSubcategory({{ subcategory.id }})">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </div>
                         </div>
-                        {% endfor %}
                     </div>
                 </div>
-            </div>
-            {% endfor %}
+                {% endfor %}
+            {% else %}
+                <div class="empty-state-main">
+                    <i class="fas fa-folder-open"></i>
+                    <h3>لا توجد أقسام رئيسية</h3>
+                    <p>ابدأ بإضافة أول قسم رئيسي لمتجرك</p>
+                    <button class="btn btn-primary" onclick="showAddCategoryModal()">
+                        <i class="fas fa-plus"></i>
+                        إضافة أول قسم
+                    </button>
+                </div>
+            {% endif %}
         </div>
     </section>
 </div>
@@ -127,7 +150,7 @@
         <span class="close" onclick="closeAddCategoryModal()">&times;</span>
         <h3>إضافة قسم رئيسي جديد</h3>
         
-        <form id="addCategoryForm" enctype="multipart/form-data">
+        <form id="addCategoryForm" action="{{ url_for('admin.add_category') }}" method="POST" enctype="multipart/form-data">
             <div class="form-group">
                 <label for="categoryName">اسم القسم (عربي) *</label>
                 <input type="text" id="categoryName" name="name" class="form-control" required>
@@ -151,7 +174,11 @@
             
             <div class="form-group">
                 <label for="categoryImage">صورة القسم</label>
-                <input type="file" id="categoryImage" name="image" class="form-control" accept="image/*">
+                <input type="file" id="categoryImage" name="image" class="form-control" accept="image/*" onchange="previewImage(this, 'categoryImagePreview')">
+                <small>الحد الأقصى: 5 ميجابايت. الصيغ المدعومة: PNG, JPG, JPEG, GIF, WEBP</small>
+                <div id="categoryImagePreview" class="image-preview" style="display: none; margin-top: 10px;">
+                    <img style="max-width: 150px; max-height: 100px; border-radius: 8px; object-fit: cover;">
+                </div>
             </div>
             
             <div class="form-group">
@@ -180,7 +207,7 @@
         <span class="close" onclick="closeAddSubcategoryModal()">&times;</span>
         <h3>إضافة قسم فرعي جديد</h3>
         
-        <form id="addSubcategoryForm" enctype="multipart/form-data">
+        <form id="addSubcategoryForm" action="{{ url_for('admin.add_subcategory') }}" method="POST" enctype="multipart/form-data">
             <input type="hidden" id="parentCategoryId" name="category_id">
             
             <div class="form-group">
@@ -205,7 +232,11 @@
             
             <div class="form-group">
                 <label for="subcategoryImage">صورة القسم الفرعي</label>
-                <input type="file" id="subcategoryImage" name="image" class="form-control" accept="image/*">
+                <input type="file" id="subcategoryImage" name="image" class="form-control" accept="image/*" onchange="previewImage(this, 'subcategoryImagePreview')">
+                <small>الحد الأقصى: 5 ميجابايت. الصيغ المدعومة: PNG, JPG, JPEG, GIF, WEBP</small>
+                <div id="subcategoryImagePreview" class="image-preview" style="display: none; margin-top: 10px;">
+                    <img style="max-width: 150px; max-height: 100px; border-radius: 8px; object-fit: cover;">
+                </div>
             </div>
             
             <div class="form-group">
@@ -234,7 +265,7 @@
         <span class="close" onclick="closeEditCategoryModal()">&times;</span>
         <h3>تعديل القسم الرئيسي</h3>
         
-        <form id="editCategoryForm" enctype="multipart/form-data">
+        <form id="editCategoryForm" method="POST" enctype="multipart/form-data">
             <input type="hidden" id="editCategoryId" name="category_id">
             
             <div class="form-group">
@@ -259,8 +290,11 @@
             
             <div class="form-group">
                 <label for="editCategoryImage">صورة القسم الجديدة</label>
-                <input type="file" id="editCategoryImage" name="image" class="form-control" accept="image/*">
+                <input type="file" id="editCategoryImage" name="image" class="form-control" accept="image/*" onchange="previewImage(this, 'editCategoryImagePreview')">
                 <small>اتركه فارغاً للاحتفاظ بالصورة الحالية</small>
+                <div id="editCategoryImagePreview" class="image-preview" style="display: none; margin-top: 10px;">
+                    <img style="max-width: 150px; max-height: 100px; border-radius: 8px; object-fit: cover;">
+                </div>
             </div>
             
             <div class="form-group">
@@ -289,7 +323,7 @@
         <span class="close" onclick="closeEditSubcategoryModal()">&times;</span>
         <h3>تعديل القسم الفرعي</h3>
         
-        <form id="editSubcategoryForm" enctype="multipart/form-data">
+        <form id="editSubcategoryForm" method="POST" enctype="multipart/form-data">
             <input type="hidden" id="editSubcategoryId" name="subcategory_id">
             
             <div class="form-group">
@@ -323,8 +357,11 @@
             
             <div class="form-group">
                 <label for="editSubcategoryImage">صورة القسم الفرعي الجديدة</label>
-                <input type="file" id="editSubcategoryImage" name="image" class="form-control" accept="image/*">
+                <input type="file" id="editSubcategoryImage" name="image" class="form-control" accept="image/*" onchange="previewImage(this, 'editSubcategoryImagePreview')">
                 <small>اتركه فارغاً للاحتفاظ بالصورة الحالية</small>
+                <div id="editSubcategoryImagePreview" class="image-preview" style="display: none; margin-top: 10px;">
+                    <img style="max-width: 150px; max-height: 100px; border-radius: 8px; object-fit: cover;">
+                </div>
             </div>
             
             <div class="form-group">
@@ -697,6 +734,108 @@
     margin: 15px 0;
     text-align: center;
 }
+
+/* معاينة الصور */
+.image-preview {
+    border: 2px dashed #444;
+    padding: 10px;
+    text-align: center;
+    border-radius: 8px;
+    background: #2a2a2a;
+}
+
+.image-preview img {
+    border: 1px solid #555;
+}
+
+/* تحسينات إضافية للنماذج */
+.form-control:hover {
+    border-color: #555;
+    background: #3a3a3a;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+/* تحسين شكل الأزرار */
+.btn {
+    transition: all 0.3s ease;
+    font-weight: 600;
+    text-transform: none;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #ff0033, #ff6b6b);
+    border: none;
+}
+
+.btn-warning {
+    background: linear-gradient(135deg, #ffc107, #ffcd39);
+    border: none;
+    color: #000;
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #dc3545, #e55a6b);
+    border: none;
+}
+
+.btn-info {
+    background: linear-gradient(135deg, #17a2b8, #20c997);
+    border: none;
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #28a745, #34ce57);
+    border: none;
+}
+
+/* حالات فارغة */
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #ccc;
+}
+
+.empty-state i {
+    font-size: 3em;
+    color: #666;
+    margin-bottom: 15px;
+}
+
+.empty-state p {
+    margin: 10px 0 20px 0;
+    font-size: 1.1em;
+}
+
+.empty-state-main {
+    text-align: center;
+    padding: 60px 20px;
+    grid-column: 1 / -1;
+    background: #222;
+    border-radius: 15px;
+    border: 2px dashed #444;
+}
+
+.empty-state-main i {
+    font-size: 4em;
+    color: #ff0033;
+    margin-bottom: 20px;
+}
+
+.empty-state-main h3 {
+    color: #fff;
+    margin: 0 0 10px 0;
+    font-size: 1.5em;
+}
+
+.empty-state-main p {
+    color: #ccc;
+    margin: 0 0 30px 0;
+    font-size: 1.1em;
+}
 </style>
 
 <script>
@@ -773,6 +912,9 @@ function editCategory(categoryId) {
                 document.getElementById('editCategoryOrder').value = category.display_order;
                 document.getElementById('editCategoryActive').checked = category.is_active;
                 
+                // تحديث action النموذج
+                document.getElementById('editCategoryForm').action = `/admin/categories/${categoryId}/edit`;
+                
                 showEditCategoryModal();
             } else {
                 alert('حدث خطأ في جلب بيانات القسم');
@@ -802,6 +944,9 @@ function editSubcategory(subcategoryId) {
                 document.getElementById('editSubcategoryIcon').value = subcategory.icon_class || '';
                 document.getElementById('editSubcategoryOrder').value = subcategory.display_order;
                 document.getElementById('editSubcategoryActive').checked = subcategory.is_active;
+                
+                // تحديث action النموذج
+                document.getElementById('editSubcategoryForm').action = `/admin/subcategories/${subcategoryId}/edit`;
                 
                 showEditSubcategoryModal();
             } else {
@@ -856,97 +1001,118 @@ function deleteSubcategory(subcategoryId) {
     }
 }
 
-// معالجة النماذج
-document.getElementById('addCategoryForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    const formData = new FormData(this);
-    
-    fetch('/admin/categories/add', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            location.reload();
-        } else {
-            alert('حدث خطأ: ' + data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('حدث خطأ في الشبكة');
-    });
-});
+// معالجة النماذج - استخدام الإرسال العادي بدلاً من AJAX للتبسيط
+// إزالة event listeners المعقدة - النماذج ستستخدم الإرسال العادي
 
-document.getElementById('addSubcategoryForm').addEventListener('submit', function(e) {
-    e.preventDefault();
+// معاينة الصور قبل الرفع
+function previewImage(input, previewId) {
+    const preview = document.getElementById(previewId);
+    const img = preview.querySelector('img');
     
-    const formData = new FormData(this);
-    
-    fetch('/admin/subcategories/add', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            location.reload();
-        } else {
-            alert('حدث خطأ: ' + data.message);
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        
+        // فحص حجم الملف (5 ميجابايت)
+        if (file.size > 5 * 1024 * 1024) {
+            alert('حجم الصورة كبير جداً. الحد الأقصى المسموح 5 ميجابايت');
+            input.value = '';
+            preview.style.display = 'none';
+            return;
         }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('حدث خطأ في الشبكة');
-    });
-});
+        
+        // فحص نوع الملف
+        const allowedTypes = ['image/png', 'image/jpg', 'image/jpeg', 'image/gif', 'image/webp'];
+        if (!allowedTypes.includes(file.type)) {
+            alert('نوع الملف غير مدعوم. يرجى اختيار صورة (PNG, JPG, JPEG, GIF, WEBP)');
+            input.value = '';
+            preview.style.display = 'none';
+            return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            img.src = e.target.result;
+            preview.style.display = 'block';
+        };
+        
+        reader.readAsDataURL(file);
+    } else {
+        preview.style.display = 'none';
+    }
+}
 
-document.getElementById('editCategoryForm').addEventListener('submit', function(e) {
-    e.preventDefault();
+// validation للنماذج
+function validateCategoryForm(formId) {
+    const form = document.getElementById(formId);
+    const name = form.querySelector('input[name="name"]').value.trim();
     
-    const formData = new FormData(this);
+    if (!name) {
+        alert('اسم القسم مطلوب');
+        return false;
+    }
     
-    fetch(`/admin/categories/${currentEditCategoryId}/edit`, {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            location.reload();
-        } else {
-            alert('حدث خطأ: ' + data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('حدث خطأ في الشبكة');
-    });
-});
+    return true;
+}
 
-document.getElementById('editSubcategoryForm').addEventListener('submit', function(e) {
-    e.preventDefault();
+function validateSubcategoryForm(formId) {
+    const form = document.getElementById(formId);
+    const name = form.querySelector('input[name="name"]').value.trim();
+    const categoryId = form.querySelector('select[name="category_id"]') || form.querySelector('input[name="category_id"]');
     
-    const formData = new FormData(this);
+    if (!name) {
+        alert('اسم القسم الفرعي مطلوب');
+        return false;
+    }
     
-    fetch(`/admin/subcategories/${currentEditSubcategoryId}/edit`, {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            location.reload();
-        } else {
-            alert('حدث خطأ: ' + data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('حدث خطأ في الشبكة');
-    });
+    if (categoryId && !categoryId.value) {
+        alert('يجب اختيار القسم الرئيسي');
+        return false;
+    }
+    
+    return true;
+}
+
+// إضافة event listeners للنماذج
+document.addEventListener('DOMContentLoaded', function() {
+    // نموذج إضافة قسم رئيسي
+    const addCategoryForm = document.getElementById('addCategoryForm');
+    if (addCategoryForm) {
+        addCategoryForm.addEventListener('submit', function(e) {
+            if (!validateCategoryForm('addCategoryForm')) {
+                e.preventDefault();
+            }
+        });
+    }
+    
+    // نموذج تعديل قسم رئيسي
+    const editCategoryForm = document.getElementById('editCategoryForm');
+    if (editCategoryForm) {
+        editCategoryForm.addEventListener('submit', function(e) {
+            if (!validateCategoryForm('editCategoryForm')) {
+                e.preventDefault();
+            }
+        });
+    }
+    
+    // نموذج إضافة قسم فرعي
+    const addSubcategoryForm = document.getElementById('addSubcategoryForm');
+    if (addSubcategoryForm) {
+        addSubcategoryForm.addEventListener('submit', function(e) {
+            if (!validateSubcategoryForm('addSubcategoryForm')) {
+                e.preventDefault();
+            }
+        });
+    }
+    
+    // نموذج تعديل قسم فرعي
+    const editSubcategoryForm = document.getElementById('editSubcategoryForm');
+    if (editSubcategoryForm) {
+        editSubcategoryForm.addEventListener('submit', function(e) {
+            if (!validateSubcategoryForm('editSubcategoryForm')) {
+                e.preventDefault();
+            }
+        });
+    }
 });
 
 // إغلاق النوافذ عند النقر خارجها

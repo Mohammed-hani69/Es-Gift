@@ -506,15 +506,15 @@ document.addEventListener('DOMContentLoaded', function() {
 function updateCartCount(count) {
     const cartCountElement = document.getElementById('cart-count');
     if (cartCountElement) {
-        cartCountElement.textContent = count;
+        cartCountElement.textContent = count || 0;
         if (count > 0) {
-            cartCountElement.style.display = 'flex';
+            cartCountElement.classList.add('show');
             cartCountElement.classList.add('animate');
             setTimeout(() => {
                 cartCountElement.classList.remove('animate');
-            }, 300);
+            }, 600);
         } else {
-            cartCountElement.style.display = 'none';
+            cartCountElement.classList.remove('show');
         }
     }
 }

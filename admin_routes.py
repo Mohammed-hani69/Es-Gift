@@ -54,7 +54,13 @@ def products():
         return redirect(url_for('main.index'))
     
     products = Product.query.all()
-    return render_template('admin/products.html', products=products)
+    categories = Category.query.filter_by(is_active=True).order_by(Category.display_order, Category.name).all()
+    subcategories = Subcategory.query.filter_by(is_active=True).order_by(Subcategory.display_order, Subcategory.name).all()
+    
+    return render_template('admin/products.html', 
+                         products=products, 
+                         categories=categories, 
+                         subcategories=subcategories)
 
 @admin.route('/users')
 @login_required
@@ -540,13 +546,11 @@ def homepage_management():
     
     # جلب جميع العناصر من قاعدة البيانات
     main_offers = MainOffer.query.filter_by(is_active=True).order_by(MainOffer.display_order).all()
-    quick_categories = QuickCategory.query.filter_by(is_active=True).order_by(QuickCategory.display_order).all()
     gift_card_sections = GiftCardSection.query.filter_by(is_active=True).order_by(GiftCardSection.display_order).all()
     other_brands = OtherBrand.query.filter_by(is_active=True).order_by(OtherBrand.display_order).all()
     
     return render_template('admin/homepage_management.html',
                          main_offers=main_offers,
-                         quick_categories=quick_categories,
                          gift_card_sections=gift_card_sections,
                          other_brands=other_brands)
 
@@ -555,107 +559,143 @@ def homepage_management():
 def add_main_offer():
     """إضافة عرض رئيسي جديد"""
     if not current_user.is_admin:
-        return jsonify({'success': False, 'message': 'غير مصرح'})
+        flash('غير مصرح لك بالوصول لهذه الصفحة', 'error')
+        return redirect(url_for('main.index'))
     
     try:
         title = request.form.get('title')
         link_url = request.form.get('link_url')
         display_order = request.form.get('display_order', 0)
         
+        # التحقق من البيانات المطلوبة
+        if not title or not link_url:
+            flash('جميع الحقول مطلوبة', 'error')
+            return redirect(url_for('admin.homepage_management'))
+        
         # التعامل مع رفع الصورة
         image_file = request.files.get('image')
-        if image_file and image_file.filename:
-            filename = secure_filename(image_file.filename)
-            # إضافة timestamp لجعل اسم الملف فريد
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_')
-            filename = timestamp + filename
-            
-            # التأكد من وجود مجلد الرفع
-            upload_folder = os.path.join(current_app.root_path, 'static', 'uploads' , 'main-offers')
-            if not os.path.exists(upload_folder):
-                os.makedirs(upload_folder)
-            
-            # حفظ الصورة
-            image_path = os.path.join(upload_folder, filename)
-            image_file.save(image_path)
-            
-            # إنشاء العرض الجديد
-            new_offer = MainOffer(
-                title=title,
-                image_url=filename,
-                link_url=link_url,
-                display_order=int(display_order),
-                is_active=True
-            )
-            
-            db.session.add(new_offer)
-            db.session.commit()
-            
-            return jsonify({'success': True, 'message': 'تم إضافة العرض بنجاح'})
-        else:
-            return jsonify({'success': False, 'message': 'يرجى اختيار صورة'})
-            
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'success': False, 'message': f'حدث خطأ: {str(e)}'})
-
-@admin.route('/homepage/main-offers/delete/<int:offer_id>', methods=['DELETE'])
-@login_required
-def delete_main_offer(offer_id):
-    """حذف عرض رئيسي"""
-    if not current_user.is_admin:
-        return jsonify({'success': False, 'message': 'غير مصرح'})
-    
-    try:
-        offer = MainOffer.query.get_or_404(offer_id)
+        if not image_file or not image_file.filename:
+            flash('يرجى اختيار صورة', 'error')
+            return redirect(url_for('admin.homepage_management'))
         
-        # حذف ملف الصورة
-        if offer.image_url:
-            image_path = os.path.join(current_app.root_path, 'static', 'uploads', 'main-offers',offer.image_url)
-            if os.path.exists(image_path):
-                os.remove(image_path)
+        # التحقق من نوع الملف
+        allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+        filename = secure_filename(image_file.filename)
+        file_extension = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
         
-        db.session.delete(offer)
+        if file_extension not in allowed_extensions:
+            flash('نوع الملف غير مدعوم. يرجى استخدام PNG, JPG, JPEG, GIF, أو WEBP', 'error')
+            return redirect(url_for('admin.homepage_management'))
+        
+        # التحقق من حجم الملف (5 ميجابايت كحد أقصى)
+        image_file.seek(0, 2)  # الذهاب إلى نهاية الملف
+        file_size = image_file.tell()
+        image_file.seek(0)  # العودة إلى بداية الملف
+        
+        if file_size > 5 * 1024 * 1024:  # 5 ميجابايت
+            flash('حجم الصورة كبير جداً. الحد الأقصى 5 ميجابايت', 'error')
+            return redirect(url_for('admin.homepage_management'))
+        
+        # إنشاء اسم ملف فريد
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_')
+        filename = timestamp + filename
+        
+        # التأكد من وجود مجلد الرفع
+        upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'main-offers')
+        os.makedirs(upload_folder, exist_ok=True)
+        
+        # حفظ الصورة
+        image_path = os.path.join(upload_folder, filename)
+        image_file.save(image_path)
+        
+        # إنشاء العرض الجديد
+        new_offer = MainOffer(
+            title=title,
+            image_url=filename,  # حفظ اسم الملف فقط
+            link_url=link_url,
+            display_order=int(display_order),
+            is_active=True
+        )
+        
+        db.session.add(new_offer)
         db.session.commit()
         
-        return jsonify({'success': True, 'message': 'تم حذف العرض بنجاح'})
+        flash('تم إضافة العرض بنجاح', 'success')
+        return redirect(url_for('admin.homepage_management'))
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'message': f'حدث خطأ: {str(e)}'})
+        # حذف الصورة إذا تم رفعها ولكن فشل في حفظ البيانات
+        if 'filename' in locals() and 'image_path' in locals() and os.path.exists(image_path):
+            try:
+                os.remove(image_path)
+            except:
+                pass
+        flash(f'حدث خطأ: {str(e)}', 'error')
+        return redirect(url_for('admin.homepage_management'))
 
 @admin.route('/homepage/main-offers/edit/<int:offer_id>', methods=['POST'])
 @login_required
 def edit_main_offer(offer_id):
     """تعديل عرض رئيسي"""
     if not current_user.is_admin:
-        return jsonify({'success': False, 'message': 'غير مصرح'})
+        flash('غير مصرح لك بالوصول لهذه الصفحة', 'error')
+        return redirect(url_for('main.index'))
     
     try:
         offer = MainOffer.query.get_or_404(offer_id)
         
         # تحديث البيانات النصية
-        offer.title = request.form.get('title')
-        offer.link_url = request.form.get('link_url')
-        offer.display_order = request.form.get('display_order', 0)
+        title = request.form.get('title')
+        link_url = request.form.get('link_url')
+        display_order = request.form.get('display_order', 0)
+        
+        # التحقق من البيانات المطلوبة
+        if not title or not link_url:
+            flash('جميع الحقول مطلوبة', 'error')
+            return redirect(url_for('admin.homepage_management'))
+        
+        offer.title = title
+        offer.link_url = link_url
+        offer.display_order = int(display_order)
         
         # تحديث الصورة إذا تم رفع صورة جديدة
         if 'image' in request.files and request.files['image'].filename:
             file = request.files['image']
             if file and file.filename != '':
+                # التحقق من نوع الملف
+                allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+                filename = secure_filename(file.filename)
+                file_extension = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
+                
+                if file_extension not in allowed_extensions:
+                    flash('نوع الملف غير مدعوم. يرجى استخدام PNG, JPG, JPEG, GIF, أو WEBP', 'error')
+                    return redirect(url_for('admin.homepage_management'))
+                
+                # التحقق من حجم الملف (5 ميجابايت كحد أقصى)
+                file.seek(0, 2)  # الذهاب إلى نهاية الملف
+                file_size = file.tell()
+                file.seek(0)  # العودة إلى بداية الملف
+                
+                if file_size > 5 * 1024 * 1024:  # 5 ميجابايت
+                    flash('حجم الصورة كبير جداً. الحد الأقصى 5 ميجابايت', 'error')
+                    return redirect(url_for('admin.homepage_management'))
+                
                 # حذف الصورة القديمة
                 if offer.image_url:
                     old_image_path = os.path.join(current_app.root_path, 'static', 'uploads', 'main-offers', offer.image_url)
                     if os.path.exists(old_image_path):
-                        os.remove(old_image_path)
+                        try:
+                            os.remove(old_image_path)
+                        except:
+                            pass  # تجاهل خطأ حذف الملف القديم
                 
                 # حفظ الصورة الجديدة
-                filename = secure_filename(file.filename)
                 timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_')
                 filename = timestamp + filename
                 
                 # إنشاء مجلد uploads إذا لم يكن موجوداً
-                upload_folder = os.path.join(current_app.root_path, 'static', 'uploads' ,'main-offers')
+                upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'main-offers')
                 os.makedirs(upload_folder, exist_ok=True)
                 
                 file_path = os.path.join(upload_folder, filename)
@@ -664,112 +704,130 @@ def edit_main_offer(offer_id):
         
         db.session.commit()
         
-        return jsonify({'success': True, 'message': 'تم تحديث العرض بنجاح'})
+        flash('تم تحديث العرض بنجاح', 'success')
+        return redirect(url_for('admin.homepage_management'))
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'message': f'حدث خطأ: {str(e)}'})
+        flash(f'حدث خطأ: {str(e)}', 'error')
+        return redirect(url_for('admin.homepage_management'))
 
-@admin.route('/homepage/quick-categories/add', methods=['POST'])
+@admin.route('/homepage/main-offers/<int:offer_id>/edit', methods=['GET'])
 @login_required
-def add_quick_category():
-    """إضافة فئة مختصرة جديدة"""
+def edit_main_offer_form(offer_id):
+    """عرض نموذج تعديل العرض"""
     if not current_user.is_admin:
-        return jsonify({'success': False, 'message': 'غير مصرح'})
+        flash('غير مصرح لك بالوصول لهذه الصفحة', 'error')
+        return redirect(url_for('main.index'))
     
     try:
-        name = request.form.get('name')
-        icon_class = request.form.get('icon_class')
-        link_url = request.form.get('link_url')
-        display_order = request.form.get('display_order', 0)
+        offer = MainOffer.query.get_or_404(offer_id)
         
-        if not name or not icon_class or not link_url:
-            return jsonify({'success': False, 'message': 'جميع الحقول مطلوبة'})
+        # جلب جميع العناصر من قاعدة البيانات
+        main_offers = MainOffer.query.filter_by(is_active=True).order_by(MainOffer.display_order).all()
+        gift_card_sections = GiftCardSection.query.filter_by(is_active=True).order_by(GiftCardSection.display_order).all()
+        other_brands = OtherBrand.query.filter_by(is_active=True).order_by(OtherBrand.display_order).all()
         
-        # إنشاء الفئة الجديدة
-        new_category = QuickCategory(
-            name=name,
-            icon_class=icon_class,
-            link_url=link_url,
-            display_order=int(display_order),
-            is_active=True
-        )
-        
-        db.session.add(new_category)
-        db.session.commit()
-        
-        return jsonify({'success': True, 'message': 'تم إضافة الفئة بنجاح'})
+        return render_template('admin/homepage_management.html',
+                             main_offers=main_offers,
+                             gift_card_sections=gift_card_sections,
+                             other_brands=other_brands,
+                             edit_offer=offer)
         
     except Exception as e:
-        db.session.rollback()
-        return jsonify({'success': False, 'message': f'حدث خطأ: {str(e)}'})
+        flash(f'حدث خطأ: {str(e)}', 'error')
+        return redirect(url_for('admin.homepage_management'))
 
-@admin.route('/homepage/quick-categories/delete/<int:category_id>', methods=['DELETE'])
+@admin.route('/homepage/main-offers/<int:offer_id>/delete', methods=['POST'])
 @login_required
-def delete_quick_category(category_id):
-    """حذف فئة مختصرة"""
+def delete_main_offer(offer_id):
+    """حذف عرض رئيسي من خلال نموذج"""
     if not current_user.is_admin:
-        return jsonify({'success': False, 'message': 'غير مصرح'})
+        flash('غير مصرح لك بالوصول لهذه الصفحة', 'error')
+        return redirect(url_for('main.index'))
     
     try:
-        category = QuickCategory.query.get_or_404(category_id)
-        db.session.delete(category)
+        offer = MainOffer.query.get_or_404(offer_id)
+        
+        # حذف ملف الصورة
+        if offer.image_url:
+            image_path = os.path.join(current_app.root_path, 'static', 'uploads', 'main-offers', offer.image_url)
+            if os.path.exists(image_path):
+                try:
+                    os.remove(image_path)
+                except:
+                    pass  # تجاهل خطأ حذف الملف
+        
+        db.session.delete(offer)
         db.session.commit()
         
-        return jsonify({'success': True, 'message': 'تم حذف الفئة بنجاح'})
+        flash('تم حذف العرض بنجاح', 'success')
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'message': f'حدث خطأ: {str(e)}'})
+        flash(f'حدث خطأ: {str(e)}', 'error')
+        
+    return redirect(url_for('admin.homepage_management'))
+
 
 @admin.route('/homepage/gift-cards/add', methods=['POST'])
 @login_required
 def add_gift_card():
     """إضافة بطاقة هدايا جديدة"""
     if not current_user.is_admin:
-        return jsonify({'success': False, 'message': 'غير مصرح'})
+        flash('غير مصرح', 'error')
+        return redirect(url_for('admin.homepage_management'))
     
     try:
         title = request.form.get('title')
         link_url = request.form.get('link_url')
+        card_type = request.form.get('card_type', 'gift')
         display_order = request.form.get('display_order', 0)
         
         # التعامل مع رفع الصورة
         image_file = request.files.get('image')
         if image_file and image_file.filename:
             filename = secure_filename(image_file.filename)
-            # إضافة timestamp لجعل اسم الملف فريد
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_')
-            filename = timestamp + filename
             
-            # التأكد من وجود مجلد الرفع
-            upload_folder = os.path.join(current_app.root_path, 'static', 'uploads' , 'gift-cards')
-            if not os.path.exists(upload_folder):
-                os.makedirs(upload_folder)
-            
-            # حفظ الصورة
-            image_path = os.path.join(upload_folder, filename)
-            image_file.save(image_path)
-            
-            # إنشاء بطاقة الهدايا الجديدة
-            new_card = GiftCardSection(
-                title=title,
-                image_url=filename,
-                link_url=link_url,
-                display_order=int(display_order),
-                is_active=True
-            )
-            
-            db.session.add(new_card)
-            db.session.commit()
-            
-            return jsonify({'success': True, 'message': 'تم إضافة بطاقة الهدايا بنجاح'})
+            # التحقق من صحة الملف
+            allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+            if '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions:
+                # إضافة timestamp لجعل اسم الملف فريد
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_')
+                filename = timestamp + filename
+                
+                # التأكد من وجود مجلد الرفع
+                upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'gift-cards')
+                os.makedirs(upload_folder, exist_ok=True)
+                
+                # حفظ الصورة
+                image_path = os.path.join(upload_folder, filename)
+                image_file.save(image_path)
+                
+                # إنشاء بطاقة الهدايا الجديدة
+                new_card = GiftCardSection(
+                    title=title,
+                    image_url=filename,
+                    link_url=link_url,
+                    card_type=card_type,
+                    display_order=int(display_order),
+                    is_active=True
+                )
+                
+                db.session.add(new_card)
+                db.session.commit()
+                
+                flash('تم إضافة بطاقة الهدايا بنجاح', 'success')
+            else:
+                flash('نوع الملف غير مدعوم. يرجى اختيار صورة (PNG, JPG, JPEG, GIF, WEBP)', 'error')
         else:
-            return jsonify({'success': False, 'message': 'يرجى اختيار صورة'})
+            flash('يرجى اختيار صورة', 'error')
             
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'message': f'حدث خطأ: {str(e)}'})
+        flash(f'حدث خطأ: {str(e)}', 'error')
+    
+    return redirect(url_for('admin.homepage_management'))
 
 @admin.route('/homepage/gift-cards/delete/<int:card_id>', methods=['DELETE'])
 @login_required
@@ -795,6 +853,87 @@ def delete_gift_card(card_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': f'حدث خطأ: {str(e)}'})
+
+@admin.route('/homepage/gift-cards/<int:card_id>')
+@login_required
+def get_gift_card(card_id):
+    """جلب بيانات بطاقة هدايا للتعديل"""
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'غير مصرح'})
+    
+    try:
+        card = GiftCardSection.query.get_or_404(card_id)
+        
+        return jsonify({
+            'success': True,
+            'card': {
+                'id': card.id,
+                'title': card.title,
+                'image_url': card.image_url,
+                'link_url': card.link_url,
+                'card_type': getattr(card, 'card_type', 'gift'),
+                'display_order': card.display_order,
+                'is_active': card.is_active
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'حدث خطأ: {str(e)}'})
+
+@admin.route('/homepage/gift-cards/<int:card_id>/edit', methods=['POST'])
+@login_required
+def edit_gift_card(card_id):
+    """تعديل بطاقة هدايا"""
+    if not current_user.is_admin:
+        flash('غير مصرح', 'error')
+        return redirect(url_for('admin.homepage_management'))
+    
+    try:
+        card = GiftCardSection.query.get_or_404(card_id)
+        
+        # تحديث البيانات الأساسية
+        card.title = request.form.get('title')
+        card.link_url = request.form.get('link_url')
+        card.card_type = request.form.get('card_type', 'gift')
+        card.display_order = int(request.form.get('display_order', 0))
+        
+        # التعامل مع الصورة الجديدة إذا تم رفعها
+        image_file = request.files.get('image')
+        if image_file and image_file.filename:
+            filename = secure_filename(image_file.filename)
+            
+            # التحقق من صحة الملف
+            allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+            if '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions:
+                # حذف الصورة القديمة
+                if card.image_url:
+                    old_image_path = os.path.join(current_app.root_path, 'static', 'uploads', 'gift-cards', card.image_url)
+                    if os.path.exists(old_image_path):
+                        try:
+                            os.remove(old_image_path)
+                        except:
+                            pass  # تجاهل خطأ حذف الملف القديم
+                
+                # حفظ الصورة الجديدة
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_')
+                filename = timestamp + filename
+                
+                # إنشاء مجلد uploads إذا لم يكن موجوداً
+                upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'gift-cards')
+                os.makedirs(upload_folder, exist_ok=True)
+                
+                file_path = os.path.join(upload_folder, filename)
+                image_file.save(file_path)
+                card.image_url = filename
+        
+        db.session.commit()
+        flash('تم تحديث بطاقة الهدايا بنجاح', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'حدث خطأ: {str(e)}', 'error')
+        
+    return redirect(url_for('admin.homepage_management'))
 
 @admin.route('/homepage/other-brands/add', methods=['POST'])
 @login_required
@@ -883,6 +1022,418 @@ def categories():
     return render_template('admin/categories.html', 
                          categories=categories, 
                          subcategories=subcategories)
+
+@admin.route('/categories/add', methods=['POST'])
+@login_required
+def add_category():
+    """إضافة قسم رئيسي جديد"""
+    if not current_user.is_admin:
+        flash('غير مصرح', 'error')
+        return redirect(url_for('admin.categories'))
+    
+    try:
+        name = request.form.get('name')
+        name_en = request.form.get('name_en')
+        description = request.form.get('description')
+        icon_class = request.form.get('icon_class')
+        display_order = request.form.get('display_order', 0)
+        is_active = 'is_active' in request.form
+        
+        if not name:
+            flash('اسم القسم مطلوب', 'error')
+            return redirect(url_for('admin.categories'))
+        
+        # التعامل مع رفع الصورة
+        image_filename = None
+        image_file = request.files.get('image')
+        if image_file and image_file.filename:
+            # فحص حجم الملف (5 ميجابايت كحد أقصى)
+            image_file.seek(0, os.SEEK_END)
+            file_size = image_file.tell()
+            image_file.seek(0)  # إعادة تعيين المؤشر
+            
+            if file_size > 5 * 1024 * 1024:  # 5 ميجابايت
+                flash('حجم الصورة كبير جداً. الحد الأقصى المسموح 5 ميجابايت', 'error')
+                return redirect(url_for('admin.categories'))
+            
+            filename = secure_filename(image_file.filename)
+            allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+            if '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions:
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_')
+                image_filename = timestamp + filename
+                
+                upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'categories')
+                os.makedirs(upload_folder, exist_ok=True)
+                
+                image_path = os.path.join(upload_folder, image_filename)
+                image_file.save(image_path)
+            else:
+                flash('نوع الملف غير مدعوم. يرجى اختيار صورة (PNG, JPG, JPEG, GIF, WEBP)', 'error')
+                return redirect(url_for('admin.categories'))
+        
+        # إنشاء القسم الجديد
+        new_category = Category(
+            name=name,
+            name_en=name_en,
+            description=description,
+            icon_class=icon_class,
+            image_url=image_filename,
+            display_order=int(display_order),
+            is_active=is_active
+        )
+        
+        db.session.add(new_category)
+        db.session.commit()
+        
+        flash(f'تم إضافة القسم "{name}" بنجاح', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'حدث خطأ: {str(e)}', 'error')
+    
+    return redirect(url_for('admin.categories'))
+
+@admin.route('/categories/<int:category_id>')
+@login_required
+def get_category(category_id):
+    """جلب بيانات قسم للتعديل"""
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'غير مصرح'})
+    
+    try:
+        category = Category.query.get_or_404(category_id)
+        
+        return jsonify({
+            'success': True,
+            'category': {
+                'id': category.id,
+                'name': category.name,
+                'name_en': category.name_en,
+                'description': category.description,
+                'icon_class': category.icon_class,
+                'image_url': category.image_url,
+                'display_order': category.display_order,
+                'is_active': category.is_active
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'حدث خطأ: {str(e)}'})
+
+@admin.route('/categories/<int:category_id>/edit', methods=['POST'])
+@login_required
+def edit_category(category_id):
+    """تعديل قسم رئيسي"""
+    if not current_user.is_admin:
+        flash('غير مصرح', 'error')
+        return redirect(url_for('admin.categories'))
+    
+    try:
+        category = Category.query.get_or_404(category_id)
+        
+        # تحديث البيانات الأساسية
+        category.name = request.form.get('name')
+        category.name_en = request.form.get('name_en')
+        category.description = request.form.get('description')
+        category.icon_class = request.form.get('icon_class')
+        category.display_order = int(request.form.get('display_order', 0))
+        category.is_active = 'is_active' in request.form
+        
+        # التعامل مع الصورة الجديدة إذا تم رفعها
+        image_file = request.files.get('image')
+        if image_file and image_file.filename:
+            # فحص حجم الملف (5 ميجابايت كحد أقصى)
+            image_file.seek(0, os.SEEK_END)
+            file_size = image_file.tell()
+            image_file.seek(0)  # إعادة تعيين المؤشر
+            
+            if file_size > 5 * 1024 * 1024:  # 5 ميجابايت
+                flash('حجم الصورة كبير جداً. الحد الأقصى المسموح 5 ميجابايت', 'error')
+                return redirect(url_for('admin.categories'))
+            
+            filename = secure_filename(image_file.filename)
+            allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+            if '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions:
+                # حذف الصورة القديمة
+                if category.image_url:
+                    old_image_path = os.path.join(current_app.root_path, 'static', 'uploads', 'categories', category.image_url)
+                    if os.path.exists(old_image_path):
+                        try:
+                            os.remove(old_image_path)
+                        except:
+                            pass
+                
+                # حفظ الصورة الجديدة
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_')
+                new_filename = timestamp + filename
+                
+                upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'categories')
+                os.makedirs(upload_folder, exist_ok=True)
+                
+                file_path = os.path.join(upload_folder, new_filename)
+                image_file.save(file_path)
+                category.image_url = new_filename
+        
+        db.session.commit()
+        flash(f'تم تحديث القسم "{category.name}" بنجاح', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'حدث خطأ: {str(e)}', 'error')
+    
+    return redirect(url_for('admin.categories'))
+
+@admin.route('/categories/<int:category_id>/delete', methods=['DELETE'])
+@login_required
+def delete_category(category_id):
+    """حذف قسم رئيسي"""
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'غير مصرح'})
+    
+    try:
+        category = Category.query.get_or_404(category_id)
+        
+        category_name = category.name
+        
+        # حذف الصورة إذا كانت موجودة
+        if category.image_url:
+            image_path = os.path.join(current_app.root_path, 'static', 'uploads', 'categories', category.image_url)
+            if os.path.exists(image_path):
+                try:
+                    os.remove(image_path)
+                except:
+                    pass
+        
+        db.session.delete(category)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': f'تم حذف القسم "{category_name}" بنجاح'})
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'حدث خطأ: {str(e)}'})
+
+@admin.route('/subcategories/add', methods=['POST'])
+@login_required
+def add_subcategory():
+    """إضافة قسم فرعي جديد"""
+    if not current_user.is_admin:
+        flash('غير مصرح', 'error')
+        return redirect(url_for('admin.categories'))
+    
+    try:
+        name = request.form.get('name')
+        name_en = request.form.get('name_en')
+        description = request.form.get('description')
+        category_id = request.form.get('category_id')
+        icon_class = request.form.get('icon_class')
+        display_order = request.form.get('display_order', 0)
+        is_active = 'is_active' in request.form
+        
+        if not name or not category_id:
+            flash('اسم القسم الفرعي والقسم الرئيسي مطلوبان', 'error')
+            return redirect(url_for('admin.categories'))
+        
+        # التعامل مع رفع الصورة
+        image_filename = None
+        image_file = request.files.get('image')
+        if image_file and image_file.filename:
+            # فحص حجم الملف (5 ميجابايت كحد أقصى)
+            image_file.seek(0, os.SEEK_END)
+            file_size = image_file.tell()
+            image_file.seek(0)  # إعادة تعيين المؤشر
+            
+            if file_size > 5 * 1024 * 1024:  # 5 ميجابايت
+                flash('حجم الصورة كبير جداً. الحد الأقصى المسموح 5 ميجابايت', 'error')
+                return redirect(url_for('admin.categories'))
+            
+            filename = secure_filename(image_file.filename)
+            allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+            if '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions:
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_')
+                image_filename = timestamp + filename
+                
+                upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'subcategories')
+                os.makedirs(upload_folder, exist_ok=True)
+                
+                image_path = os.path.join(upload_folder, image_filename)
+                image_file.save(image_path)
+        
+        # إنشاء القسم الفرعي الجديد
+        new_subcategory = Subcategory(
+            name=name,
+            name_en=name_en,
+            description=description,
+            category_id=int(category_id),
+            icon_class=icon_class,
+            image_url=image_filename,
+            display_order=int(display_order),
+            is_active=is_active
+        )
+        
+        db.session.add(new_subcategory)
+        db.session.commit()
+        
+        flash(f'تم إضافة القسم الفرعي "{name}" بنجاح', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'حدث خطأ: {str(e)}', 'error')
+    
+    return redirect(url_for('admin.categories'))
+
+@admin.route('/subcategories/<int:subcategory_id>')
+@login_required
+def get_subcategory(subcategory_id):
+    """جلب بيانات قسم فرعي للتعديل"""
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'غير مصرح'})
+    
+    try:
+        subcategory = Subcategory.query.get_or_404(subcategory_id)
+        
+        return jsonify({
+            'success': True,
+            'subcategory': {
+                'id': subcategory.id,
+                'name': subcategory.name,
+                'name_en': subcategory.name_en,
+                'description': subcategory.description,
+                'category_id': subcategory.category_id,
+                'icon_class': subcategory.icon_class,
+                'image_url': subcategory.image_url,
+                'display_order': subcategory.display_order,
+                'is_active': subcategory.is_active
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'حدث خطأ: {str(e)}'})
+
+@admin.route('/categories/<int:category_id>/subcategories')
+@login_required
+def get_subcategories_by_category(category_id):
+    """جلب الأقسام الفرعية لقسم رئيسي معين"""
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'غير مصرح'})
+    
+    try:
+        subcategories = Subcategory.query.filter_by(
+            category_id=category_id, 
+            is_active=True
+        ).order_by(Subcategory.display_order, Subcategory.name).all()
+        
+        subcategories_data = []
+        for subcategory in subcategories:
+            subcategories_data.append({
+                'id': subcategory.id,
+                'name': subcategory.name,
+                'name_en': subcategory.name_en,
+                'description': subcategory.description,
+                'category_id': subcategory.category_id,
+                'is_active': subcategory.is_active
+            })
+        
+        return jsonify({
+            'success': True,
+            'subcategories': subcategories_data
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'حدث خطأ: {str(e)}'})
+
+@admin.route('/subcategories/<int:subcategory_id>/edit', methods=['POST'])
+@login_required
+def edit_subcategory(subcategory_id):
+    """تعديل قسم فرعي"""
+    if not current_user.is_admin:
+        flash('غير مصرح', 'error')
+        return redirect(url_for('admin.categories'))
+    
+    try:
+        subcategory = Subcategory.query.get_or_404(subcategory_id)
+        
+        # تحديث البيانات الأساسية
+        subcategory.name = request.form.get('name')
+        subcategory.name_en = request.form.get('name_en')
+        subcategory.description = request.form.get('description')
+        subcategory.category_id = int(request.form.get('category_id'))
+        subcategory.icon_class = request.form.get('icon_class')
+        subcategory.display_order = int(request.form.get('display_order', 0))
+        subcategory.is_active = 'is_active' in request.form
+        
+        # التعامل مع الصورة الجديدة إذا تم رفعها
+        image_file = request.files.get('image')
+        if image_file and image_file.filename:
+            # فحص حجم الملف (5 ميجابايت كحد أقصى)
+            image_file.seek(0, os.SEEK_END)
+            file_size = image_file.tell()
+            image_file.seek(0)  # إعادة تعيين المؤشر
+            
+            if file_size > 5 * 1024 * 1024:  # 5 ميجابايت
+                flash('حجم الصورة كبير جداً. الحد الأقصى المسموح 5 ميجابايت', 'error')
+                return redirect(url_for('admin.categories'))
+            
+            filename = secure_filename(image_file.filename)
+            allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+            if '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions:
+                # حذف الصورة القديمة
+                if subcategory.image_url:
+                    old_image_path = os.path.join(current_app.root_path, 'static', 'uploads', 'subcategories', subcategory.image_url)
+                    if os.path.exists(old_image_path):
+                        try:
+                            os.remove(old_image_path)
+                        except:
+                            pass
+                
+                # حفظ الصورة الجديدة
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_')
+                new_filename = timestamp + filename
+                
+                upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'subcategories')
+                os.makedirs(upload_folder, exist_ok=True)
+                
+                file_path = os.path.join(upload_folder, new_filename)
+                image_file.save(file_path)
+                subcategory.image_url = new_filename
+        
+        db.session.commit()
+        flash(f'تم تحديث القسم الفرعي "{subcategory.name}" بنجاح', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'حدث خطأ: {str(e)}', 'error')
+    
+    return redirect(url_for('admin.categories'))
+
+@admin.route('/subcategories/<int:subcategory_id>/delete', methods=['DELETE'])
+@login_required
+def delete_subcategory(subcategory_id):
+    """حذف قسم فرعي"""
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'غير مصرح'})
+    
+    try:
+        subcategory = Subcategory.query.get_or_404(subcategory_id)
+        subcategory_name = subcategory.name
+        
+        # حذف الصورة إذا كانت موجودة
+        if subcategory.image_url:
+            image_path = os.path.join(current_app.root_path, 'static', 'uploads', 'subcategories', subcategory.image_url)
+            if os.path.exists(image_path):
+                try:
+                    os.remove(image_path)
+                except:
+                    pass
+        
+        db.session.delete(subcategory)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': f'تم حذف القسم الفرعي "{subcategory_name}" بنجاح'})
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'حدث خطأ: {str(e)}'})
 
 @admin.route('/currencies')
 @login_required
@@ -1546,4 +2097,502 @@ def convert_currency_route():
         })
         
     except Exception as e:
+        return jsonify({'success': False, 'message': f'حدث خطأ: {str(e)}'})
+
+# ===== روتات إدارة المنتجات =====
+
+@admin.route('/products', methods=['POST'])
+@login_required
+def add_product():
+    """إضافة منتج جديد"""
+    if not current_user.is_admin:
+        flash('غير مصرح لك بالوصول لهذه الصفحة', 'error')
+        return redirect(url_for('main.index'))
+    
+    try:
+        # جلب البيانات من النموذج
+        name = request.form.get('name')
+        description = request.form.get('description', '')
+        category_id = request.form.get('category_id')  # القسم الرئيسي الجديد
+        subcategory_id = request.form.get('subcategory_id')  # القسم الفرعي الجديد
+        category = request.form.get('category')  # الفئة القديمة للتوافق
+        region = request.form.get('region', '')
+        value = request.form.get('value', '')
+        regular_price = request.form.get('regular_price')
+        kyc_price = request.form.get('kyc_price') or regular_price
+        reseller_price = request.form.get('reseller_price') or regular_price
+        stock_quantity = request.form.get('stock_quantity', '0')
+        instructions = request.form.get('instructions', '')
+        expiry_date = request.form.get('expiry_date')
+        is_active = request.form.get('is_active') == 'on'
+        
+        # التحقق من البيانات المطلوبة
+        if not name or not regular_price:
+            flash('الحقول المطلوبة: اسم المنتج، السعر العادي', 'error')
+            return redirect(url_for('admin.products'))
+        
+        # التحقق من وجود قسم رئيسي أو فئة قديمة
+        if not category_id and not category:
+            flash('يجب اختيار قسم رئيسي أو فئة', 'error')
+            return redirect(url_for('admin.products'))
+        
+        # التحقق من صحة الأسعار
+        try:
+            regular_price_float = float(regular_price)
+            kyc_price_float = float(kyc_price) if kyc_price else regular_price_float
+            reseller_price_float = float(reseller_price) if reseller_price else regular_price_float
+            stock_quantity_int = int(stock_quantity) if stock_quantity else 0
+        except ValueError:
+            flash('يرجى إدخال أسعار وكميات صحيحة', 'error')
+            return redirect(url_for('admin.products'))
+        
+        # التعامل مع رفع الصورة
+        image_url = None
+        image_file = request.files.get('product_image')
+        if image_file and image_file.filename:
+            # التحقق من نوع الملف
+            allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+            filename = secure_filename(image_file.filename)
+            file_extension = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
+            
+            if file_extension not in allowed_extensions:
+                flash('نوع الملف غير مدعوم. يرجى استخدام PNG, JPG, JPEG, GIF, أو WEBP', 'error')
+                return redirect(url_for('admin.products'))
+            
+            # التحقق من حجم الملف (5 ميجابايت كحد أقصى)
+            image_file.seek(0, 2)
+            file_size = image_file.tell()
+            image_file.seek(0)
+            
+            if file_size > 5 * 1024 * 1024:  # 5 ميجابايت
+                flash('حجم الصورة كبير جداً. الحد الأقصى 5 ميجابايت', 'error')
+                return redirect(url_for('admin.products'))
+            
+            # إنشاء اسم ملف فريد
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_')
+            filename = timestamp + filename
+            
+            # التأكد من وجود مجلد الرفع
+            upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'gift-cards')
+            os.makedirs(upload_folder, exist_ok=True)
+            
+            # حفظ الصورة
+            image_path = os.path.join(upload_folder, filename)
+            image_file.save(image_path)
+            image_url = filename
+        
+        # تحويل التاريخ إذا تم إدخاله
+        expiry_date_obj = None
+        if expiry_date:
+            try:
+                expiry_date_obj = datetime.strptime(expiry_date, '%Y-%m-%d').date()
+            except ValueError:
+                pass
+        
+        # إنشاء المنتج الجديد
+        new_product = Product(
+            name=name,
+            description=description,
+            category_id=int(category_id) if category_id else None,  # القسم الرئيسي الجديد
+            subcategory_id=int(subcategory_id) if subcategory_id else None,  # القسم الفرعي الجديد
+            category=category,  # الفئة القديمة للتوافق
+            region=region,
+            value=value,
+            regular_price=regular_price_float,
+            kyc_price=kyc_price_float,
+            reseller_price=reseller_price_float,
+            stock_quantity=stock_quantity_int,
+            instructions=instructions,
+            expiry_date=expiry_date_obj,
+            image_url=image_url,
+            is_active=is_active
+        )
+        
+        # معالجة البيانات المتقدمة
+        visibility = request.form.get('visibility', 'public')  # public, restricted
+        restricted_emails_json = request.form.get('restricted_emails', '[]')
+        custom_prices_json = request.form.get('custom_prices', '[]')
+        
+        new_product.visibility = visibility
+        
+        db.session.add(new_product)
+        db.session.flush()  # للحصول على ID المنتج
+        
+        # معالجة قائمة البريد الإلكتروني المحدود
+        if visibility == 'restricted':
+            try:
+                restricted_emails = json.loads(restricted_emails_json)
+                for email in restricted_emails:
+                    user = User.query.filter_by(email=email).first()
+                    if user:
+                        access = ProductUserAccess(
+                            product_id=new_product.id,
+                            user_id=user.id
+                        )
+                        db.session.add(access)
+            except (json.JSONDecodeError, KeyError):
+                pass
+        
+        # معالجة الأسعار المخصصة
+        try:
+            custom_prices = json.loads(custom_prices_json)
+            for price_data in custom_prices:
+                user = User.query.filter_by(email=price_data['email']).first()
+                if user:
+                    custom_price = ProductCustomPrice(
+                        product_id=new_product.id,
+                        user_id=user.id,
+                        regular_price=float(price_data['regular_price']),
+                        kyc_price=float(price_data['kyc_price']),
+                        note=price_data.get('note', '')
+                    )
+                    db.session.add(custom_price)
+        except (json.JSONDecodeError, KeyError, ValueError):
+            pass
+        
+        db.session.commit()
+        
+        flash('تم إضافة المنتج بنجاح', 'success')
+        return redirect(url_for('admin.products'))
+        
+    except Exception as e:
+        db.session.rollback()
+        # حذف الصورة إذا تم رفعها ولكن فشل في حفظ البيانات
+        if 'filename' in locals() and 'image_path' in locals() and os.path.exists(image_path):
+            try:
+                os.remove(image_path)
+            except:
+                pass
+        flash(f'حدث خطأ: {str(e)}', 'error')
+        return redirect(url_for('admin.products'))
+
+@admin.route('/products/<int:product_id>/edit', methods=['POST'])
+@login_required
+def update_product(product_id):
+    """تحديث منتج موجود"""
+    if not current_user.is_admin:
+        flash('غير مصرح لك بالوصول لهذه الصفحة', 'error')
+        return redirect(url_for('main.index'))
+    
+    try:
+        product = Product.query.get_or_404(product_id)
+        
+        # تحديث البيانات الأساسية
+        product.name = request.form.get('name')
+        product.description = request.form.get('description')
+        
+        # تحديث الأقسام الجديدة
+        category_id = request.form.get('category_id')
+        subcategory_id = request.form.get('subcategory_id')
+        if category_id:
+            product.category_id = int(category_id)
+        if subcategory_id:
+            product.subcategory_id = int(subcategory_id)
+        
+        # الاحتفاظ بالفئة القديمة للتوافق
+        if request.form.get('category'):
+            product.category = request.form.get('category')
+        
+        product.region = request.form.get('region')
+        product.value = request.form.get('value')
+        product.regular_price = float(request.form.get('regular_price', 0))
+        product.kyc_price = float(request.form.get('kyc_price', 0))
+        product.reseller_price = float(request.form.get('reseller_price', 0))
+        product.stock_quantity = int(request.form.get('stock_quantity', 0))
+        product.instructions = request.form.get('instructions')
+        product.is_active = request.form.get('is_active') == 'on'
+        
+        # تحديث تاريخ الانتهاء
+        expiry_date = request.form.get('expiry_date')
+        if expiry_date:
+            try:
+                product.expiry_date = datetime.strptime(expiry_date, '%Y-%m-%d').date()
+            except ValueError:
+                pass
+        
+        # معالجة البيانات المتقدمة
+        visibility = request.form.get('visibility', 'public')
+        restricted_emails_json = request.form.get('restricted_emails', '[]')
+        custom_prices_json = request.form.get('custom_prices', '[]')
+        
+        product.visibility = visibility
+        
+        # حذف صلاحيات الوصول السابقة
+        ProductUserAccess.query.filter_by(product_id=product_id).delete()
+        
+        # معالجة قائمة البريد الإلكتروني المحدود
+        if visibility == 'restricted':
+            try:
+                restricted_emails = json.loads(restricted_emails_json)
+                for email in restricted_emails:
+                    user = User.query.filter_by(email=email).first()
+                    if user:
+                        access = ProductUserAccess(
+                            product_id=product.id,
+                            user_id=user.id
+                        )
+                        db.session.add(access)
+            except (json.JSONDecodeError, KeyError):
+                pass
+        
+        # حذف الأسعار المخصصة السابقة
+        ProductCustomPrice.query.filter_by(product_id=product_id).delete()
+        
+        # معالجة الأسعار المخصصة
+        try:
+            custom_prices = json.loads(custom_prices_json)
+            for price_data in custom_prices:
+                user = User.query.filter_by(email=price_data['email']).first()
+                if user:
+                    custom_price = ProductCustomPrice(
+                        product_id=product.id,
+                        user_id=user.id,
+                        regular_price=float(price_data['regular_price']),
+                        kyc_price=float(price_data['kyc_price']),
+                        note=price_data.get('note', '')
+                    )
+                    db.session.add(custom_price)
+        except (json.JSONDecodeError, KeyError, ValueError):
+            pass
+        
+        # تحديث الصورة إذا تم رفع صورة جديدة
+        image_file = request.files.get('product_image')
+        if image_file and image_file.filename:
+            # التحقق من نوع الملف
+            allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+            filename = secure_filename(image_file.filename)
+            file_extension = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
+            
+            if file_extension not in allowed_extensions:
+                flash('نوع الملف غير مدعوم. يرجى استخدام PNG, JPG, JPEG, GIF, أو WEBP', 'error')
+                return redirect(url_for('admin.products'))
+            
+            # التحقق من حجم الملف (5 ميجابايت كحد أقصى)
+            image_file.seek(0, 2)
+            file_size = image_file.tell()
+            image_file.seek(0)
+            
+            if file_size > 5 * 1024 * 1024:  # 5 ميجابايت
+                flash('حجم الصورة كبير جداً. الحد الأقصى 5 ميجابايت', 'error')
+                return redirect(url_for('admin.products'))
+            
+            # حذف الصورة القديمة
+            if product.image_url:
+                old_image_path = os.path.join(current_app.root_path, 'static', 'uploads', 'gift-cards', product.image_url)
+                if os.path.exists(old_image_path):
+                    try:
+                        os.remove(old_image_path)
+                    except:
+                        pass
+            
+            # رفع الصورة الجديدة
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_')
+            filename = timestamp + filename
+            
+            upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'gift-cards')
+            os.makedirs(upload_folder, exist_ok=True)
+            
+            image_path = os.path.join(upload_folder, filename)
+            image_file.save(image_path)
+            product.image_url = filename
+        
+        db.session.commit()
+        
+        flash('تم تحديث المنتج بنجاح', 'success')
+        return redirect(url_for('admin.products'))
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'حدث خطأ: {str(e)}', 'error')
+        return redirect(url_for('admin.products'))
+
+@admin.route('/products/<int:product_id>', methods=['DELETE'])
+@login_required
+def delete_product(product_id):
+    """حذف منتج"""
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'غير مصرح'})
+    
+    try:
+        product = Product.query.get_or_404(product_id)
+        
+        # حذف الصورة
+        if product.image_url:
+            image_path = os.path.join(current_app.root_path, 'static', 'uploads', product.image_url)
+            if os.path.exists(image_path):
+                try:
+                    os.remove(image_path)
+                except:
+                    pass
+        
+        # حذف الأكواد المرتبطة
+        ProductCode.query.filter_by(product_id=product_id).delete()
+        
+        # حذف صلاحيات الوصول
+        ProductUserAccess.query.filter_by(product_id=product_id).delete()
+        
+        # حذف الأسعار المخصصة
+        ProductCustomPrice.query.filter_by(product_id=product_id).delete()
+        
+        # حذف المنتج
+        db.session.delete(product)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': 'تم حذف المنتج بنجاح'})
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'حدث خطأ: {str(e)}'})
+
+@admin.route('/products/<int:product_id>')
+@login_required
+def get_product(product_id):
+    """جلب بيانات منتج للتعديل"""
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'غير مصرح'})
+    
+    try:
+        product = Product.query.get_or_404(product_id)
+        
+        # جلب قائمة البريد الإلكتروني المحدود
+        restricted_emails = []
+        visibility = getattr(product, 'visibility', 'public')
+        
+        if visibility == 'restricted':
+            access_list = ProductUserAccess.query.filter_by(product_id=product_id).all()
+            restricted_emails = [access.user.email for access in access_list if access.user]
+        
+        # جلب الأسعار المخصصة
+        custom_prices = []
+        custom_prices_list = ProductCustomPrice.query.filter_by(product_id=product_id).all()
+        for custom_price in custom_prices_list:
+            if custom_price.user:
+                custom_prices.append({
+                    'email': custom_price.user.email,
+                    'regular_price': custom_price.regular_price,
+                    'kyc_price': custom_price.kyc_price,
+                    'note': custom_price.note or ''
+                })
+        
+        product_data = {
+            'id': product.id,
+            'name': product.name,
+            'description': product.description,
+            'category': product.category,
+            'category_id': product.category_id,
+            'subcategory_id': product.subcategory_id,
+            'region': product.region,
+            'value': product.value,
+            'regular_price': product.regular_price,
+            'kyc_price': product.kyc_price,
+            'reseller_price': product.reseller_price,
+            'stock_quantity': product.stock_quantity,
+            'instructions': product.instructions,
+            'expiry_date': product.expiry_date.strftime('%Y-%m-%d') if product.expiry_date else '',
+            'image_url': product.image_url,
+            'is_active': product.is_active,
+            'visibility': visibility,
+            'restricted_emails': restricted_emails,
+            'custom_prices': custom_prices
+        }
+        
+        return jsonify({'success': True, 'product': product_data})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'حدث خطأ: {str(e)}'})
+
+@admin.route('/products/<int:product_id>/codes')
+@login_required
+def get_product_codes(product_id):
+    """جلب أكواد منتج"""
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'غير مصرح'})
+    
+    try:
+        codes = ProductCode.query.filter_by(product_id=product_id).all()
+        codes_data = []
+        
+        for code in codes:
+            codes_data.append({
+                'id': code.id,
+                'code': code.code,
+                'is_used': code.is_used,
+                'used_by': code.used_by_user.email if code.used_by_user else None,
+                'used_at': code.used_at.strftime('%Y-%m-%d %H:%M') if code.used_at else None
+            })
+        
+        return jsonify({'success': True, 'codes': codes_data})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'حدث خطأ: {str(e)}'})
+
+@admin.route('/products/<int:product_id>/codes', methods=['POST'])
+@login_required
+def add_product_codes(product_id):
+    """إضافة أكواد لمنتج"""
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'غير مصرح'})
+    
+    try:
+        codes_text = request.form.get('codes')
+        if not codes_text:
+            return jsonify({'success': False, 'message': 'يرجى إدخال الأكواد'})
+        
+        # تقسيم الأكواد وتنظيفها
+        codes_list = [code.strip() for code in codes_text.split('\n') if code.strip()]
+        
+        if not codes_list:
+            return jsonify({'success': False, 'message': 'لم يتم العثور على أكواد صحيحة'})
+        
+        added_count = 0
+        existing_count = 0
+        
+        for code_text in codes_list:
+            # التحقق من عدم وجود الكود مسبقاً
+            existing_code = ProductCode.query.filter_by(code=code_text).first()
+            if existing_code:
+                existing_count += 1
+                continue
+            
+            # إضافة الكود الجديد
+            new_code = ProductCode(
+                product_id=product_id,
+                code=code_text,
+                is_used=False
+            )
+            db.session.add(new_code)
+            added_count += 1
+        
+        db.session.commit()
+        
+        message = f'تم إضافة {added_count} كود بنجاح'
+        if existing_count > 0:
+            message += f' (تم تجاهل {existing_count} كود موجود مسبقاً)'
+        
+        return jsonify({'success': True, 'message': message})
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'حدث خطأ: {str(e)}'})
+
+@admin.route('/products/<int:product_id>/codes/<int:code_id>', methods=['DELETE'])
+@login_required
+def delete_product_code(product_id, code_id):
+    """حذف كود منتج"""
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'غير مصرح'})
+    
+    try:
+        code = ProductCode.query.filter_by(id=code_id, product_id=product_id).first_or_404()
+        
+        if code.is_used:
+            return jsonify({'success': False, 'message': 'لا يمكن حذف كود مستخدم'})
+        
+        db.session.delete(code)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': 'تم حذف الكود بنجاح'})
+        
+    except Exception as e:
+        db.session.rollback()
         return jsonify({'success': False, 'message': f'حدث خطأ: {str(e)}'})

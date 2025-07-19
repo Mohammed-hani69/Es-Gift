@@ -1,6 +1,7 @@
 from flask import Flask, url_for
 from flask_login import LoginManager
 from flask_mail import Mail
+from flask_migrate import Migrate
 from werkzeug.security import generate_password_hash
 from datetime import datetime
 import os
@@ -18,6 +19,9 @@ def create_app():
     
     # تهيئة الإضافات
     db.init_app(app)
+    
+    # تهيئة Flask-Migrate
+    migrate = Migrate(app, db)
     
     mail = Mail(app)
     
