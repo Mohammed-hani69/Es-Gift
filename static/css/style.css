@@ -29,7 +29,7 @@
 body {
   margin: 0;
   padding: 0;
-  font-family: "Segoe UI", sans-serif;
+  font-family: "Cairo";
   background-color: #111;
   color: #fff;
   overflow-x: hidden;
@@ -955,13 +955,40 @@ body {
 
 /* تأثير لتحديد العملة */
 .currency-change-animation {
-  animation: currencyPulse 0.6s ease-in-out;
+  animation: currencyPulse 0.8s ease-in-out;
 }
 
 @keyframes currencyPulse {
   0% { transform: scale(1); }
-  50% { transform: scale(1.1); }
-  100% { transform: scale(1); }
+  25% { transform: scale(1.05); background: rgba(255, 0, 51, 0.1); }
+  50% { transform: scale(1.1); background: rgba(255, 0, 51, 0.2); }
+  75% { transform: scale(1.05); background: rgba(255, 0, 51, 0.1); }
+  100% { transform: scale(1); background: rgba(255, 255, 255, 0.08); }
+}
+
+/* تأثيرات تحديث الأسعار */
+.price-updating {
+  animation: priceUpdate 0.5s ease-in-out;
+}
+
+@keyframes priceUpdate {
+  0% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(0.95); color: #ff0033; }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* تحسين عرض العملة */
+.currency-display-enhanced {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+  color: #ff0033;
+}
+
+.currency-symbol {
+  font-size: 1.1em;
+  font-weight: bold;
 }
 
 /* end header */

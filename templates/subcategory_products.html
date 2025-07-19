@@ -44,7 +44,9 @@
                     <h3>{{ product.name }}</h3>
                     <p class="product-region">{{ product.region }} - {{ product.value }}</p>
                     <div class="product-price">
-                        <span class="price">{{ product.display_price }} {{ session.get('currency', 'SAR') }}</span>
+                        <span class="price" data-original-price="{{ product.original_price_sar if product.original_price_sar else product.display_price }}">
+                            {{ product.display_price }} {{ session.get('currency', 'SAR') }}
+                        </span>
                         {% if product.stock_quantity > 0 %}
                             <span class="stock available">متوفر</span>
                         {% else %}

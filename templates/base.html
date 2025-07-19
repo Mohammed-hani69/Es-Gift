@@ -47,6 +47,8 @@
                                 <option value="SAR" {% if session.get('currency') == 'SAR' or not session.get('currency') %}selected{% endif %}>ر.س SAR</option>
                                 <option value="USD" {% if session.get('currency') == 'USD' %}selected{% endif %}>$ USD</option>
                                 <option value="AED" {% if session.get('currency') == 'AED' %}selected{% endif %}>د.إ AED</option>
+                                <option value="EUR" {% if session.get('currency') == 'EUR' %}selected{% endif %}>€ EUR</option>
+                                <option value="GBP" {% if session.get('currency') == 'GBP' %}selected{% endif %}>£ GBP</option>
                             {% endif %}
                         </select>
                         <i class="fa-solid fa-chevron-down currency-arrow"></i>

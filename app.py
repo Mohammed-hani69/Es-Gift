@@ -66,11 +66,22 @@ def create_app():
     @app.context_processor
     def inject_global_data():
         from models import Category, Currency
+        from utils import format_currency, convert_currency
+        from flask import session
+        
         # جلب الأقسام النشطة مرتبة حسب الترتيب
         main_categories = Category.query.filter_by(is_active=True).order_by(Category.display_order, Category.name).limit(8).all()
         # جلب العملات النشطة
         currencies = Currency.query.filter_by(is_active=True).order_by(Currency.code).all()
-        return dict(main_categories=main_categories, currencies=currencies)
+        current_currency = session.get('currency', 'SAR')
+        
+        return dict(
+            main_categories=main_categories, 
+            currencies=currencies,
+            current_currency=current_currency,
+            format_currency=format_currency,
+            convert_currency=convert_currency
+        )
     
     # إضافة دالة مساعدة لحل مسارات الصور
     @app.template_filter('image_url')

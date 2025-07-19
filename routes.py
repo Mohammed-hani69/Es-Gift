@@ -63,7 +63,14 @@ def index():
             price = get_user_price(product, current_user.customer_type, current_user)
         else:
             price = product.regular_price
+        
+        # حفظ السعر الأصلي بالريال السعودي
+        product.original_price_sar = price
         product.display_price = convert_currency(price, 'SAR', user_currency)
+        
+        # تطبيق نفس التحويل على الأسعار الأخرى إذا لزم الأمر
+        if hasattr(product, 'regular_price') and product.regular_price:
+            product.regular_price_converted = convert_currency(product.regular_price, 'SAR', user_currency)
     
     # العروض الرئيسية
     main_offers = MainOffer.query.filter_by(is_active=True).order_by(MainOffer.display_order).all()
@@ -80,6 +87,9 @@ def index():
     # جميع الأقسام الفرعية من كافة الأقسام الرئيسية
     subcategories = Subcategory.query.filter_by(is_active=True).order_by(Subcategory.display_order, Subcategory.name).all()
     
+    # جلب العملات النشطة لعرضها في المنطقة العلوية
+    active_currencies = Currency.query.filter_by(is_active=True).order_by(Currency.code).all()
+    
     return render_template('index.html', 
                          products=products,
                          featured_products=featured_products,
@@ -91,7 +101,9 @@ def index():
                          gift_card_sections=gift_card_sections,
                          other_brands=other_brands,
                          main_categories=main_categories,
-                         subcategories=subcategories)
+                         subcategories=subcategories,
+                         currencies=active_currencies,
+                         current_currency=user_currency)
 
 @main.route('/login', methods=['GET', 'POST'])
 def login():
@@ -515,8 +527,87 @@ def process_payment():
 
 @main.route('/set-currency/<currency>')
 def set_currency(currency):
-    session['currency'] = currency
+    """تحديد العملة المختارة"""
+    from models import Currency
+    
+    # التحقق من وجود العملة وكونها نشطة
+    currency_obj = Currency.query.filter_by(code=currency, is_active=True).first()
+    if currency_obj:
+        session['currency'] = currency
+        # إضافة رسالة تأكيد محسنة
+        flash(f'تم تغيير العملة إلى {currency_obj.name} ({currency_obj.symbol})', 'success')
+        
+        # إضافة لوج لتتبع تغيير العملة
+        current_app.logger.info(f'Currency changed to {currency} by user {current_user.id if current_user.is_authenticated else "guest"}')
+    else:
+        flash('العملة المطلوبة غير متاحة', 'error')
+        current_app.logger.warning(f'Attempted to set invalid currency: {currency}')
+        
     return redirect(request.referrer or url_for('main.index'))
+
+@main.route('/api/convert-currency', methods=['POST'])
+def api_convert_currency():
+    """API لتحويل العملة فورياً"""
+    try:
+        data = request.get_json()
+        amount = float(data.get('amount', 0))
+        from_currency = data.get('from_currency', 'SAR')
+        to_currency = data.get('to_currency', 'SAR')
+        
+        if amount <= 0:
+            return jsonify({'success': False, 'message': 'مبلغ غير صالح'})
+        
+        converted_amount = convert_currency(amount, from_currency, to_currency)
+        
+        return jsonify({
+            'success': True,
+            'converted_amount': float(converted_amount),
+            'from_currency': from_currency,
+            'to_currency': to_currency,
+            'original_amount': amount
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f'Currency conversion error: {str(e)}')
+        return jsonify({'success': False, 'message': 'حدث خطأ في التحويل'})
+
+@main.route('/currency-status')
+def currency_status():
+    """صفحة عرض حالة العملات للمستخدمين"""
+    from models import Currency
+    
+    # جلب جميع العملات مرتبة حسب الكود
+    currencies = Currency.query.order_by(Currency.code).all()
+    
+    return render_template('currency_status.html', 
+                         currencies=currencies,
+                         page_title='حالة العملات')
+
+@main.route('/api/get-exchange-rates')
+def api_get_exchange_rates():
+    """API للحصول على أسعار الصرف الحالية"""
+    try:
+        from models import Currency
+        currencies = Currency.query.filter_by(is_active=True).all()
+        
+        rates = {}
+        for currency in currencies:
+            rates[currency.code] = {
+                'name': currency.name,
+                'symbol': currency.symbol,
+                'rate': float(currency.exchange_rate),
+                'is_active': currency.is_active
+            }
+        
+        return jsonify({
+            'success': True,
+            'rates': rates,
+            'base_currency': 'SAR'
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f'Exchange rates API error: {str(e)}')
+        return jsonify({'success': False, 'message': 'حدث خطأ في جلب أسعار الصرف'})
 
 @main.route('/category/<int:category_id>')
 @main.route('/category/<int:category_id>/<slug>')

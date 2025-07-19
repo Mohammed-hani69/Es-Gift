@@ -87,7 +87,9 @@
         <div class="purchase-card">
             <div class="price-section">
                 <div class="current-price">
-                    <span class="price-amount">{{ product.display_price }}</span>
+                    <span class="price-amount" data-original-price="{{ product.original_price_sar if product.original_price_sar else product.display_price }}">
+                        {{ product.display_price }}
+                    </span>
                     <span class="currency">{{ session.get('currency', 'SAR') }}</span>
                 </div>
                 
@@ -118,7 +120,9 @@
 
             <div class="total-price">
                 <span>الإجمالي: </span>
-                <span id="totalPrice">{{ product.display_price }}</span>
+                <span id="totalPrice" data-original-price="{{ product.original_price_sar if product.original_price_sar else product.display_price }}">
+                    {{ product.display_price }}
+                </span>
                 <span>{{ session.get('currency', 'SAR') }}</span>
             </div>
 

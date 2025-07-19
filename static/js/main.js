@@ -304,17 +304,102 @@ function changeCurrency(currency) {
     if (currencyWrapper) {
         currencyWrapper.classList.add('currency-change-animation');
         
-        // إظهار إشعار تحميل
-        showNotification('جاري تغيير العملة...', 'info');
+        // إظهار إشعار تحميل محسن
+        showNotification('جاري تحويل العملة...', 'info');
+        
+        // تحديث فوري لجميع الأسعار في الصفحة قبل إعادة التحميل
+        updatePricesDisplay(currency);
         
         // تأخير قصير لإظهار التأثير
         setTimeout(() => {
             window.location.href = `/set-currency/${currency}`;
-        }, 300);
+        }, 500);
     } else {
         // fallback في حال عدم وجود العنصر
         window.location.href = `/set-currency/${currency}`;
     }
+}
+
+// تحديث عرض الأسعار فورياً
+function updatePricesDisplay(newCurrency) {
+    // جلب أسعار الصرف الحالية
+    fetch('/api/get-exchange-rates')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const rates = data.rates;
+                const currentCurrency = document.getElementById('currency-selector').value;
+                
+                // تحديث جميع عناصر الأسعار
+                const priceElements = document.querySelectorAll('[data-original-price]');
+                
+                priceElements.forEach(element => {
+                    const originalPrice = parseFloat(element.dataset.originalPrice);
+                    if (originalPrice && rates[newCurrency]) {
+                        // حساب السعر المحول - تصحيح المنطق
+                        // rates[currency].rate يمثل: كم وحدة من هذه العملة = 1 ريال
+                        const convertedPrice = (originalPrice * rates[newCurrency].rate).toFixed(2);
+                        
+                        // تأثير الانتقال
+                        element.style.transition = 'opacity 0.3s ease';
+                        element.style.opacity = '0.6';
+                        
+                        setTimeout(() => {
+                            element.innerHTML = `${convertedPrice} ${rates[newCurrency].symbol}`;
+                            element.style.opacity = '1';
+                        }, 150);
+                    }
+                });
+                
+                // تحديث رمز العملة في العناصر الثابتة
+                const currencySymbols = document.querySelectorAll('.currency-symbol');
+                currencySymbols.forEach(symbol => {
+                    if (rates[newCurrency]) {
+                        symbol.textContent = rates[newCurrency].symbol;
+                    }
+                });
+                
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching exchange rates:', error);
+            // في حالة الخطأ، استخدم التحويل البسيط
+            const priceElements = document.querySelectorAll('[data-original-price]');
+            priceElements.forEach(element => {
+                const originalPrice = parseFloat(element.dataset.originalPrice);
+                if (originalPrice) {
+                    element.style.opacity = '0.6';
+                    element.innerHTML = `${originalPrice} ${newCurrency}`;
+                    setTimeout(() => {
+                        element.style.opacity = '1';
+                    }, 200);
+                }
+            });
+        });
+}
+
+// دالة لتحويل سعر واحد
+function convertSinglePrice(amount, fromCurrency, toCurrency, callback) {
+    fetch('/api/convert-currency', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            amount: amount,
+            from_currency: fromCurrency,
+            to_currency: toCurrency
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && callback) {
+            callback(data.converted_amount);
+        }
+    })
+    .catch(error => {
+        console.error('Currency conversion error:', error);
+    });
 }
 
 // Notification function

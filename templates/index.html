@@ -79,7 +79,7 @@
         <div class="swiper-wrapper">
             {% for product in products %}
             <div class="swiper-slide">
-                <div class="product-card" {% if product.regular_price|float > product.display_price|float %}data-has-discount="true"{% endif %}>
+                <div class="product-card">
                     <a href="{{ url_for('main.product_detail', product_id=product.id, slug=product.name|create_slug) }}">
                         {% if product.image_url %}
                             <img src="/static/uploads/gift-cards/{{ product.image_url }}" 
@@ -90,13 +90,11 @@
                         {% endif %}
                             <h3 class="product-card-name">{{ product.name }}</h3>
                             <p class="product-global-symbol">{{ product.region }}</p>
-                                <span class="product-price">{{ product.display_price }} {{ session.get('currency', 'SAR') }}</span>
-                                {% if product.regular_price|float > product.display_price|float %}
-                                <span class="product-discounted-price">{{ product.regular_price }}</span>
-                                <span class="product-discounted-percentage">
-                                    -{{ (((product.regular_price|float - product.display_price|float) / product.regular_price|float * 100)|round|int) }}%
+                            <div class="product-price-container">
+                                <span class="product-price" data-original-price="{{ product.original_price_sar if product.original_price_sar else product.display_price }}">
+                                    {{ product.display_price }} {{ session.get('currency', 'SAR') }}
                                 </span>
-                                {% endif %}
+                            </div>
                             <button style="margin-top: 10px ;" class="add-to-cart-btn" onclick="addToCart({{ product.id }})">
                                 <i class="fa-solid fa-cart-plus"></i> إضافة للسلة
                             </button>

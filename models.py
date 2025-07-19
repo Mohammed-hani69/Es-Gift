@@ -108,6 +108,7 @@ class OrderItem(db.Model):
     product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
     quantity = db.Column(db.Integer, nullable=False)
     price = db.Column(db.Numeric(10, 2), nullable=False)
+    currency = db.Column(db.String(3), default='SAR')  # حفظ العملة المستخدمة في الشراء
 
 class PaymentGateway(db.Model):
     id = db.Column(db.Integer, primary_key=True)
