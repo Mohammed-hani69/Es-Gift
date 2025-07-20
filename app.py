@@ -109,6 +109,14 @@ def create_app():
     app.register_blueprint(main)
     app.register_blueprint(admin)
     
+    # تسجيل blueprint المحفظة
+    from wallet_routes import wallet_bp
+    app.register_blueprint(wallet_bp)
+    
+    # تسجيل blueprint إدارة الحدود المالية
+    from admin_routes_financial import financial_bp
+    app.register_blueprint(financial_bp)
+    
     return app
 
 app = create_app()

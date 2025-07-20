@@ -1,7 +1,26 @@
+/* Cairo Font Application */
 * {
   padding: 0;
   margin: 0;
+  font-family: 'Cairo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
+
+/* Arabic Text Optimization */
+body, html {
+  font-family: 'Cairo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-weight: 400;
+  font-display: swap;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Cairo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-weight: 600;
+}
+
+p, span, div, a, button, input, textarea, select {
+  font-family: 'Cairo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
 *::-webkit-scrollbar {
   width: 10px;
   height: 3px;
@@ -29,13 +48,66 @@
 body {
   margin: 0;
   padding: 0;
-  font-family: "Cairo";
+  font-family: 'Cairo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background-color: #111;
   color: #fff;
   overflow-x: hidden;
   overflow-y: auto;
+  font-weight: 400;
+  line-height: 1.6;
+  letter-spacing: 0.3px;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   height: auto;
   min-height: 100vh;
+}
+
+/* Cairo Font Enhancements */
+.cairo-light { font-weight: 300; }
+.cairo-regular { font-weight: 400; }
+.cairo-medium { font-weight: 500; }
+.cairo-semibold { font-weight: 600; }
+.cairo-bold { font-weight: 700; }
+.cairo-extrabold { font-weight: 800; }
+.cairo-black { font-weight: 900; }
+
+/* Arabic Text Optimization */
+.arabic-text {
+  font-family: 'Cairo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  text-align: right;
+  direction: rtl;
+  line-height: 1.8;
+  letter-spacing: 0.2px;
+}
+
+/* Enhanced Typography */
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Cairo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  line-height: 1.4;
+}
+
+h1 { font-weight: 700; font-size: 2.5rem; }
+h2 { font-weight: 600; font-size: 2rem; }
+h3 { font-weight: 600; font-size: 1.5rem; }
+h4 { font-weight: 500; font-size: 1.2rem; }
+h5 { font-weight: 500; font-size: 1rem; }
+h6 { font-weight: 500; font-size: 0.9rem; }
+
+/* Button and Input Enhancement */
+button, .btn, input, textarea, select {
+  font-family: 'Cairo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+}
+
+/* Paragraph and Text Enhancement */
+p, span, div, a, label {
+  font-family: 'Cairo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  line-height: 1.6;
+  letter-spacing: 0.2px;
 }
 
 /* Flash Messages */

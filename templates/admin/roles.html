@@ -1,0 +1,832 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}إدارة الأدوار والصلاحيات{% endblock %}
+
+{% block content %}
+<div class="content-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="margin: 0; color: #ff0033; display: flex; align-items: center; gap: 10px;">
+            <i class="fas fa-user-shield"></i>
+            إدارة الأدوار والصلاحيات
+        </h2>
+        <button class="btn btn-success" onclick="openAddRoleModal()">
+            <i class="fas fa-plus"></i>
+            إضافة دور جديد
+        </button>
+    </div>
+    
+    <p style="color: #ccc; margin-bottom: 20px;">
+        إدارة أدوار النظام وصلاحيات الموظفين والمستخدمين.
+    </p>
+
+    <!-- إحصائيات سريعة -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-user-shield"></i>
+            </div>
+            <div class="stat-number">{{ roles|length }}</div>
+            <div class="stat-label">إجمالي الأدوار</div>
+        </div>
+        
+        <div class="stat-card success">
+            <div class="stat-icon">
+                <i class="fas fa-crown"></i>
+            </div>
+            <div class="stat-number">{{ roles|selectattr('is_admin', 'equalto', True)|list|length }}</div>
+            <div class="stat-label">أدوار إدارية</div>
+        </div>
+        
+        <div class="stat-card warning">
+            <div class="stat-icon">
+                <i class="fas fa-key"></i>
+            </div>
+            <div class="stat-number">{{ permissions|length }}</div>
+            <div class="stat-label">إجمالي الصلاحيات</div>
+        </div>
+        
+        <div class="stat-card info">
+            <div class="stat-icon">
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="stat-number">{{ employees_count }}</div>
+            <div class="stat-label">موظفين نشطين</div>
+        </div>
+    </div>
+
+    <!-- جدول الأدوار -->
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>الدور</th>
+                    <th>الوصف</th>
+                    <th>نوع الدور</th>
+                    <th>عدد الموظفين</th>
+                    <th>عدد الصلاحيات</th>
+                    <th>الحالة</th>
+                    <th>الإجراءات</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for role in roles %}
+                <tr>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, {{ '#dc3545' if role.is_admin else '#007bff' }}, {{ '#c82333' if role.is_admin else '#0056b3' }}); display: flex; align-items: center; justify-content: center; color: white;">
+                                <i class="fas fa-{{ 'crown' if role.is_admin else 'user' }}"></i>
+                            </div>
+                            <div>
+                                <strong style="color: #fff;">{{ role.display_name }}</strong>
+                                <div style="color: #ccc; font-size: 0.9em;">{{ role.name }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td style="color: #ccc;">{{ role.description or 'لا يوجد وصف' }}</td>
+                    <td>
+                        <span class="badge {{ 'badge-danger' if role.is_admin else 'badge-primary' }}">
+                            {{ 'إداري' if role.is_admin else 'موظف' }}
+                        </span>
+                    </td>
+                    <td style="text-align: center;">
+                        <span style="color: #ff0033; font-weight: bold;">{{ role.employees|length }}</span>
+                    </td>
+                    <td style="text-align: center;">
+                        <span style="color: #28a745; font-weight: bold;">{{ role.role_permissions|length }}</span>
+                    </td>
+                    <td>
+                        <span class="badge {{ 'badge-success' if role.is_active else 'badge-secondary' }}">
+                            {{ 'نشط' if role.is_active else 'غير نشط' }}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn btn-info btn-sm" onclick="viewRolePermissions({{ role.id }})" title="عرض الصلاحيات">
+                                <i class="fas fa-key"></i>
+                            </button>
+                            <button class="btn btn-warning btn-sm" onclick="editRole({{ role.id }})" title="تعديل">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-success btn-sm" onclick="manageRolePermissions({{ role.id }})" title="إدارة الصلاحيات">
+                                <i class="fas fa-cogs"></i>
+                            </button>
+                            {% if not role.is_admin %}
+                            <button class="btn btn-{{ 'secondary' if role.is_active else 'success' }} btn-sm" 
+                                    onclick="toggleRoleStatus({{ role.id }}, {{ 'false' if role.is_active else 'true' }})" 
+                                    title="{{ 'إلغاء التفعيل' if role.is_active else 'تفعيل' }}">
+                                <i class="fas fa-{{ 'ban' if role.is_active else 'check' }}"></i>
+                            </button>
+                            {% endif %}
+                            {% if role.name not in ['super_admin', 'admin'] %}
+                            <button class="btn btn-danger btn-sm" onclick="deleteRole({{ role.id }}, '{{ role.display_name }}')" title="حذف">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- مودال إضافة/تعديل دور -->
+<div id="roleModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 style="color: #ff0033; margin: 0; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-user-shield"></i>
+                <span id="roleModalTitle">إضافة دور جديد</span>
+            </h3>
+            <span class="close" onclick="closeRoleModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form id="roleForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label><i class="fas fa-tag"></i> اسم الدور (بالإنجليزية):</label>
+                        <input type="text" id="roleName" name="name" required class="form-control" 
+                               placeholder="manager, clerk, etc." pattern="[a-z_]+">
+                        <small class="form-text text-muted">
+                            <i class="fas fa-info-circle"></i>
+                            يُستخدم في النظام (أحرف صغيرة و _ فقط)
+                        </small>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label><i class="fas fa-eye"></i> اسم الدور (للعرض):</label>
+                        <input type="text" id="roleDisplayName" name="display_name" required class="form-control" 
+                               placeholder="مدير، موظف، إلخ...">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label><i class="fas fa-info-circle"></i> الوصف:</label>
+                        <textarea id="roleDescription" name="description" rows="3" class="form-control" 
+                                  placeholder="وصف مختصر للدور ومسؤولياته"></textarea>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <div class="custom-control custom-checkbox">
+                            <input type="checkbox" class="custom-control-input" id="roleIsAdmin" name="is_admin">
+                            <label class="custom-control-label" for="roleIsAdmin">
+                                <i class="fas fa-crown"></i>
+                                دور إداري
+                            </label>
+                        </div>
+                        <small class="form-text text-muted">
+                            <i class="fas fa-info-circle"></i>
+                            الأدوار الإدارية لديها صلاحيات أوسع
+                        </small>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeRoleModal()">
+                <i class="fas fa-times"></i> إلغاء
+            </button>
+            <button type="button" class="btn btn-success" onclick="submitRole()">
+                <i class="fas fa-save"></i>
+                <span id="roleSubmitText">إضافة الدور</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- مودال إدارة صلاحيات الدور -->
+<div id="rolePermissionsModal" class="modal">
+    <div class="modal-content" style="max-width: 900px;">
+        <div class="modal-header">
+            <h3 style="color: #ff0033; margin: 0; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-cogs"></i>
+                إدارة صلاحيات الدور
+            </h3>
+            <span class="close" onclick="closeRolePermissionsModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div id="rolePermissionsContent">
+                <!-- سيتم تحميل المحتوى ديناميكياً -->
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeRolePermissionsModal()">
+                <i class="fas fa-times"></i> إلغاء
+            </button>
+            <button type="button" class="btn btn-success" onclick="saveRolePermissions()">
+                <i class="fas fa-save"></i> حفظ الصلاحيات
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- مودال عرض صلاحيات الدور -->
+<div id="viewRolePermissionsModal" class="modal">
+    <div class="modal-content" style="max-width: 800px;">
+        <div class="modal-header">
+            <h3 style="color: #ff0033; margin: 0; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-key"></i>
+                صلاحيات الدور
+            </h3>
+            <span class="close" onclick="closeViewRolePermissionsModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div id="viewRolePermissionsContent">
+                <!-- سيتم تحميل المحتوى ديناميكياً -->
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeViewRolePermissionsModal()">
+                <i class="fas fa-times"></i> إغلاق
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentRoleId = null;
+let isEditMode = false;
+
+// إضافة دور جديد
+function openAddRoleModal() {
+    isEditMode = false;
+    currentRoleId = null;
+    document.getElementById('roleModalTitle').textContent = 'إضافة دور جديد';
+    document.getElementById('roleSubmitText').textContent = 'إضافة الدور';
+    document.getElementById('roleForm').reset();
+    document.getElementById('roleModal').style.display = 'block';
+}
+
+function closeRoleModal() {
+    document.getElementById('roleModal').style.display = 'none';
+    document.getElementById('roleForm').reset();
+}
+
+function submitRole() {
+    const formData = new FormData(document.getElementById('roleForm'));
+    const data = Object.fromEntries(formData.entries());
+    data.is_admin = document.getElementById('roleIsAdmin').checked;
+    
+    const url = isEditMode ? `/admin/roles/${currentRoleId}/edit` : '/admin/roles/add';
+    const method = 'POST';
+    
+    fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message, 'success');
+            closeRoleModal();
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showNotification(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('حدث خطأ أثناء حفظ الدور', 'error');
+    });
+}
+
+// تعديل دور
+function editRole(roleId) {
+    isEditMode = true;
+    currentRoleId = roleId;
+    
+    fetch(`/admin/roles/${roleId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('roleModalTitle').textContent = 'تعديل الدور';
+                document.getElementById('roleSubmitText').textContent = 'حفظ التغييرات';
+                
+                document.getElementById('roleName').value = data.role.name;
+                document.getElementById('roleDisplayName').value = data.role.display_name;
+                document.getElementById('roleDescription').value = data.role.description || '';
+                document.getElementById('roleIsAdmin').checked = data.role.is_admin;
+                
+                document.getElementById('roleModal').style.display = 'block';
+            } else {
+                showNotification(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('حدث خطأ أثناء تحميل بيانات الدور', 'error');
+        });
+}
+
+// عرض صلاحيات الدور
+function viewRolePermissions(roleId) {
+    fetch(`/admin/roles/${roleId}/permissions/view`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('viewRolePermissionsContent').innerHTML = data.html;
+                document.getElementById('viewRolePermissionsModal').style.display = 'block';
+            } else {
+                showNotification(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('حدث خطأ أثناء تحميل الصلاحيات', 'error');
+        });
+}
+
+function closeViewRolePermissionsModal() {
+    document.getElementById('viewRolePermissionsModal').style.display = 'none';
+}
+
+// إدارة صلاحيات الدور
+function manageRolePermissions(roleId) {
+    currentRoleId = roleId;
+    
+    fetch(`/admin/roles/${roleId}/permissions`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('rolePermissionsContent').innerHTML = data.html;
+                document.getElementById('rolePermissionsModal').style.display = 'block';
+            } else {
+                showNotification(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('حدث خطأ أثناء تحميل الصلاحيات', 'error');
+        });
+}
+
+function closeRolePermissionsModal() {
+    document.getElementById('rolePermissionsModal').style.display = 'none';
+    currentRoleId = null;
+}
+
+function saveRolePermissions() {
+    if (!currentRoleId) return;
+    
+    const permissions = [];
+    const checkboxes = document.querySelectorAll('#rolePermissionsContent input[type="checkbox"]');
+    
+    checkboxes.forEach(checkbox => {
+        if (checkbox.checked) {
+            permissions.push(parseInt(checkbox.dataset.permissionId));
+        }
+    });
+    
+    fetch(`/admin/roles/${currentRoleId}/permissions`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({permissions: permissions})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message, 'success');
+            closeRolePermissionsModal();
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showNotification(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('حدث خطأ أثناء حفظ الصلاحيات', 'error');
+    });
+}
+
+// تفعيل/إلغاء تفعيل دور
+function toggleRoleStatus(roleId, isActive) {
+    const action = isActive ? 'تفعيل' : 'إلغاء تفعيل';
+    
+    if (confirm(`هل أنت متأكد من ${action} هذا الدور؟`)) {
+        fetch(`/admin/roles/${roleId}/status`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({is_active: isActive})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification(data.message, 'success');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showNotification(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('حدث خطأ أثناء تحديث حالة الدور', 'error');
+        });
+    }
+}
+
+// حذف دور
+function deleteRole(roleId, roleName) {
+    if (confirm(`هل أنت متأكد من حذف الدور "${roleName}"؟\nلا يمكن التراجع عن هذا الإجراء!`)) {
+        fetch(`/admin/roles/${roleId}/delete`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification(data.message, 'success');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showNotification(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('حدث خطأ أثناء حذف الدور', 'error');
+        });
+    }
+}
+
+// إغلاق المودالات عند النقر خارجها
+window.onclick = function(event) {
+    const modals = ['roleModal', 'rolePermissionsModal', 'viewRolePermissionsModal'];
+    modals.forEach(modalId => {
+        const modal = document.getElementById(modalId);
+        if (event.target === modal) {
+            modal.style.display = 'none';
+        }
+    });
+}
+</script>
+
+<style>
+/* تحسينات إضافية */
+.action-buttons {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.action-buttons .btn {
+    padding: 4px 8px;
+    font-size: 0.8em;
+}
+
+.data-table tr:hover {
+    background: linear-gradient(135deg, #333, #444);
+    transform: translateX(5px);
+}
+
+/* تحسينات للإحصائيات */
+.stat-card {
+    background: linear-gradient(135deg, #333, #444);
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(255, 0, 51, 0.2);
+}
+
+.stat-card.success {
+    border-left: 4px solid #28a745;
+}
+
+.stat-card.primary {
+    border-left: 4px solid #007bff;
+}
+
+.stat-card.warning {
+    border-left: 4px solid #ffc107;
+}
+
+.stat-card.info {
+    border-left: 4px solid #17a2b8;
+}
+
+.stat-icon {
+    font-size: 2em;
+    color: #ff0033;
+    margin-bottom: 10px;
+}
+
+.stat-number {
+    font-size: 2.5em;
+    font-weight: bold;
+    color: #fff;
+    margin-bottom: 5px;
+}
+
+.stat-label {
+    color: #ccc;
+    font-size: 0.9em;
+}
+
+/* تحسين تصميم المودالات */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(5px);
+}
+
+.modal-content {
+    background: linear-gradient(135deg, #2a2a2a, #333);
+    margin: 5% auto;
+    padding: 0;
+    border: 1px solid #555;
+    border-radius: 15px;
+    width: 90%;
+    max-width: 700px;
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.5);
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50px) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.modal-header {
+    background: linear-gradient(135deg, #ff0033, #cc0029);
+    color: white;
+    padding: 20px 25px;
+    border-radius: 15px 15px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #555;
+}
+
+.modal-header h3 {
+    font-size: 1.3em;
+    font-weight: 600;
+}
+
+.close {
+    color: white;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    padding: 5px 10px;
+    border-radius: 50%;
+}
+
+.close:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: rotate(90deg);
+}
+
+.modal-body {
+    padding: 25px;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.modal-footer {
+    background: #333;
+    padding: 20px 25px;
+    border-radius: 0 0 15px 15px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    border-top: 1px solid #555;
+}
+
+/* تحسين النماذج */
+.form-row {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0 -10px;
+}
+
+.form-group {
+    flex: 1;
+    margin: 10px;
+    min-width: 250px;
+}
+
+.form-group.col-md-6 {
+    flex: 0 0 calc(50% - 20px);
+    min-width: 200px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #fff;
+    font-weight: 500;
+    font-size: 0.95em;
+}
+
+.form-group label i {
+    margin-right: 8px;
+    color: #ff0033;
+    width: 16px;
+}
+
+.form-control {
+    width: 100%;
+    padding: 12px 15px;
+    background: #444;
+    border: 2px solid #555;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 0.95em;
+    transition: all 0.3s ease;
+    box-sizing: border-box;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #ff0033;
+    box-shadow: 0 0 10px rgba(255, 0, 51, 0.3);
+    background: #4a4a4a;
+}
+
+.form-control.disabled {
+    background: #333;
+    color: #ccc;
+    cursor: not-allowed;
+}
+
+.form-control::placeholder {
+    color: #999;
+}
+
+textarea.form-control {
+    resize: vertical;
+    min-height: 80px;
+}
+
+/* Checkbox مخصص */
+.custom-control {
+    position: relative;
+    display: block;
+    padding-left: 35px;
+    margin-bottom: 12px;
+    cursor: pointer;
+}
+
+.custom-control-input {
+    position: absolute;
+    left: 0;
+    z-index: -1;
+    width: 20px;
+    height: 20px;
+    opacity: 0;
+}
+
+.custom-control-label {
+    color: #fff;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.custom-control-label::before {
+    position: absolute;
+    top: 2px;
+    left: -35px;
+    display: block;
+    width: 20px;
+    height: 20px;
+    content: "";
+    background: #444;
+    border: 2px solid #555;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+}
+
+.custom-control-input:checked ~ .custom-control-label::before {
+    background: linear-gradient(135deg, #ff0033, #cc0029);
+    border-color: #ff0033;
+}
+
+.custom-control-label::after {
+    position: absolute;
+    top: 6px;
+    left: -31px;
+    display: block;
+    width: 12px;
+    height: 12px;
+    content: "";
+    background: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3E%3Cpath fill='%23fff' d='m6.564.75-3.59 3.612-1.538-1.55L0 4.26 2.974 7.25 8 2.193z'/%3E%3C/svg%3E") center/contain no-repeat;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.custom-control-input:checked ~ .custom-control-label::after {
+    opacity: 1;
+}
+
+.form-text.text-muted {
+    color: #999 !important;
+    font-size: 0.85em;
+    margin-top: 5px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* تحسين الأزرار */
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.95em;
+    text-decoration: none;
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #5a6268;
+    transform: translateY(-2px);
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #28a745, #20a040);
+    color: white;
+}
+
+.btn-success:hover {
+    background: linear-gradient(135deg, #20a040, #1e8e3e);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .modal-content {
+        width: 95%;
+        margin: 10px auto;
+    }
+    
+    .form-group.col-md-6 {
+        flex: 1;
+        min-width: 100%;
+    }
+    
+    .modal-footer {
+        flex-direction: column;
+    }
+    
+    .modal-footer .btn {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .form-row {
+        margin: 0;
+    }
+    
+    .form-group {
+        margin: 10px 0;
+    }
+}
+</style>
+{% endblock %}

@@ -1,0 +1,1682 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}إدارة الموظفين{% endblock %}
+
+{% block content %}
+<div class="content-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="margin: 0; color: #ff0033; display: flex; align-items: center; gap: 10px;">
+            <i class="fas fa-users-cog"></i>
+            إدارة الموظفين
+        </h2>
+        <button class="btn btn-success" onclick="openAddEmployeeModal()">
+            <i class="fas fa-plus"></i>
+            إضافة موظف جديد
+        </button>
+    </div>
+    
+    <p style="color: #ccc; margin-bottom: 20px;">
+        إدارة جميع الموظفين والأدوار والصلاحيات في النظام.
+    </p>
+
+    <!-- إحصائيات سريعة -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="stat-number">{{ employees|length }}</div>
+            <div class="stat-label">إجمالي الموظفين</div>
+        </div>
+        
+        <div class="stat-card success">
+            <div class="stat-icon">
+                <i class="fas fa-user-check"></i>
+            </div>
+            <div class="stat-number">{{ employees|selectattr('status', 'equalto', 'active')|list|length }}</div>
+            <div class="stat-label">موظفين نشطين</div>
+        </div>
+        
+        <div class="stat-card warning">
+            <div class="stat-icon">
+                <i class="fas fa-crown"></i>
+            </div>
+            <div class="stat-number">{{ employees|selectattr('role.is_admin', 'equalto', True)|list|length }}</div>
+            <div class="stat-label">مدراء</div>
+        </div>
+        
+        <div class="stat-card info">
+            <div class="stat-icon">
+                <i class="fas fa-building"></i>
+            </div>
+            <div class="stat-number">{{ departments|length }}</div>
+            <div class="stat-label">أقسام</div>
+        </div>
+    </div>
+
+    <!-- فلاتر البحث -->
+    <div style="background: #333; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+        <h3 style="color: #ff0033; margin-bottom: 15px;">
+            <i class="fas fa-filter"></i>
+            فلاتر البحث والتصفية
+        </h3>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+            <div>
+                <label style="color: #ccc; display: block; margin-bottom: 5px;">البحث:</label>
+                <input type="text" id="searchEmployee" placeholder="اسم الموظف أو البريد الإلكتروني" 
+                       style="width: 100%; padding: 8px; background: #444; border: 1px solid #555; border-radius: 5px; color: #fff;">
+            </div>
+            <div>
+                <label style="color: #ccc; display: block; margin-bottom: 5px;">القسم:</label>
+                <select id="filterDepartment" style="width: 100%; padding: 8px; background: #444; border: 1px solid #555; border-radius: 5px; color: #fff;">
+                    <option value="">جميع الأقسام</option>
+                    {% for dept in departments %}
+                    <option value="{{ dept }}">{{ dept }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label style="color: #ccc; display: block; margin-bottom: 5px;">الدور:</label>
+                <select id="filterRole" style="width: 100%; padding: 8px; background: #444; border: 1px solid #555; border-radius: 5px; color: #fff;">
+                    <option value="">جميع الأدوار</option>
+                    {% for role in roles %}
+                    <option value="{{ role.id }}">{{ role.display_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label style="color: #ccc; display: block; margin-bottom: 5px;">الحالة:</label>
+                <select id="filterStatus" style="width: 100%; padding: 8px; background: #444; border: 1px solid #555; border-radius: 5px; color: #fff;">
+                    <option value="">جميع الحالات</option>
+                    <option value="active">نشط</option>
+                    <option value="suspended">معلق</option>
+                    <option value="terminated">منتهي الخدمة</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- جدول الموظفين -->
+    <div class="table-container">
+        <table class="data-table" id="employeesTable">
+            <thead>
+                <tr>
+                    <th>الموظف</th>
+                    <th>رقم الموظف</th>
+                    <th>القسم</th>
+                    <th>المنصب</th>
+                    <th>الدور</th>
+                    <th>المدير المباشر</th>
+                    <th>تاريخ التوظيف</th>
+                    <th>الحالة</th>
+                    <th>الإجراءات</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for employee in employees %}
+                <tr data-employee-id="{{ employee.id }}" data-department="{{ employee.department }}" 
+                    data-role="{{ employee.role_id }}" data-status="{{ employee.status }}">
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #ff0033, #cc0029); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">
+                                {{ employee.user.full_name[0].upper() if employee.user.full_name else employee.user.email[0].upper() }}
+                            </div>
+                            <div>
+                                <strong style="color: #fff;">{{ employee.user.full_name or 'غير محدد' }}</strong>
+                                <div style="color: #ccc; font-size: 0.9em;">{{ employee.user.email }}</div>
+                                {% if employee.role.is_admin %}
+                                <span class="badge badge-danger" style="font-size: 0.7em;">مدير</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </td>
+                    <td style="color: #ff0033; font-weight: bold;">{{ employee.employee_id }}</td>
+                    <td>{{ employee.department }}</td>
+                    <td>{{ employee.position }}</td>
+                    <td>
+                        <span class="badge {{ 'badge-danger' if employee.role.is_admin else 'badge-primary' }}">
+                            {{ employee.role.display_name }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if employee.manager %}
+                            <span style="color: #ccc;">{{ employee.manager.user.full_name or 'غير محدد' }}</span>
+                        {% else %}
+                            <span style="color: #666;">---</span>
+                        {% endif %}
+                    </td>
+                    <td style="color: #ccc;">{{ employee.hire_date.strftime('%Y-%m-%d') if employee.hire_date else 'غير محدد' }}</td>
+                    <td>
+                        <span class="badge {{ 'badge-success' if employee.status == 'active' else 'badge-warning' if employee.status == 'suspended' else 'badge-danger' }}">
+                            {{ 'نشط' if employee.status == 'active' else 'معلق' if employee.status == 'suspended' else 'منتهي الخدمة' }}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn btn-primary btn-sm" onclick="viewEmployee({{ employee.id }})" title="عرض التفاصيل">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn btn-warning btn-sm" onclick="editEmployee({{ employee.id }})" title="تعديل">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-info btn-sm" onclick="managePermissions({{ employee.id }})" title="إدارة الصلاحيات">
+                                <i class="fas fa-key"></i>
+                            </button>
+                            {% if employee.status == 'active' %}
+                            <button class="btn btn-warning btn-sm" onclick="suspendEmployee({{ employee.id }})" title="تعليق">
+                                <i class="fas fa-pause"></i>
+                            </button>
+                            {% elif employee.status == 'suspended' %}
+                            <button class="btn btn-success btn-sm" onclick="activateEmployee({{ employee.id }})" title="تفعيل">
+                                <i class="fas fa-play"></i>
+                            </button>
+                            {% endif %}
+                            <button class="btn btn-danger btn-sm" onclick="deleteEmployee({{ employee.id }}, '{{ employee.user.full_name or employee.user.email }}')" title="حذف">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- مودال إضافة موظف -->
+<div id="addEmployeeModal" class="modal">
+    <div class="modal-content employee-modal">
+        <div class="modal-header">
+            <h3 style="color: white; margin: 0; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-user-plus"></i>
+                إضافة موظف جديد
+            </h3>
+            <span class="close" onclick="closeAddEmployeeModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <!-- خطوات النموذج -->
+            <div class="form-steps">
+                <div class="step active" data-step="1">
+                    <span class="step-number">1</span>
+                    <span class="step-title">المعلومات الأساسية</span>
+                </div>
+                <div class="step" data-step="2">
+                    <span class="step-number">2</span>
+                    <span class="step-title">تفاصيل الوظيفة</span>
+                </div>
+                <div class="step" data-step="3">
+                    <span class="step-number">3</span>
+                    <span class="step-title">الصلاحيات والأذونات</span>
+                </div>
+            </div>
+
+            <form id="addEmployeeForm">
+                <!-- الخطوة الأولى: المعلومات الأساسية -->
+                <div class="form-step" id="step1" style="display: block;">
+                    <div class="step-header">
+                        <h4><i class="fas fa-user"></i> المعلومات الأساسية للموظف</h4>
+                        <p>أدخل البيانات الشخصية الأساسية للموظف الجديد</p>
+                    </div>
+                    
+                    <div class="form-grid">
+                        <div class="form-group required">
+                            <label><i class="fas fa-user"></i> المستخدم:</label>
+                            <select id="userId" name="user_id" required class="form-control">
+                                <option value="">اختر مستخدم من القائمة</option>
+                                {% for user in available_users %}
+                                <option value="{{ user.id }}">{{ user.full_name or user.email }} ({{ user.email }})</option>
+                                {% endfor %}
+                            </select>
+                            <small class="form-help">اختر المستخدم الذي سيتم تعيينه كموظف</small>
+                        </div>
+                        
+                        <div class="form-group required">
+                            <label><i class="fas fa-id-card"></i> رقم الموظف:</label>
+                            <input type="text" id="employeeId" name="employee_id" required class="form-control" placeholder="EMP001">
+                            <small class="form-help">رقم تعريف فريد للموظف</small>
+                        </div>
+                        
+                        <div class="form-group required">
+                            <label><i class="fas fa-building"></i> القسم:</label>
+                            <select id="department" name="department" required class="form-control">
+                                <option value="">اختر القسم</option>
+                                <option value="المبيعات">المبيعات</option>
+                                <option value="التسويق">التسويق</option>
+                                <option value="خدمة العملاء">خدمة العملاء</option>
+                                <option value="المحاسبة">المحاسبة</option>
+                                <option value="تقنية المعلومات">تقنية المعلومات</option>
+                                <option value="الموارد البشرية">الموارد البشرية</option>
+                                <option value="الإدارة">الإدارة</option>
+                            </select>
+                            <small class="form-help">القسم الذي سينتمي إليه الموظف</small>
+                        </div>
+                        
+                        <div class="form-group required">
+                            <label><i class="fas fa-briefcase"></i> المنصب:</label>
+                            <input type="text" id="position" name="position" required class="form-control" placeholder="مثل: مطور، محاسب، مدير مبيعات">
+                            <small class="form-help">المنصب أو الوظيفة المحددة</small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label><i class="fas fa-calendar"></i> تاريخ التوظيف:</label>
+                            <input type="date" id="hireDate" name="hire_date" class="form-control">
+                            <small class="form-help">تاريخ بداية العمل (اختياري)</small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label><i class="fas fa-phone"></i> رقم الهاتف:</label>
+                            <input type="tel" id="phoneNumber" name="phone_number" class="form-control" placeholder="+966 5xxxxxxxx">
+                            <small class="form-help">رقم الهاتف للتواصل</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- الخطوة الثانية: تفاصيل الوظيفة -->
+                <div class="form-step" id="step2" style="display: none;">
+                    <div class="step-header">
+                        <h4><i class="fas fa-briefcase"></i> تفاصيل الوظيفة والهيكل التنظيمي</h4>
+                        <p>حدد الدور الوظيفي والعلاقات التنظيمية والتفاصيل المالية</p>
+                    </div>
+                    
+                    <div class="form-grid">
+                        <div class="form-group required">
+                            <label><i class="fas fa-user-shield"></i> الدور الوظيفي:</label>
+                            <select id="roleId" name="role_id" required class="form-control">
+                                <option value="">اختر الدور الوظيفي</option>
+                                {% for role in roles %}
+                                <option value="{{ role.id }}" data-admin="{{ role.is_admin }}">
+                                    {{ role.display_name }}
+                                    {% if role.is_admin %} (دور إداري){% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <small class="form-help">الدور يحدد الصلاحيات الأساسية في النظام</small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label><i class="fas fa-user-tie"></i> المدير المباشر:</label>
+                            <select id="managerId" name="manager_id" class="form-control">
+                                <option value="">لا يوجد مدير مباشر</option>
+                                {% for emp in employees %}
+                                {% if emp.role.is_admin or emp.role.name in ['products_manager', 'orders_manager'] %}
+                                <option value="{{ emp.id }}">{{ emp.user.full_name or emp.user.email }} - {{ emp.position }}</option>
+                                {% endif %}
+                                {% endfor %}
+                            </select>
+                            <small class="form-help">الشخص المسؤول مباشرة عن هذا الموظف</small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label><i class="fas fa-toggle-on"></i> حالة الموظف:</label>
+                            <select id="employeeStatus" name="status" class="form-control">
+                                <option value="active">نشط</option>
+                                <option value="suspended">معلق</option>
+                                <option value="terminated">منتهي الخدمة</option>
+                            </select>
+                            <small class="form-help">الحالة الحالية للموظف في النظام</small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label><i class="fas fa-dollar-sign"></i> الراتب الأساسي:</label>
+                            <div class="input-group">
+                                <input type="number" id="salary" name="salary" step="0.01" min="0" class="form-control" placeholder="0.00">
+                                <div class="input-addon">ريال</div>
+                            </div>
+                            <small class="form-help">الراتب الشهري الأساسي (اختياري)</small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label><i class="fas fa-map-marker-alt"></i> مكان العمل:</label>
+                            <select id="workLocation" name="work_location" class="form-control">
+                                <option value="">اختر مكان العمل</option>
+                                <option value="المكتب الرئيسي">المكتب الرئيسي</option>
+                                <option value="عن بُعد">عن بُعد</option>
+                                <option value="هجين">هجين (مكتب + عن بُعد)</option>
+                                <option value="ميداني">ميداني</option>
+                            </select>
+                            <small class="form-help">طبيعة مكان أداء العمل</small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label><i class="fas fa-clock"></i> نوع العمل:</label>
+                            <select id="workType" name="work_type" class="form-control">
+                                <option value="full_time">دوام كامل</option>
+                                <option value="part_time">دوام جزئي</option>
+                                <option value="contract">تعاقد</option>
+                                <option value="internship">تدريب</option>
+                            </select>
+                            <small class="form-help">نوع العقد والدوام</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- الخطوة الثالثة: الصلاحيات والأذونات -->
+                <div class="form-step" id="step3" style="display: none;">
+                    <div class="step-header">
+                        <h4><i class="fas fa-key"></i> الصلاحيات والأذونات الخاصة</h4>
+                        <p>حدد الصلاحيات الإضافية والحدود المالية للموظف</p>
+                    </div>
+                    
+                    <!-- صلاحيات النظام -->
+                    <div class="permissions-section">
+                        <h5><i class="fas fa-shield-alt"></i> صلاحيات النظام</h5>
+                        <div class="permissions-grid">
+                            <div class="permission-item">
+                                <div class="custom-control custom-checkbox">
+                                    <input type="checkbox" class="custom-control-input" id="canAccessReports" name="can_access_reports">
+                                    <label class="custom-control-label" for="canAccessReports">
+                                        <i class="fas fa-chart-bar"></i>
+                                        <span>الوصول للتقارير</span>
+                                        <small>عرض وتحليل التقارير المالية والإحصائية</small>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="permission-item">
+                                <div class="custom-control custom-checkbox">
+                                    <input type="checkbox" class="custom-control-input" id="canManageCurrencies" name="can_manage_currencies">
+                                    <label class="custom-control-label" for="canManageCurrencies">
+                                        <i class="fas fa-coins"></i>
+                                        <span>إدارة العملات</span>
+                                        <small>تحديث أسعار العملات وإدارة التحويلات</small>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="permission-item">
+                                <div class="custom-control custom-checkbox">
+                                    <input type="checkbox" class="custom-control-input" id="canManageCategories" name="can_manage_categories">
+                                    <label class="custom-control-label" for="canManageCategories">
+                                        <i class="fas fa-tags"></i>
+                                        <span>إدارة التصنيفات</span>
+                                        <small>إضافة وتعديل تصنيفات المنتجات</small>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="permission-item">
+                                <div class="custom-control custom-checkbox">
+                                    <input type="checkbox" class="custom-control-input" id="canManageOrders" name="can_manage_orders">
+                                    <label class="custom-control-label" for="canManageOrders">
+                                        <i class="fas fa-shopping-cart"></i>
+                                        <span>إدارة الطلبات</span>
+                                        <small>معالجة وتتبع طلبات العملاء</small>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="permission-item">
+                                <div class="custom-control custom-checkbox">
+                                    <input type="checkbox" class="custom-control-input" id="canManageUsers" name="can_manage_users">
+                                    <label class="custom-control-label" for="canManageUsers">
+                                        <i class="fas fa-users"></i>
+                                        <span>إدارة المستخدمين</span>
+                                        <small>إضافة وتعديل حسابات المستخدمين</small>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="permission-item">
+                                <div class="custom-control custom-checkbox">
+                                    <input type="checkbox" class="custom-control-input" id="canAccessFinancials" name="can_access_financials">
+                                    <label class="custom-control-label" for="canAccessFinancials">
+                                        <i class="fas fa-money-bill-wave"></i>
+                                        <span>الوصول للبيانات المالية</span>
+                                        <small>عرض التقارير المالية والأرباح</small>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- الحدود المالية -->
+                    <div class="financial-limits">
+                        <h5><i class="fas fa-percentage"></i> الحدود المالية والخصومات</h5>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label><i class="fas fa-percentage"></i> أقصى نسبة خصم (%):</label>
+                                <div class="input-group">
+                                    <input type="number" id="maxDiscountPercent" name="max_discount_percent" min="0" max="100" value="0" class="form-control">
+                                    <div class="input-addon">%</div>
+                                </div>
+                                <small class="form-help">أقصى خصم يمكن للموظف منحه للعملاء</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label><i class="fas fa-money-bill"></i> حد الصرف اليومي:</label>
+                                <div class="input-group">
+                                    <input type="number" id="dailySpendLimit" name="daily_spend_limit" min="0" step="0.01" class="form-control">
+                                    <div class="input-addon">ريال</div>
+                                </div>
+                                <small class="form-help">أقصى مبلغ يمكن صرفه يومياً</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label><i class="fas fa-calendar-alt"></i> حد الصرف الشهري:</label>
+                                <div class="input-group">
+                                    <input type="number" id="monthlySpendLimit" name="monthly_spend_limit" min="0" step="0.01" class="form-control">
+                                    <div class="input-addon">ريال</div>
+                                </div>
+                                <small class="form-help">أقصى مبلغ يمكن صرفه شهرياً</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <div class="custom-control custom-checkbox">
+                                    <input type="checkbox" class="custom-control-input" id="requireApproval" name="require_approval">
+                                    <label class="custom-control-label" for="requireApproval">
+                                        <i class="fas fa-check-circle"></i>
+                                        <span>يتطلب موافقة للعمليات الكبيرة</span>
+                                        <small>العمليات التي تتجاوز حداً معيناً تحتاج موافقة</small>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" id="prevBtn" onclick="changeStep(-1)" style="display: none;">
+                <i class="fas fa-arrow-right"></i> السابق
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="closeAddEmployeeModal()">
+                <i class="fas fa-times"></i> إلغاء
+            </button>
+            <button type="button" class="btn btn-primary" id="nextBtn" onclick="changeStep(1)">
+                التالي <i class="fas fa-arrow-left"></i>
+            </button>
+            <button type="button" class="btn btn-success" id="submitBtn" onclick="submitAddEmployee()" style="display: none;">
+                <i class="fas fa-save"></i> إضافة الموظف
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- مودال إدارة الصلاحيات -->
+<div id="permissionsModal" class="modal">
+    <div class="modal-content" style="max-width: 900px;">
+        <div class="modal-header">
+            <h3 style="color: #ff0033; margin: 0; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-key"></i>
+                إدارة صلاحيات الموظف
+            </h3>
+            <span class="close" onclick="closePermissionsModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div id="permissionsContent">
+                <!-- سيتم تحميل المحتوى ديناميكياً -->
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closePermissionsModal()">
+                <i class="fas fa-times"></i> إغلاق
+            </button>
+            <button type="button" class="btn btn-success" onclick="savePermissions()">
+                <i class="fas fa-save"></i> حفظ الصلاحيات
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- مودال عرض تفاصيل الموظف -->
+<div id="viewEmployeeModal" class="modal">
+    <div class="modal-content" style="max-width: 800px;">
+        <div class="modal-header">
+            <h3 style="color: #ff0033; margin: 0; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-user"></i>
+                تفاصيل الموظف
+            </h3>
+            <span class="close" onclick="closeViewEmployeeModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div id="employeeDetails">
+                <!-- سيتم تحميل المحتوى ديناميكياً -->
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeViewEmployeeModal()">
+                <i class="fas fa-times"></i> إغلاق
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+// متغيرات عامة
+let currentEmployeeId = null;
+let currentStep = 1;
+const totalSteps = 3;
+
+// البحث والفلترة
+document.getElementById('searchEmployee').addEventListener('input', filterEmployees);
+document.getElementById('filterDepartment').addEventListener('change', filterEmployees);
+document.getElementById('filterRole').addEventListener('change', filterEmployees);
+document.getElementById('filterStatus').addEventListener('change', filterEmployees);
+
+function filterEmployees() {
+    const search = document.getElementById('searchEmployee').value.toLowerCase();
+    const department = document.getElementById('filterDepartment').value;
+    const role = document.getElementById('filterRole').value;
+    const status = document.getElementById('filterStatus').value;
+    
+    const rows = document.querySelectorAll('#employeesTable tbody tr');
+    
+    rows.forEach(row => {
+        const employeeText = row.textContent.toLowerCase();
+        const employeeDept = row.dataset.department;
+        const employeeRole = row.dataset.role;
+        const employeeStatus = row.dataset.status;
+        
+        const matchSearch = !search || employeeText.includes(search);
+        const matchDept = !department || employeeDept === department;
+        const matchRole = !role || employeeRole === role;
+        const matchStatus = !status || employeeStatus === status;
+        
+        if (matchSearch && matchDept && matchRole && matchStatus) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
+// إدارة خطوات النموذج
+function changeStep(direction) {
+    const newStep = currentStep + direction;
+    
+    if (newStep < 1 || newStep > totalSteps) return;
+    
+    // التحقق من صحة البيانات قبل الانتقال للخطوة التالية
+    if (direction > 0 && !validateStep(currentStep)) {
+        return;
+    }
+    
+    // إخفاء الخطوة الحالية
+    document.getElementById(`step${currentStep}`).style.display = 'none';
+    document.querySelector(`.step[data-step="${currentStep}"]`).classList.remove('active');
+    
+    // إظهار الخطوة الجديدة
+    currentStep = newStep;
+    document.getElementById(`step${currentStep}`).style.display = 'block';
+    document.querySelector(`.step[data-step="${currentStep}"]`).classList.add('active');
+    
+    // تحديث الأزرار
+    updateStepButtons();
+}
+
+function updateStepButtons() {
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    // زر السابق
+    if (currentStep === 1) {
+        prevBtn.style.display = 'none';
+    } else {
+        prevBtn.style.display = 'inline-block';
+    }
+    
+    // زر التالي وزر الإرسال
+    if (currentStep === totalSteps) {
+        nextBtn.style.display = 'none';
+        submitBtn.style.display = 'inline-block';
+    } else {
+        nextBtn.style.display = 'inline-block';
+        submitBtn.style.display = 'none';
+    }
+}
+
+function validateStep(step) {
+    let isValid = true;
+    let errorMessage = '';
+    
+    switch(step) {
+        case 1:
+            // التحقق من الحقول المطلوبة في الخطوة الأولى
+            const userId = document.getElementById('userId').value;
+            const department = document.getElementById('department').value;
+            const position = document.getElementById('position').value;
+            
+            if (!userId) {
+                errorMessage = 'يرجى اختيار المستخدم';
+                isValid = false;
+            } else if (!department) {
+                errorMessage = 'يرجى اختيار القسم';
+                isValid = false;
+            } else if (!position) {
+                errorMessage = 'يرجى إدخال المنصب';
+                isValid = false;
+            }
+            break;
+            
+        case 2:
+            // التحقق من الحقول المطلوبة في الخطوة الثانية
+            const roleId = document.getElementById('roleId').value;
+            
+            if (!roleId) {
+                errorMessage = 'يرجى اختيار الدور الوظيفي';
+                isValid = false;
+            }
+            break;
+            
+        case 3:
+            // الخطوة الثالثة اختيارية
+            isValid = true;
+            break;
+    }
+    
+    if (!isValid) {
+        showNotification(errorMessage, 'error');
+    }
+    
+    return isValid;
+}
+
+function resetStepForm() {
+    currentStep = 1;
+    
+    // إخفاء جميع الخطوات
+    for (let i = 1; i <= totalSteps; i++) {
+        document.getElementById(`step${i}`).style.display = 'none';
+        document.querySelector(`.step[data-step="${i}"]`).classList.remove('active');
+    }
+    
+    // إظهار الخطوة الأولى
+    document.getElementById('step1').style.display = 'block';
+    document.querySelector(`.step[data-step="1"]`).classList.add('active');
+    
+    // تحديث الأزرار
+    updateStepButtons();
+}
+
+// إضافة موظف جديد
+function openAddEmployeeModal() {
+    document.getElementById('addEmployeeModal').style.display = 'block';
+    resetStepForm();
+}
+
+function closeAddEmployeeModal() {
+    document.getElementById('addEmployeeModal').style.display = 'none';
+    document.getElementById('addEmployeeForm').reset();
+    resetStepForm();
+}
+
+function submitAddEmployee() {
+    // التحقق من صحة جميع البيانات
+    if (!validateStep(1) || !validateStep(2)) {
+        return;
+    }
+    
+    const formData = new FormData(document.getElementById('addEmployeeForm'));
+    const data = Object.fromEntries(formData.entries());
+    
+    // تحويل checkboxes
+    data.can_access_reports = document.getElementById('canAccessReports').checked;
+    data.can_manage_currencies = document.getElementById('canManageCurrencies').checked;
+    data.can_manage_categories = document.getElementById('canManageCategories').checked;
+    data.can_manage_orders = document.getElementById('canManageOrders').checked;
+    data.can_manage_users = document.getElementById('canManageUsers').checked;
+    data.can_access_financials = document.getElementById('canAccessFinancials').checked;
+    data.require_approval = document.getElementById('requireApproval').checked;
+    
+    // إضافة الحقول الجديدة
+    data.employee_id = document.getElementById('employeeId').value;
+    data.phone_number = document.getElementById('phoneNumber').value;
+    data.status = document.getElementById('employeeStatus').value;
+    data.work_type = document.getElementById('workType').value;
+    data.daily_spend_limit = document.getElementById('dailySpendLimit').value;
+    data.monthly_spend_limit = document.getElementById('monthlySpendLimit').value;
+    
+    // إظهار مؤشر التحميل
+    const submitBtn = document.getElementById('submitBtn');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإضافة...';
+    submitBtn.disabled = true;
+    
+    fetch('/admin/employees/add', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message, 'success');
+            closeAddEmployeeModal();
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showNotification(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('حدث خطأ أثناء إضافة الموظف', 'error');
+    })
+    .finally(() => {
+        // إعادة تعيين الزر
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    });
+}
+
+// عرض تفاصيل الموظف
+function viewEmployee(employeeId) {
+    fetch(`/admin/employees/${employeeId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('employeeDetails').innerHTML = data.html;
+                document.getElementById('viewEmployeeModal').style.display = 'block';
+            } else {
+                showNotification(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('حدث خطأ أثناء تحميل بيانات الموظف', 'error');
+        });
+}
+
+function closeViewEmployeeModal() {
+    document.getElementById('viewEmployeeModal').style.display = 'none';
+}
+
+// إدارة الصلاحيات
+function managePermissions(employeeId) {
+    currentEmployeeId = employeeId;
+    
+    fetch(`/admin/employees/${employeeId}/permissions`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('permissionsContent').innerHTML = data.html;
+                document.getElementById('permissionsModal').style.display = 'block';
+            } else {
+                showNotification(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('حدث خطأ أثناء تحميل الصلاحيات', 'error');
+        });
+}
+
+function closePermissionsModal() {
+    document.getElementById('permissionsModal').style.display = 'none';
+    currentEmployeeId = null;
+}
+
+function savePermissions() {
+    if (!currentEmployeeId) return;
+    
+    const permissions = [];
+    const checkboxes = document.querySelectorAll('#permissionsContent input[type="checkbox"]');
+    
+    checkboxes.forEach(checkbox => {
+        if (checkbox.checked) {
+            permissions.push({
+                permission_id: checkbox.dataset.permissionId,
+                granted: true
+            });
+        }
+    });
+    
+    fetch(`/admin/employees/${currentEmployeeId}/permissions`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({permissions: permissions})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message, 'success');
+            closePermissionsModal();
+        } else {
+            showNotification(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('حدث خطأ أثناء حفظ الصلاحيات', 'error');
+    });
+}
+
+// تعديل موظف
+function editEmployee(employeeId) {
+    // فتح مودال التعديل مع بيانات الموظف المحددة
+    fetch(`/admin/employees/${employeeId}/edit`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // ملء النموذج بالبيانات الحالية
+                populateEditForm(data.employee);
+                document.getElementById('addEmployeeModal').style.display = 'block';
+                // تغيير وظيفة الإرسال للتعديل بدلاً من الإضافة
+                document.querySelector('#addEmployeeModal .btn-success').onclick = () => submitEditEmployee(employeeId);
+            }
+        })
+        .catch(error => console.error('Error:', error));
+}
+
+function populateEditForm(employee) {
+    document.getElementById('userId').value = employee.user_id;
+    document.getElementById('department').value = employee.department;
+    document.getElementById('position').value = employee.position;
+    document.getElementById('roleId').value = employee.role_id;
+    document.getElementById('managerId').value = employee.manager_id || '';
+    document.getElementById('salary').value = employee.salary || '';
+    document.getElementById('workLocation').value = employee.work_location || '';
+    document.getElementById('hireDate').value = employee.hire_date || '';
+    document.getElementById('canAccessReports').checked = employee.can_access_reports;
+    document.getElementById('canManageCurrencies').checked = employee.can_manage_currencies;
+    document.getElementById('canManageCategories').checked = employee.can_manage_categories;
+    document.getElementById('maxDiscountPercent').value = employee.max_discount_percent || 0;
+}
+
+function submitEditEmployee(employeeId) {
+    const formData = new FormData(document.getElementById('addEmployeeForm'));
+    const data = Object.fromEntries(formData.entries());
+    
+    // تحويل checkboxes
+    data.can_access_reports = document.getElementById('canAccessReports').checked;
+    data.can_manage_currencies = document.getElementById('canManageCurrencies').checked;
+    data.can_manage_categories = document.getElementById('canManageCategories').checked;
+    
+    fetch(`/admin/employees/${employeeId}/edit`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message, 'success');
+            closeAddEmployeeModal();
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showNotification(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('حدث خطأ أثناء تعديل الموظف', 'error');
+    });
+}
+
+// تعليق/تفعيل الموظف
+function suspendEmployee(employeeId) {
+    if (confirm('هل أنت متأكد من تعليق هذا الموظف؟')) {
+        updateEmployeeStatus(employeeId, 'suspended');
+    }
+}
+
+function activateEmployee(employeeId) {
+    if (confirm('هل أنت متأكد من تفعيل هذا الموظف؟')) {
+        updateEmployeeStatus(employeeId, 'active');
+    }
+}
+
+function updateEmployeeStatus(employeeId, status) {
+    fetch(`/admin/employees/${employeeId}/status`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({status: status})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message, 'success');
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showNotification(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('حدث خطأ أثناء تحديث حالة الموظف', 'error');
+    });
+}
+
+// حذف موظف
+function deleteEmployee(employeeId, employeeName) {
+    if (confirm(`هل أنت متأكد من حذف الموظف "${employeeName}"؟\nلا يمكن التراجع عن هذا الإجراء!`)) {
+        fetch(`/admin/employees/${employeeId}/delete`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification(data.message, 'success');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showNotification(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('حدث خطأ أثناء حذف الموظف', 'error');
+        });
+    }
+}
+
+// إغلاق المودالات عند النقر خارجها
+window.onclick = function(event) {
+    const modals = ['addEmployeeModal', 'permissionsModal', 'viewEmployeeModal'];
+    modals.forEach(modalId => {
+        const modal = document.getElementById(modalId);
+        if (event.target === modal) {
+            modal.style.display = 'none';
+        }
+    });
+}
+
+// تحسينات البحث المتقدم
+function initAdvancedSearch() {
+    const searchInput = document.getElementById('searchEmployee');
+    let searchTimeout;
+    
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            filterEmployees();
+        }, 300); // تأخير 300ms لتحسين الأداء
+    });
+}
+
+// تهيئة الصفحة
+document.addEventListener('DOMContentLoaded', function() {
+    initAdvancedSearch();
+});
+</script>
+
+<style>
+/* تحسينات إضافية للجدول */
+.data-table tr:hover {
+    background: linear-gradient(135deg, #333, #444);
+    transform: translateX(5px);
+}
+
+.action-buttons {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.action-buttons .btn {
+    padding: 4px 8px;
+    font-size: 0.8em;
+}
+
+.stat-card {
+    background: linear-gradient(135deg, #333, #444);
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(255, 0, 51, 0.2);
+}
+
+.stat-card.success {
+    border-left: 4px solid #28a745;
+}
+
+.stat-card.primary {
+    border-left: 4px solid #007bff;
+}
+
+.stat-card.warning {
+    border-left: 4px solid #ffc107;
+}
+
+.stat-card.info {
+    border-left: 4px solid #17a2b8;
+}
+
+.stat-icon {
+    font-size: 2em;
+    color: #ff0033;
+    margin-bottom: 10px;
+}
+
+.stat-number {
+    font-size: 2.5em;
+    font-weight: bold;
+    color: #fff;
+    margin-bottom: 5px;
+}
+
+.stat-label {
+    color: #ccc;
+    font-size: 0.9em;
+}
+
+/* تحسين تصميم المودالات */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(5px);
+}
+
+.modal-content {
+    background: linear-gradient(135deg, #2a2a2a, #333);
+    margin: 1% auto;
+    padding: 0;
+    border: 1px solid #555;
+    border-radius: 15px;
+    width: 95%;
+    max-width: 1000px;
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.5);
+    animation: modalSlideIn 0.3s ease-out;
+    max-height: 95vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.employee-modal {
+    max-width: 1200px;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50px) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.modal-header {
+    background: linear-gradient(135deg, #ff0033, #cc0029);
+    color: white;
+    padding: 20px 25px;
+    border-radius: 15px 15px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #555;
+    flex-shrink: 0;
+}
+
+.modal-header h3 {
+    font-size: 1.3em;
+    font-weight: 600;
+}
+
+.close {
+    color: white;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    padding: 5px 10px;
+    border-radius: 50%;
+}
+
+.close:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: rotate(90deg);
+}
+
+.modal-body {
+    padding: 25px;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.modal-footer {
+    background: #333;
+    padding: 20px 25px;
+    border-radius: 0 0 15px 15px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    border-top: 1px solid #555;
+    flex-shrink: 0;
+}
+
+/* تصميم خطوات النموذج */
+.form-steps {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 30px;
+    background: #333;
+    padding: 20px;
+    border-radius: 10px;
+    position: relative;
+}
+
+.step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    position: relative;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.step:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 20px;
+    right: -50%;
+    width: 100%;
+    height: 2px;
+    background: #555;
+    z-index: 1;
+}
+
+.step.active:not(:last-child)::after {
+    background: linear-gradient(to right, #ff0033, #cc0029);
+}
+
+.step-number {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #555;
+    color: #ccc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    margin-bottom: 8px;
+    position: relative;
+    z-index: 2;
+    transition: all 0.3s ease;
+}
+
+.step.active .step-number {
+    background: linear-gradient(135deg, #ff0033, #cc0029);
+    color: white;
+    transform: scale(1.1);
+}
+
+.step-title {
+    color: #ccc;
+    font-size: 0.9em;
+    text-align: center;
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+.step.active .step-title {
+    color: #ff0033;
+    font-weight: 600;
+}
+
+/* تصميم أقسام النموذج */
+.form-step {
+    min-height: 400px;
+}
+
+.step-header {
+    text-align: center;
+    margin-bottom: 30px;
+    padding: 20px;
+    background: linear-gradient(135deg, rgba(255, 0, 51, 0.1), rgba(204, 0, 41, 0.1));
+    border-radius: 10px;
+    border: 1px solid rgba(255, 0, 51, 0.2);
+}
+
+.step-header h4 {
+    color: #ff0033;
+    margin: 0 0 10px 0;
+    font-size: 1.3em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.step-header p {
+    color: #ccc;
+    margin: 0;
+    font-size: 0.95em;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+/* تحسين النماذج */
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group.required label::after {
+    content: '*';
+    color: #ff0033;
+    margin-left: 5px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #fff;
+    font-weight: 500;
+    font-size: 0.95em;
+}
+
+.form-group label i {
+    margin-right: 8px;
+    color: #ff0033;
+    width: 16px;
+}
+
+.form-control {
+    width: 100%;
+    padding: 12px 15px;
+    background: #444;
+    border: 2px solid #555;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 0.95em;
+    transition: all 0.3s ease;
+    box-sizing: border-box;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #ff0033;
+    box-shadow: 0 0 10px rgba(255, 0, 51, 0.3);
+    background: #4a4a4a;
+}
+
+.form-control.disabled {
+    background: #333;
+    color: #ccc;
+    cursor: not-allowed;
+}
+
+.form-control::placeholder {
+    color: #999;
+}
+
+.form-help {
+    display: block;
+    margin-top: 5px;
+    color: #999;
+    font-size: 0.85em;
+    font-style: italic;
+}
+
+.input-group {
+    display: flex;
+    align-items: stretch;
+}
+
+.input-group .form-control {
+    border-radius: 8px 0 0 8px;
+    border-right: none;
+}
+
+.input-addon {
+    background: #555;
+    border: 2px solid #555;
+    border-left: none;
+    padding: 12px 15px;
+    color: #ccc;
+    border-radius: 0 8px 8px 0;
+    display: flex;
+    align-items: center;
+    font-size: 0.9em;
+}
+
+/* قسم الصلاحيات */
+.permissions-section, .financial-limits {
+    background: #333;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    border: 1px solid #555;
+}
+
+.permissions-section h5, .financial-limits h5 {
+    color: #ff0033;
+    margin: 0 0 20px 0;
+    font-size: 1.1em;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.permissions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 15px;
+}
+
+.permission-item {
+    background: #3a3a3a;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #555;
+    transition: all 0.3s ease;
+}
+
+.permission-item:hover {
+    border-color: #ff0033;
+    background: #404040;
+}
+
+/* Checkbox مخصص محسن */
+.custom-control {
+    position: relative;
+    display: block;
+    padding-left: 35px;
+    margin-bottom: 0;
+    cursor: pointer;
+}
+
+.custom-control-input {
+    position: absolute;
+    left: 0;
+    z-index: -1;
+    width: 20px;
+    height: 20px;
+    opacity: 0;
+}
+
+.custom-control-label {
+    color: #fff;
+    font-weight: 500;
+    display: block;
+    font-size: 0.9em;
+    line-height: 1.4;
+}
+
+.custom-control-label span {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+}
+
+.custom-control-label small {
+    display: block;
+    color: #ccc;
+    font-size: 0.8em;
+    font-weight: normal;
+}
+
+.custom-control-label i {
+    color: #ff0033;
+    margin-right: 8px;
+}
+
+.custom-control-label::before {
+    position: absolute;
+    top: 2px;
+    left: -35px;
+    display: block;
+    width: 20px;
+    height: 20px;
+    content: "";
+    background: #444;
+    border: 2px solid #555;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+}
+
+.custom-control-input:checked ~ .custom-control-label::before {
+    background: linear-gradient(135deg, #ff0033, #cc0029);
+    border-color: #ff0033;
+}
+
+.custom-control-label::after {
+    position: absolute;
+    top: 6px;
+    left: -31px;
+    display: block;
+    width: 12px;
+    height: 12px;
+    content: "";
+    background: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3E%3Cpath fill='%23fff' d='m6.564.75-3.59 3.612-1.538-1.55L0 4.26 2.974 7.25 8 2.193z'/%3E%3C/svg%3E") center/contain no-repeat;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.custom-control-input:checked ~ .custom-control-label::after {
+    opacity: 1;
+}
+
+/* تحسين الأزرار */
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.95em;
+    text-decoration: none;
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #5a6268;
+    transform: translateY(-2px);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #0056b3, #004085);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 123, 255, 0.4);
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #28a745, #20a040);
+    color: white;
+}
+
+.btn-success:hover {
+    background: linear-gradient(135deg, #20a040, #1e8e3e);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
+}
+
+/* Grid للإحصائيات */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+/* تحسينات responsive */
+@media (max-width: 768px) {
+    .modal-content {
+        width: 98%;
+        margin: 1% auto;
+    }
+    
+    .employee-modal {
+        max-width: 98%;
+    }
+    
+    .form-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .permissions-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    
+    .modal-footer {
+        flex-direction: column;
+    }
+    
+    .modal-footer .btn {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .form-steps {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .step:not(:last-child)::after {
+        display: none;
+    }
+    
+    .step {
+        flex-direction: row;
+        justify-content: flex-start;
+        text-align: right;
+        gap: 15px;
+    }
+    
+    .step-number {
+        margin-bottom: 0;
+    }
+    
+    .stat-card {
+        margin-bottom: 15px;
+    }
+    
+    .action-buttons {
+        justify-content: center;
+    }
+    
+    .data-table {
+        font-size: 0.9em;
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .step-header {
+        text-align: right;
+    }
+    
+    .step-header h4 {
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 480px) {
+    .modal-header {
+        padding: 15px 20px;
+    }
+    
+    .modal-body {
+        padding: 20px;
+    }
+    
+    .modal-footer {
+        padding: 15px 20px;
+    }
+    
+    .form-steps {
+        padding: 15px;
+    }
+    
+    .step-header {
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+    
+    .permissions-section, .financial-limits {
+        padding: 15px;
+    }
+}
+
+/* تحسينات إضافية للمودال */
+.modal-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.modal-body::-webkit-scrollbar-track {
+    background: #333;
+    border-radius: 4px;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+    background: #ff0033;
+    border-radius: 4px;
+}
+
+.modal-body::-webkit-scrollbar-thumb:hover {
+    background: #cc0029;
+}
+
+/* تحسينات لتجربة المستخدم */
+.form-step {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.permission-item {
+    animation: slideIn 0.3s ease-in-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+</style>
+{% endblock %}

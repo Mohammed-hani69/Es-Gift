@@ -1,0 +1,250 @@
+{
+	"info": {
+		"_postman_id": "a355564f-8328-4b64-9f7d-4781846b4739",
+		"name": "Integration API Staging New Copy 3",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "39479578"
+	},
+	"item": [
+		{
+			"name": "Check Balance",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"resellerUsername\": \"Fill with your resellerUsername here\",\n    //MD5 (resellerUsername + secretKey)\n    \"password\": \"Fill with your MD5 password here\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://bbapi.ocstaging.net/integration/check-balance",
+					"protocol": "https",
+					"host": [
+						"bbapi",
+						"ocstaging",
+						"net"
+					],
+					"path": [
+						"integration",
+						"check-balance"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Detailed Products List",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"resellerUsername\": \"Fill with your resellerUsername here\",\n//MD5 (ResellerUsername +merchantId + secretKey)\n    \"password\": \"Fill with your MD5 password here\",\n//Make MerchantID = \"\"\n    \"merchantId\": \"\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://bbapi.ocstaging.net/integration/detailed-products-list",
+					"protocol": "https",
+					"host": [
+						"bbapi",
+						"ocstaging",
+						"net"
+					],
+					"path": [
+						"integration",
+						"detailed-products-list"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get a Product Detailed Info",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"resellerUsername\": \"Fill with your resellerUsername here\",\n//MD5 (resellerUsername +ProductID + secretKey)\n    \"password\": \"Fill with your MD5 password here\",\n    \"productID\": \"Fill with the prductID here\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://bbapi.ocstaging.net/integration/product-detailed-info",
+					"protocol": "https",
+					"host": [
+						"bbapi",
+						"ocstaging",
+						"net"
+					],
+					"path": [
+						"integration",
+						"product-detailed-info"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Purchase a Product",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"resellerUsername\": \"Fill with your resellerUsername here\",\n    //MD5 (ResellerUsername + ProductID + ResellerRefNumber + SecretKey)\n    \"password\": \"Fill with your MD5 password here\",\n    \"productID\": \"Fill with your productID here\",\n    //Unique number\n    \"resellerRefNumber\": \"Fill with a unique/Not repeated number here\",\n    //not a unique number\n    \"terminalId\": \"\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://bbapi.ocstaging.net/integration/purchase-product",
+					"protocol": "https",
+					"host": [
+						"bbapi",
+						"ocstaging",
+						"net"
+					],
+					"path": [
+						"integration",
+						"purchase-product"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Check transaction status",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"resellerUsername\": \"Fill with your resellerUsername here\",\n//MD5 (ResellerUsername+ ResellerRefNumber +SecretKey)\n    \"password\": \"Fill with your MD5 password here\",\n//Unique number\n    \"resellerRefNumber\": \"Fill with a unique/Not repeated number here\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://bbapi.ocstaging.net/integration/check-transaction-status",
+					"protocol": "https",
+					"host": [
+						"bbapi",
+						"ocstaging",
+						"net"
+					],
+					"path": [
+						"integration",
+						"check-transaction-status"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Reconcile",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"resellerUsername\": \"Fill with your resellerUsername here\",\n    //MD5(ResellerUsername +DateFrom + DateTo +IsSuccessful +SecretKey)\n    \"password\": \"Fill with your MD5 password here\",\n    //Purchase a product request date (Date format should be yyyy- mm-dd hh:mm:ss)\n    \"dateFrom\": \"\",\n    //Purchase a product request date (Date format should be yyyy- mm-dd hh:mm:ss)\n    \"dateTo\": \"\",\n    //Boolean True or False\n    \"isSuccessful\": \"True\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://bbapi.ocstaging.net/integration/reconcile",
+					"protocol": "https",
+					"host": [
+						"bbapi",
+						"ocstaging",
+						"net"
+					],
+					"path": [
+						"integration",
+						"reconcile"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Merchant List",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"resellerUsername\": \"Fill with your resellerUsername here\",\n//MD5 (ResellerUsername + secretKey)\n    \"password\": \"Fill with your MD5 password here\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://bbapi.ocstaging.net/integration/get-merchant-list",
+					"protocol": "https",
+					"host": [
+						"bbapi",
+						"ocstaging",
+						"net"
+					],
+					"path": [
+						"integration",
+						"get-merchant-list"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "https://apis.ocstaging.net/integration"
+		},
+		{
+			"key": "BaseUrlProduction",
+			"value": "https://apis.bitaqatybusiness.com/integration/"
+		}
+	]
+}

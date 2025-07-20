@@ -1,0 +1,507 @@
+{% extends "base.html" %}
+
+{% block title %}محفظتي المحسنة{% endblock %}
+
+{% block extra_css %}
+<style>
+    .wallet-container {
+        max-width: 1200px;
+        margin: 80px auto 0;
+        padding: 20px;
+        font-family: 'Cairo', sans-serif;
+    }
+    
+    .wallet-header {
+        background: linear-gradient(135deg, #ff0033, #ff3366);
+        color: white;
+        padding: 30px;
+        border-radius: 15px;
+        margin-bottom: 30px;
+        text-align: center;
+        box-shadow: 0 10px 30px rgba(255, 0, 51, 0.3);
+    }
+    
+    .wallet-title {
+        font-size: 2.5rem;
+        margin-bottom: 10px;
+        font-weight: bold;
+    }
+    
+    .wallet-subtitle {
+        font-size: 1.2rem;
+        opacity: 0.9;
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+    
+    .stat-card {
+        background: white;
+        padding: 25px;
+        border-radius: 15px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        text-align: center;
+        border: 1px solid #eee;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+    }
+    
+    .stat-icon {
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 15px;
+        font-size: 2rem;
+        color: white;
+    }
+    
+    .balance-card .stat-icon {
+        background: linear-gradient(135deg, #28a745, #20c997);
+    }
+    
+    .daily-limit-card .stat-icon {
+        background: linear-gradient(135deg, #007bff, #0056b3);
+    }
+    
+    .monthly-limit-card .stat-icon {
+        background: linear-gradient(135deg, #6f42c1, #5a32a3);
+    }
+    
+    .spending-card .stat-icon {
+        background: linear-gradient(135deg, #fd7e14, #e55a00);
+    }
+    
+    .stat-value {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 5px;
+    }
+    
+    .stat-label {
+        color: #666;
+        font-size: 1rem;
+        margin-bottom: 10px;
+    }
+    
+    .progress-bar {
+        background: #f8f9fa;
+        border-radius: 10px;
+        overflow: hidden;
+        height: 8px;
+    }
+    
+    .progress-fill {
+        height: 100%;
+        border-radius: 10px;
+        transition: width 0.3s ease;
+    }
+    
+    .progress-success {
+        background: linear-gradient(90deg, #28a745, #20c997);
+    }
+    
+    .progress-warning {
+        background: linear-gradient(90deg, #ffc107, #ffb300);
+    }
+    
+    .progress-danger {
+        background: linear-gradient(90deg, #dc3545, #c82333);
+    }
+    
+    .progress-percentage {
+        font-size: 0.8rem;
+        color: #666;
+        margin-top: 5px;
+    }
+    
+    .alert {
+        padding: 15px 20px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .alert-warning {
+        background: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffeaa7;
+    }
+    
+    .alert-danger {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+    
+    .upgrade-card {
+        background: linear-gradient(135deg, #6f42c1, #5a32a3);
+        color: white;
+        padding: 25px;
+        border-radius: 15px;
+        text-align: center;
+        margin-bottom: 30px;
+    }
+    
+    .upgrade-btn {
+        background: white;
+        color: #6f42c1;
+        padding: 12px 25px;
+        border: none;
+        border-radius: 25px;
+        font-weight: bold;
+        text-decoration: none;
+        display: inline-block;
+        margin-top: 15px;
+        transition: transform 0.3s ease;
+    }
+    
+    .upgrade-btn:hover {
+        transform: scale(1.05);
+        color: #6f42c1;
+        text-decoration: none;
+    }
+    
+    .transactions-section {
+        background: white;
+        border-radius: 15px;
+        padding: 30px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        margin-bottom: 30px;
+    }
+    
+    .section-title {
+        font-size: 1.5rem;
+        color: #333;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #ff0033;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .currency-selector {
+        background: #333;
+        border: 1px solid #555;
+        color: #fff;
+        padding: 8px 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    
+    @media (max-width: 768px) {
+        .wallet-container {
+            padding: 15px;
+            margin-top: 60px;
+        }
+        
+        .wallet-title {
+            font-size: 2rem;
+        }
+        
+        .stats-grid {
+            grid-template-columns: 1fr;
+            gap: 15px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="wallet-container">
+    <!-- رأس المحفظة -->
+    <div class="wallet-header">
+        <h1 class="wallet-title">
+            <i class="fas fa-wallet"></i>
+            محفظتي المحسنة
+        </h1>
+        <p class="wallet-subtitle">مرحباً {{ current_user.full_name }}، إدارة شاملة لحدود الإنفاق والمعاملات</p>
+        
+        <!-- اختيار العملة -->
+        <div style="margin-top: 20px;">
+            <select class="currency-selector" onchange="changeCurrency(this.value)">
+                {% for currency in currencies %}
+                <option value="{{ currency.code }}" 
+                        {% if currency.code == display_currency %}selected{% endif %}>
+                    {{ currency.code }} - {{ currency.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+    
+    <!-- تنبيهات المحفظة -->
+    {% set daily_percentage = (wallet.daily_spent_today / wallet.daily_limit * 100) if wallet.daily_limit > 0 else 0 %}
+    {% set monthly_percentage = (wallet.monthly_spent / wallet.monthly_limit * 100) if wallet.monthly_limit > 0 else 0 %}
+    
+    {% if daily_percentage >= 80 %}
+    <div class="alert alert-warning">
+        <i class="fas fa-exclamation-triangle"></i>
+        <div>
+            <strong>تحذير:</strong> لقد تجاوزت {{ "%.1f"|format(daily_percentage) }}% من حدك اليومي المسموح!
+        </div>
+    </div>
+    {% endif %}
+    
+    {% if monthly_percentage >= 90 %}
+    <div class="alert alert-danger">
+        <i class="fas fa-ban"></i>
+        <div>
+            <strong>تحذير:</strong> لقد تجاوزت {{ "%.1f"|format(monthly_percentage) }}% من حدك الشهري المسموح!
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- كارت الترقية للمستخدمين العاديين -->
+    {% if current_user.customer_type == 'regular' %}
+    <div class="upgrade-card">
+        <i class="fas fa-star" style="font-size: 2rem; margin-bottom: 15px;"></i>
+        <h3>ارفع حدود الإنفاق الخاصة بك!</h3>
+        <p>أكمل التحقق من الهوية (KYC) لزيادة حدود الإنفاق إلى 6000$ يومياً</p>
+        <a href="{{ url_for('main.kyc_upgrade') }}" class="upgrade-btn">
+            <i class="fas fa-arrow-up"></i>
+            ترقية الحساب الآن
+        </a>
+    </div>
+    {% endif %}
+    
+    <!-- إحصائيات المحفظة -->
+    <div class="stats-grid">
+        <!-- الرصيد الحالي -->
+        <div class="stat-card balance-card">
+            <div class="stat-icon">
+                <i class="fas fa-coins"></i>
+            </div>
+            <div class="stat-value">{{ wallet_balance_display }}</div>
+            <div class="stat-label">الرصيد الحالي</div>
+        </div>
+        
+        <!-- الحد اليومي -->
+        <div class="stat-card daily-limit-card">
+            <div class="stat-icon">
+                <i class="fas fa-calendar-day"></i>
+            </div>
+            <div class="stat-value">{{ daily_limit_display }}</div>
+            <div class="stat-label">الحد اليومي المسموح</div>
+            <div class="progress-bar">
+                <div class="progress-fill {% if daily_percentage >= 80 %}progress-danger{% elif daily_percentage >= 60 %}progress-warning{% else %}progress-success{% endif %}" 
+                     style="width: {{ daily_percentage }}%"></div>
+            </div>
+            <div class="progress-percentage">
+                مُستخدم: {{ daily_spent_display }} ({{ "%.1f"|format(daily_percentage) }}%)
+            </div>
+        </div>
+        
+        <!-- الحد الشهري -->
+        <div class="stat-card monthly-limit-card">
+            <div class="stat-icon">
+                <i class="fas fa-calendar-alt"></i>
+            </div>
+            <div class="stat-value">{{ monthly_limit_display }}</div>
+            <div class="stat-label">الحد الشهري المسموح</div>
+            <div class="progress-bar">
+                <div class="progress-fill {% if monthly_percentage >= 80 %}progress-danger{% elif monthly_percentage >= 60 %}progress-warning{% else %}progress-success{% endif %}" 
+                     style="width: {{ monthly_percentage }}%"></div>
+            </div>
+            <div class="progress-percentage">
+                مُستخدم: {{ get_currency_display(convert_amount_for_display(wallet.monthly_spent, 'USD', display_currency), display_currency) }} ({{ "%.1f"|format(monthly_percentage) }}%)
+            </div>
+        </div>
+        
+        <!-- إجمالي المشتريات -->
+        <div class="stat-card spending-card">
+            <div class="stat-icon">
+                <i class="fas fa-shopping-cart"></i>
+            </div>
+            <div class="stat-value">{{ total_purchases_display }}</div>
+            <div class="stat-label">إجمالي المشتريات</div>
+            <div style="font-size: 0.9rem; color: #666; margin-top: 10px;">
+                إجمالي الودائع: {{ total_deposits_display }}
+            </div>
+        </div>
+    </div>
+    
+    <!-- آخر المعاملات -->
+    <div class="transactions-section">
+        <h2 class="section-title">
+            <i class="fas fa-history"></i>
+            آخر المعاملات
+        </h2>
+        
+        {% if recent_transactions %}
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>التاريخ</th>
+                        <th>النوع</th>
+                        <th>الوصف</th>
+                        <th>المبلغ</th>
+                        <th>الحالة</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for transaction in recent_transactions %}
+                    <tr>
+                        <td>{{ transaction.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>
+                            <span class="badge {% if transaction.transaction_type == 'deposit' %}badge-success{% else %}badge-warning{% endif %}">
+                                {% if transaction.transaction_type == 'deposit' %}
+                                    <i class="fas fa-plus"></i> إيداع
+                                {% elif transaction.transaction_type == 'purchase' %}
+                                    <i class="fas fa-shopping-cart"></i> شراء
+                                {% elif transaction.transaction_type == 'refund' %}
+                                    <i class="fas fa-undo"></i> استرداد
+                                {% endif %}
+                            </span>
+                        </td>
+                        <td>{{ transaction.description }}</td>
+                        <td>
+                            {% if transaction.transaction_type == 'deposit' or transaction.transaction_type == 'refund' %}
+                                <span style="color: #28a745;">+{{ get_currency_display(convert_amount_for_display(transaction.amount, 'USD', display_currency), display_currency) }}</span>
+                            {% else %}
+                                <span style="color: #dc3545;">-{{ get_currency_display(convert_amount_for_display(transaction.amount, 'USD', display_currency), display_currency) }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if transaction.status == 'completed' %}
+                                <span class="badge badge-success"><i class="fas fa-check"></i> مكتمل</span>
+                            {% elif transaction.status == 'pending' %}
+                                <span class="badge badge-warning"><i class="fas fa-clock"></i> قيد المعالجة</span>
+                            {% else %}
+                                <span class="badge badge-danger"><i class="fas fa-times"></i> فشل</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <div style="text-align: center; margin-top: 20px;">
+            <a href="{{ url_for('wallet.transactions') }}" class="btn btn-outline-primary">
+                <i class="fas fa-eye"></i>
+                عرض جميع المعاملات
+            </a>
+        </div>
+        {% else %}
+        <div style="text-align: center; padding: 40px; color: #666;">
+            <i class="fas fa-receipt" style="font-size: 3rem; margin-bottom: 15px; color: #ddd;"></i>
+            <h4>لا توجد معاملات بعد</h4>
+            <p>ستظهر معاملاتك هنا بمجرد إجراء أول عملية</p>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- معلومات نوع الحساب -->
+    <div class="transactions-section">
+        <h2 class="section-title">
+            <i class="fas fa-info-circle"></i>
+            معلومات الحساب
+        </h2>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <h5><i class="fas fa-user"></i> نوع الحساب</h5>
+                <p>
+                    {% if current_user.customer_type == 'vip' %}
+                        <span style="color: #28a745; font-weight: bold;">
+                            <i class="fas fa-crown"></i> حساب VIP
+                        </span>
+                    {% elif current_user.customer_type == 'kyc' %}
+                        <span style="color: #007bff; font-weight: bold;">
+                            <i class="fas fa-shield-alt"></i> حساب محقق (KYC)
+                        </span>
+                    {% else %}
+                        <span style="color: #6c757d;">
+                            <i class="fas fa-user"></i> حساب عادي
+                        </span>
+                    {% endif %}
+                </p>
+            </div>
+            
+            <div class="col-md-6">
+                <h5><i class="fas fa-calendar"></i> تاريخ التسجيل</h5>
+                <p>{{ current_user.date_joined.strftime('%Y-%m-%d') if current_user.date_joined else 'غير محدد' }}</p>
+            </div>
+        </div>
+        
+        <div class="row mt-3">
+            <div class="col-12">
+                <h5><i class="fas fa-chart-line"></i> مستوى الإنفاق الشهري</h5>
+                <div class="progress" style="height: 20px;">
+                    <div class="progress-bar" role="progressbar" 
+                         style="width: {{ monthly_percentage }}%; background: linear-gradient(90deg, #007bff, #0056b3);"
+                         aria-valuenow="{{ monthly_percentage }}" aria-valuemin="0" aria-valuemax="100">
+                        {{ "%.1f"|format(monthly_percentage) }}%
+                    </div>
+                </div>
+                <small class="text-muted">من الحد الشهري المسموح</small>
+            </div>
+        </div>
+        
+        <!-- بوابات الدفع المتاحة -->
+        {% if payment_gateways %}
+        <div class="row mt-4">
+            <div class="col-12">
+                <h5><i class="fas fa-credit-card"></i> بوابات الدفع المتاحة</h5>
+                <div class="d-flex flex-wrap gap-2">
+                    {% for gateway in payment_gateways %}
+                    <span class="badge badge-secondary p-2">
+                        <i class="fas fa-{{ gateway.icon or 'credit-card' }}"></i> 
+                        {{ gateway.name }}
+                    </span>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function changeCurrency(currency) {
+    window.location.href = '{{ url_for("wallet.wallet_dashboard") }}?currency=' + currency;
+}
+
+// تحديث البيانات كل دقيقة
+setInterval(function() {
+    // يمكن إضافة AJAX لتحديث البيانات
+}, 60000);
+
+// إظهار رسائل تحذيرية عند الاقتراب من الحدود
+document.addEventListener('DOMContentLoaded', function() {
+    const dailyPercentage = {{ daily_percentage }};
+    const monthlyPercentage = {{ monthly_percentage }};
+    
+    if (dailyPercentage >= 90) {
+        showNotification('تحذير: لقد تجاوزت 90% من حدك اليومي!', 'warning');
+    }
+    
+    if (monthlyPercentage >= 95) {
+        showNotification('تحذير: لقد تجاوزت 95% من حدك الشهري!', 'danger');
+    }
+});
+
+function showNotification(message, type) {
+    // يمكن إضافة نظام إشعارات متقدم
+    console.log(type + ': ' + message);
+}
+</script>
+{% endblock %}

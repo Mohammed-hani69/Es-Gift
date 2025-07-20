@@ -1,5 +1,10 @@
 /* تصميم محسن لصفحة الملف الشخصي - Es-Gift */
 
+/* Cairo Font Application */
+.profile-container, .profile-container * {
+  font-family: 'Cairo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
 .profile-container {
     max-width: 1400px;
     margin: 0 auto;

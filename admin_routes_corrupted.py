@@ -18,6 +18,7 @@ from urllib.parse import quote
 from models import *
 from utils import send_email
 from employee_utils import requires_permission, log_activity
+from wallet_utils import get_user_limits, get_user_spending_summary, update_user_limits, get_global_limits, update_global_limits
 
 # إنشاء Blueprint للمسارات الإدارية
 admin = Blueprint('admin', __name__, url_prefix='/admin')

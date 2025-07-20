@@ -1,0 +1,333 @@
+/* Cairo Font Enhancement - Es-Gift */
+/* تحسينات خط Cairo للموقع */
+
+/* تطبيق خط Cairo على كامل الموقع */
+:root {
+  --font-family-primary: 'Cairo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  --font-weight-light: 300;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-extrabold: 800;
+  --font-weight-black: 900;
+}
+
+/* تطبيق الخط على جميع العناصر */
+* {
+  font-family: var(--font-family-primary);
+}
+
+html, body {
+  font-family: var(--font-family-primary);
+  font-weight: var(--font-weight-regular);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "kern" 1, "liga" 1;
+  font-variant-ligatures: common-ligatures;
+}
+
+/* أوزان الخط المختلفة */
+.cairo-light { font-weight: var(--font-weight-light); }
+.cairo-regular { font-weight: var(--font-weight-regular); }
+.cairo-medium { font-weight: var(--font-weight-medium); }
+.cairo-semibold { font-weight: var(--font-weight-semibold); }
+.cairo-bold { font-weight: var(--font-weight-bold); }
+.cairo-extrabold { font-weight: var(--font-weight-extrabold); }
+.cairo-black { font-weight: var(--font-weight-black); }
+
+/* تحسين العناوين */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-family-primary);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.3px;
+  line-height: 1.3;
+  text-rendering: optimizeLegibility;
+}
+
+h1 { 
+  font-weight: var(--font-weight-bold); 
+  font-size: 2.5rem; 
+  line-height: 1.2; 
+  letter-spacing: 0.5px;
+}
+
+h2 { 
+  font-weight: var(--font-weight-semibold); 
+  font-size: 2rem; 
+  line-height: 1.25; 
+  letter-spacing: 0.4px;
+}
+
+h3 { 
+  font-weight: var(--font-weight-semibold); 
+  font-size: 1.5rem; 
+  line-height: 1.3; 
+  letter-spacing: 0.3px;
+}
+
+h4 { 
+  font-weight: var(--font-weight-medium); 
+  font-size: 1.25rem; 
+  line-height: 1.35; 
+  letter-spacing: 0.2px;
+}
+
+h5 { 
+  font-weight: var(--font-weight-medium); 
+  font-size: 1rem; 
+  line-height: 1.4; 
+  letter-spacing: 0.2px;
+}
+
+h6 { 
+  font-weight: var(--font-weight-medium); 
+  font-size: 0.875rem; 
+  line-height: 1.45; 
+  letter-spacing: 0.1px;
+}
+
+/* تحسين النصوص */
+p, span, div, a, label {
+  font-family: var(--font-family-primary);
+  line-height: 1.6;
+  letter-spacing: 0.2px;
+  font-weight: var(--font-weight-regular);
+}
+
+/* تحسين الأزرار */
+button, .btn, input[type="button"], input[type="submit"] {
+  font-family: var(--font-family-primary);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: 0.3px;
+  line-height: 1.4;
+}
+
+/* تحسين الحقول */
+input, textarea, select {
+  font-family: var(--font-family-primary);
+  font-weight: var(--font-weight-regular);
+  letter-spacing: 0.2px;
+  line-height: 1.5;
+}
+
+input::placeholder, textarea::placeholder {
+  font-family: var(--font-family-primary);
+  font-weight: var(--font-weight-light);
+  letter-spacing: 0.1px;
+}
+
+/* تحسين النصوص العربية */
+.arabic-text {
+  font-family: var(--font-family-primary);
+  text-align: right;
+  direction: rtl;
+  line-height: 1.8;
+  letter-spacing: 0.2px;
+  font-weight: var(--font-weight-regular);
+}
+
+/* تحسين الروابط */
+a {
+  font-family: var(--font-family-primary);
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+
+a:hover {
+  font-weight: var(--font-weight-semibold);
+}
+
+/* تحسين الجداول */
+table, th, td {
+  font-family: var(--font-family-primary);
+}
+
+th {
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.3px;
+}
+
+td {
+  font-weight: var(--font-weight-regular);
+  letter-spacing: 0.1px;
+}
+
+/* تحسين القوائم */
+ul, ol, li {
+  font-family: var(--font-family-primary);
+  line-height: 1.6;
+  letter-spacing: 0.1px;
+}
+
+/* تحسين النماذج */
+.form-group label {
+  font-weight: var(--font-weight-medium);
+  letter-spacing: 0.2px;
+}
+
+.form-control {
+  font-family: var(--font-family-primary);
+  font-weight: var(--font-weight-regular);
+}
+
+/* تحسين الإشعارات */
+.alert, .notification, .flash-message {
+  font-family: var(--font-family-primary);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: 0.2px;
+}
+
+/* تحسين البطاقات */
+.card, .profile-section, .stat-card {
+  font-family: var(--font-family-primary);
+}
+
+.card-title, .section-title {
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.3px;
+}
+
+.card-text, .section-content {
+  font-weight: var(--font-weight-regular);
+  letter-spacing: 0.1px;
+  line-height: 1.6;
+}
+
+/* تحسين المودال */
+.modal, .modal * {
+  font-family: var(--font-family-primary);
+}
+
+.modal-title {
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.3px;
+}
+
+.modal-body {
+  line-height: 1.6;
+  letter-spacing: 0.1px;
+}
+
+/* تحسين القوائم المنسدلة */
+.dropdown-menu {
+  font-family: var(--font-family-primary);
+}
+
+.dropdown-item {
+  font-weight: var(--font-weight-regular);
+  letter-spacing: 0.1px;
+}
+
+/* تحسين الأرقام والأسعار */
+.price, .amount, .number {
+  font-family: var(--font-family-primary);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* تحسين أوزان النصوص حسب السياق */
+.text-light { font-weight: var(--font-weight-light); }
+.text-regular { font-weight: var(--font-weight-regular); }
+.text-medium { font-weight: var(--font-weight-medium); }
+.text-semibold { font-weight: var(--font-weight-semibold); }
+.text-bold { font-weight: var(--font-weight-bold); }
+.text-extrabold { font-weight: var(--font-weight-extrabold); }
+.text-black { font-weight: var(--font-weight-black); }
+
+/* تحسين التباعد للنصوص العربية */
+.ar-text {
+  font-family: var(--font-family-primary);
+  letter-spacing: 0.2px;
+  word-spacing: 0.1em;
+}
+
+/* تحسين النصوص في الهيدر والفوتر */
+.header *, .footer * {
+  font-family: var(--font-family-primary);
+}
+
+/* تحسين النصوص في التنقل */
+.nav-links a, .navbar-nav a, .menu a {
+  font-family: var(--font-family-primary);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: 0.2px;
+}
+
+/* تحسين النصوص في السايدبار */
+.sidebar *, .sidebar a {
+  font-family: var(--font-family-primary);
+}
+
+/* تحسين النصوص في المنتجات */
+.product-card *, .product-details * {
+  font-family: var(--font-family-primary);
+}
+
+.product-title {
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.2px;
+}
+
+.product-price {
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.3px;
+}
+
+/* إعدادات خاصة للشاشات الصغيرة */
+@media (max-width: 768px) {
+  h1 { font-size: 2rem; }
+  h2 { font-size: 1.75rem; }
+  h3 { font-size: 1.25rem; }
+  h4 { font-size: 1.1rem; }
+  h5 { font-size: 1rem; }
+  h6 { font-size: 0.875rem; }
+  
+  body {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  
+  .card-title, .section-title {
+    font-size: 1.1rem;
+  }
+  
+  .btn {
+    font-size: 14px;
+    letter-spacing: 0.2px;
+  }
+}
+
+/* إعدادات خاصة للشاشات الكبيرة */
+@media (min-width: 1200px) {
+  body {
+    font-size: 16px;
+    line-height: 1.7;
+  }
+  
+  h1 { font-size: 3rem; }
+  h2 { font-size: 2.5rem; }
+  h3 { font-size: 2rem; }
+  
+  .card-title, .section-title {
+    font-size: 1.5rem;
+  }
+}
+
+/* تحسين الطباعة */
+@media print {
+  * {
+    font-family: var(--font-family-primary) !important;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: var(--font-weight-bold) !important;
+  }
+  
+  p, span, div {
+    font-weight: var(--font-weight-regular) !important;
+  }
+}

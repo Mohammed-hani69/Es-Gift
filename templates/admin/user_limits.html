@@ -1,0 +1,1356 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}إدارة الحدود المالية{% endblock %}
+
+{% block content %}
+<div class="content-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="margin: 0; color: #ff0033; display: flex; align-items: center; gap: 10px;">
+            <i class="fas fa-wallet"></i>
+            إدارة الحدود المالية
+        </h2>
+    </div>
+
+    <!-- الحدود الافتراضية -->
+    <div style="background: #333; padding: 20px; border-radius: 10px; margin-bottom: 30px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3 style="color: #ff0033; margin: 0;">
+                <i class="fas fa-cogs"></i>
+                الحدود الافتراضية حسب نوع العميل
+            </h3>
+            <button class="btn btn-primary" onclick="openAddGlobalLimitModal()">
+                <i class="fas fa-plus"></i>
+                إضافة نوع عميل جديد
+            </button>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+            {% for limit in global_limits %}
+            <div class="limit-card" style="background: #444; border-radius: 8px; padding: 20px; border: 1px solid #555;">
+                <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 15px;">
+                    <h4 style="color: #fff; margin: 0;">{{ limit.display_name }}</h4>
+                    <button class="btn btn-primary btn-sm" onclick="editGlobalLimit('{{ limit.user_type }}')">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                </div>
+                
+                <div style="color: #ccc; margin-bottom: 15px;">{{ limit.description }}</div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div>
+                        <div style="color: #ccc; font-size: 0.9em;">الحد اليومي</div>
+                        <div style="color: #28a745; font-size: 1.3em; font-weight: bold;">
+                            ${{ "{:,.2f}".format(limit.daily_limit_usd or 0) }}
+                        </div>
+                    </div>
+                    <div>
+                        <div style="color: #ccc; font-size: 0.9em;">الحد الشهري</div>
+                        <div style="color: #17a2b8; font-size: 1.3em; font-weight: bold;">
+                            ${{ "{:,.2f}".format(limit.monthly_limit_usd or 0) }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- فلاتر البحث عن المستخدمين -->
+    <div style="background: #333; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+        <h3 style="color: #ff0033; margin-bottom: 15px;">
+            <i class="fas fa-search"></i>
+            البحث عن العملاء
+        </h3>
+        
+        <form method="GET" action="{{ url_for('financial.user_limits_management') }}">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                <div>
+                    <label style="color: #ccc; display: block; margin-bottom: 5px;">البريد الإلكتروني:</label>
+                    <input type="text" name="email" value="{{ email_filter }}" placeholder="البحث بالبريد الإلكتروني" 
+                           style="width: 100%; padding: 8px; background: #444; border: 1px solid #555; border-radius: 5px; color: #fff;">
+                </div>
+                <div>
+                    <label style="color: #ccc; display: block; margin-bottom: 5px;">نوع العميل:</label>
+                    <select name="user_type" style="width: 100%; padding: 8px; background: #444; border: 1px solid #555; border-radius: 5px; color: #fff;">
+                        <option value="">جميع الأنواع</option>
+                        <option value="normal" {% if user_type_filter == 'normal' %}selected{% endif %}>عادي</option>
+                        <option value="regular" {% if user_type_filter == 'regular' %}selected{% endif %}>عميل عادي</option>
+                        <option value="kyc" {% if user_type_filter == 'kyc' %}selected{% endif %}>مفعل (KYC)</option>
+                        <option value="distributor" {% if user_type_filter == 'distributor' %}selected{% endif %}>موزع</option>
+                        <option value="reseller" {% if user_type_filter == 'reseller' %}selected{% endif %}>موزع</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="color: #ccc; display: block; margin-bottom: 5px;">حالة الحدود:</label>
+                    <select name="limit_type" style="width: 100%; padding: 8px; background: #444; border: 1px solid #555; border-radius: 5px; color: #fff;">
+                        <option value="">جميع الحالات</option>
+                        <option value="has_default" {% if limit_type_filter == 'has_default' %}selected{% endif %}>افتراضية</option>
+                        <option value="has_custom" {% if limit_type_filter == 'has_custom' %}selected{% endif %}>مخصصة</option>
+                    </select>
+                </div>
+                <div style="display: flex; align-items: end; gap: 10px;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">
+                        <i class="fas fa-search"></i>
+                        بحث
+                    </button>
+                    <a href="{{ url_for('financial.user_limits_management') }}" class="btn btn-secondary">
+                        <i class="fas fa-times"></i>
+                        إزالة
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- جدول العملاء وحدودهم -->
+    <div class="table-container">
+        {% if users_data %}
+        <div style="margin-bottom: 15px; color: #ccc; display: flex; justify-content: space-between; align-items: center;">
+            <span>عرض {{ users_data|length }} من أصل {{ total_users }} مستخدم</span>
+            <span>الصفحة {{ current_page }} من {{ total_pages }}</span>
+        </div>
+        
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>العميل</th>
+                    <th>نوع العميل</th>
+                    <th>الحد اليومي</th>
+                    <th>المنفق اليوم</th>
+                    <th>الحد الشهري</th>
+                    <th>المنفق هذا الشهر</th>
+                    <th>نوع الحدود</th>
+                    <th>الإجراءات</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user_data in users_data %}
+                <tr>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <i class="fas fa-user"></i>
+                            <div>
+                                <div style="font-weight: bold;">{{ user_data.user.email }}</div>
+                                <div style="font-size: 0.8em; color: #ccc;">{{ user_data.user.full_name or 'غير محدد' }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="badge badge-{{ 'success' if user_data.user_type == 'kyc' else 'primary' if user_data.user_type == 'distributor' else 'info' if user_data.user_type == 'reseller' else 'secondary' }}">
+                            {% if user_data.user_type == 'distributor' %}موزع
+                            {% elif user_data.user_type == 'reseller' %}موزع
+                            {% elif user_data.user_type == 'kyc' %}مفعل KYC
+                            {% elif user_data.user_type == 'regular' %}عميل عادي
+                            {% else %}عادي{% endif %}
+                        </span>
+                    </td>
+                    <td>
+                        <div style="color: #28a745; font-weight: bold;">
+                            ${{ "{:,.2f}".format(user_data.limits.daily_limit_usd or 0) if user_data.limits else "0.00" }}
+                        </div>
+                        {% if user_data.has_custom_limits %}
+                        <div style="font-size: 0.8em; color: #ccc;">
+                            (افتراضي: ${{ "{:,.2f}".format(user_data.default_daily) }})
+                        </div>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div style="color: #ff6b6b;">
+                            ${{ "{:,.2f}".format(user_data.limits.daily_spent_usd or 0) if user_data.limits else "0.00" }}
+                        </div>
+                        <div style="font-size: 0.8em; color: #ccc;">
+                            متبقي: ${{ "{:,.2f}".format((user_data.limits.daily_limit_usd or 0) - (user_data.limits.daily_spent_usd or 0)) if user_data.limits else "0.00" }}
+                        </div>
+                    </td>
+                    <td>
+                        <div style="color: #17a2b8; font-weight: bold;">
+                            ${{ "{:,.2f}".format(user_data.limits.monthly_limit_usd or 0) if user_data.limits else "0.00" }}
+                        </div>
+                        {% if user_data.has_custom_limits %}
+                        <div style="font-size: 0.8em; color: #ccc;">
+                            (افتراضي: ${{ "{:,.2f}".format(user_data.default_monthly) }})
+                        </div>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div style="color: #ff6b6b;">
+                            ${{ "{:,.2f}".format(user_data.limits.monthly_spent_usd or 0) if user_data.limits else "0.00" }}
+                        </div>
+                        <div style="font-size: 0.8em; color: #ccc;">
+                            متبقي: ${{ "{:,.2f}".format((user_data.limits.monthly_limit_usd or 0) - (user_data.limits.monthly_spent_usd or 0)) if user_data.limits else "0.00" }}
+                        </div>
+                    </td>
+                    <td>
+                        {% if user_data.has_custom_limits %}
+                        <span class="badge badge-warning">مخصصة</span>
+                        {% else %}
+                        <span class="badge badge-info">افتراضية</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn btn-primary btn-sm" onclick="editUserLimit({{ user_data.user.id }})">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            {% if user_data.has_custom_limits %}
+                            <button class="btn btn-secondary btn-sm" onclick="resetUserLimit({{ user_data.user.id }})">
+                                <i class="fas fa-undo"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        <!-- Pagination -->
+        {% if total_pages > 1 %}
+        <div style="margin-top: 20px; display: flex; justify-content: center; gap: 10px;">
+            {% if current_page > 1 %}
+            <a href="{{ url_for('financial.user_limits_management', page=current_page-1, email=email_filter, user_type=user_type_filter, limit_type=limit_type_filter) }}" 
+               class="btn btn-secondary">السابق</a>
+            {% endif %}
+            
+            {% for page_num in range(max(1, current_page-2), min(total_pages+1, current_page+3)) %}
+                {% if page_num == current_page %}
+                <span class="btn btn-primary">{{ page_num }}</span>
+                {% else %}
+                <a href="{{ url_for('financial.user_limits_management', page=page_num, email=email_filter, user_type=user_type_filter, limit_type=limit_type_filter) }}" 
+                   class="btn btn-secondary">{{ page_num }}</a>
+                {% endif %}
+            {% endfor %}
+            
+            {% if current_page < total_pages %}
+            <a href="{{ url_for('financial.user_limits_management', page=current_page+1, email=email_filter, user_type=user_type_filter, limit_type=limit_type_filter) }}" 
+               class="btn btn-secondary">التالي</a>
+            {% endif %}
+        </div>
+        {% endif %}
+        
+        {% else %}
+        <div style="text-align: center; padding: 40px; color: #ccc;">
+            <i class="fas fa-users" style="font-size: 3em; margin-bottom: 20px; opacity: 0.5;"></i>
+            <h3>لا يوجد مستخدمين</h3>
+            <p>لا يوجد مستخدمين يطابقون معايير البحث المحددة</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- مودال تعديل الحدود الافتراضية -->
+<div id="globalLimitModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 style="color: #ff0033; margin: 0; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-cogs"></i>
+                تعديل الحدود الافتراضية
+            </h3>
+            <span class="close" onclick="closeGlobalLimitModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form id="globalLimitForm">
+                <input type="hidden" id="userType" name="user_type">
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label><i class="fas fa-user-tag"></i> نوع العميل:</label>
+                        <input type="text" id="displayName" readonly class="form-control disabled">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label><i class="fas fa-dollar-sign"></i> الحد اليومي (USD):</label>
+                        <input type="number" id="dailyLimit" name="daily_limit" step="0.01" min="0" required class="form-control">
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label><i class="fas fa-calendar-alt"></i> الحد الشهري (USD):</label>
+                        <input type="number" id="monthlyLimit" name="monthly_limit" step="0.01" min="0" required class="form-control">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label><i class="fas fa-info-circle"></i> الوصف:</label>
+                        <textarea id="limitDescription" name="description" rows="3" class="form-control" placeholder="وصف الحدود الافتراضية"></textarea>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeGlobalLimitModal()">
+                <i class="fas fa-times"></i> إلغاء
+            </button>
+            <button type="button" class="btn btn-success" onclick="saveGlobalLimit()">
+                <i class="fas fa-save"></i> حفظ التغييرات
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- مودال تعديل حدود العميل -->
+<div id="userLimitModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 style="color: #ff0033; margin: 0; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-user-edit"></i>
+                تعديل حدود العميل
+            </h3>
+            <span class="close" onclick="closeUserLimitModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form id="userLimitForm">
+                <input type="hidden" id="userId" name="user_id">
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label><i class="fas fa-envelope"></i> العميل:</label>
+                        <input type="text" id="userEmail" readonly class="form-control disabled">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label><i class="fas fa-dollar-sign"></i> الحد اليومي (USD):</label>
+                        <input type="number" id="userDailyLimit" name="daily_limit" step="0.01" min="0" required class="form-control">
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label><i class="fas fa-calendar-alt"></i> الحد الشهري (USD):</label>
+                        <input type="number" id="userMonthlyLimit" name="monthly_limit" step="0.01" min="0" required class="form-control">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label><i class="fas fa-sticky-note"></i> ملاحظات إدارية:</label>
+                        <textarea id="userNotes" name="notes" rows="3" class="form-control" placeholder="ملاحظات حول تعديل الحدود"></textarea>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <div class="custom-control custom-checkbox">
+                            <input type="checkbox" class="custom-control-input" id="resetSpending" name="reset_spending">
+                            <label class="custom-control-label" for="resetSpending">
+                                <i class="fas fa-undo-alt"></i>
+                                إعادة تعيين المبالغ المنفقة
+                            </label>
+                        </div>
+                        <small class="form-text text-muted">
+                            <i class="fas fa-info-circle"></i>
+                            سيتم إعادة تعيين المبالغ المنفقة اليوم وهذا الشهر إلى الصفر
+                        </small>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeUserLimitModal()">
+                <i class="fas fa-times"></i> إلغاء
+            </button>
+            <button type="button" class="btn btn-success" onclick="saveUserLimit()">
+                <i class="fas fa-save"></i> حفظ التغييرات
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- مودال إضافة نوع عميل جديد -->
+<div id="addGlobalLimitModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 style="color: #ff0033; margin: 0; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-plus"></i>
+                إضافة نوع عميل جديد
+            </h3>
+            <span class="close" onclick="closeAddGlobalLimitModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form id="addGlobalLimitForm">
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label><i class="fas fa-tag"></i> نوع العميل:</label>
+                        <select id="newUserType" name="user_type" required class="form-control" onchange="updateDisplayName()">
+                            <option value="">اختر نوع العميل</option>
+                            <option value="regular">regular</option>
+                            <option value="kyc">kyc</option>
+                            <option value="reseller">reseller</option>
+                        </select>
+                        <small class="form-text text-muted">
+                            <i class="fas fa-info-circle"></i>
+                            اختر نوع العميل من القائمة
+                        </small>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label><i class="fas fa-user-tag"></i> اسم النوع (عرض):</label>
+                        <input type="text" id="newDisplayName" name="display_name" required class="form-control" placeholder="سيتم تعبئته تلقائياً" readonly style="background: #333; color: #ccc;">
+                        <small class="form-text text-muted">
+                            <i class="fas fa-info-circle"></i>
+                            الاسم الذي سيظهر في الواجهة
+                        </small>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label><i class="fas fa-dollar-sign"></i> الحد اليومي (USD):</label>
+                        <input type="number" id="newDailyLimit" name="daily_limit" step="0.01" min="0" required class="form-control" placeholder="3000.00">
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label><i class="fas fa-calendar-alt"></i> الحد الشهري (USD):</label>
+                        <input type="number" id="newMonthlyLimit" name="monthly_limit" step="0.01" min="0" required class="form-control" placeholder="90000.00">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label><i class="fas fa-info-circle"></i> الوصف:</label>
+                        <textarea id="newLimitDescription" name="description" rows="3" class="form-control" placeholder="وصف مفصل لهذا النوع من العملاء وحدودهم المالية"></textarea>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <div class="custom-control custom-checkbox">
+                            <input type="checkbox" class="custom-control-input" id="newIsActive" name="is_active" checked>
+                            <label class="custom-control-label" for="newIsActive">
+                                <i class="fas fa-toggle-on"></i>
+                                تفعيل هذا النوع فور الإنشاء
+                            </label>
+                        </div>
+                        <small class="form-text text-muted">
+                            <i class="fas fa-info-circle"></i>
+                            يمكن تفعيل أو إلغاء تفعيل النوع لاحقاً
+                        </small>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeAddGlobalLimitModal()">
+                <i class="fas fa-times"></i> إلغاء
+            </button>
+            <button type="button" class="btn btn-success" onclick="saveNewGlobalLimit()">
+                <i class="fas fa-plus"></i> إضافة النوع
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentGlobalLimitType = null;
+let currentUserId = null;
+
+// تم إزالة تحميل البيانات التلقائي - البيانات تأتي من الباك اند
+function searchUsers() {
+    const email = document.getElementById('searchEmail').value;
+    const userType = document.getElementById('filterUserType').value;
+    const limitType = document.getElementById('filterLimitType').value;
+    
+    fetch('/admin/financial/limits/search', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            email: email,
+            user_type: userType,
+            limit_type: limitType
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            updateUsersTable(data.users);
+        } else {
+            showNotification(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('حدث خطأ أثناء البحث', 'error');
+    });
+}
+
+// تحديث جدول المستخدمين
+function updateUsersTable(users) {
+    const tbody = document.getElementById('usersTableBody');
+    tbody.innerHTML = '';
+    
+    users.forEach(user => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 35px; height: 35px; border-radius: 50%; background: linear-gradient(135deg, #ff0033, #cc0029); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 0.8em;">
+                        ${user.email[0].toUpperCase()}
+                    </div>
+                    <div>
+                        <strong style="color: #fff;">${user.full_name || 'غير محدد'}</strong>
+                        <div style="color: #ccc; font-size: 0.9em;">${user.email}</div>
+                    </div>
+                </div>
+            </td>
+            <td>
+                <span class="badge ${getUserTypeBadge(user.user_type)}">
+                    ${getUserTypeText(user.user_type)}
+                </span>
+            </td>
+            <td>
+                <div style="color: #28a745; font-weight: bold;">$${formatNumber(user.daily_limit)}</div>
+            </td>
+            <td>
+                <div style="color: ${user.daily_spent > user.daily_limit * 0.8 ? '#dc3545' : '#17a2b8'}; font-weight: bold;">
+                    $${formatNumber(user.daily_spent)}
+                </div>
+                <div class="progress-bar" style="background: #555; height: 4px; border-radius: 2px; margin-top: 5px;">
+                    <div style="background: ${user.daily_spent > user.daily_limit * 0.8 ? '#dc3545' : '#28a745'}; height: 100%; width: ${Math.min((user.daily_spent / user.daily_limit) * 100, 100)}%; border-radius: 2px;"></div>
+                </div>
+            </td>
+            <td>
+                <div style="color: #17a2b8; font-weight: bold;">$${formatNumber(user.monthly_limit)}</div>
+            </td>
+            <td>
+                <div style="color: ${user.monthly_spent > user.monthly_limit * 0.8 ? '#dc3545' : '#28a745'}; font-weight: bold;">
+                    $${formatNumber(user.monthly_spent)}
+                </div>
+                <div class="progress-bar" style="background: #555; height: 4px; border-radius: 2px; margin-top: 5px;">
+                    <div style="background: ${user.monthly_spent > user.monthly_limit * 0.8 ? '#dc3545' : '#28a745'}; height: 100%; width: ${Math.min((user.monthly_spent / user.monthly_limit) * 100, 100)}%; border-radius: 2px;"></div>
+                </div>
+            </td>
+            <td>
+                <span class="badge ${user.is_custom ? 'badge-warning' : 'badge-info'}">
+                    ${user.is_custom ? 'مخصصة' : 'افتراضية'}
+                </span>
+            </td>
+            <td>
+                <div class="action-buttons">
+                </div>
+            </td>
+        `;
+        
+        // إضافة الأزرار بشكل منفصل لتجنب مشاكل template strings
+        const actionButtonsDiv = row.querySelector('.action-buttons');
+        
+        // زر تعديل الحدود
+        const editButton = document.createElement('button');
+        editButton.className = 'btn btn-warning btn-sm';
+        editButton.title = 'تعديل الحدود';
+        editButton.innerHTML = '<i class="fas fa-edit"></i>';
+        editButton.onclick = function() { editUserLimit(user.id); };
+        actionButtonsDiv.appendChild(editButton);
+        
+        // زر اختبار
+        const testButton = document.createElement('button');
+        testButton.className = 'btn btn-info btn-sm';
+        testButton.title = 'اختبار المودال';
+        testButton.innerHTML = '<i class="fas fa-flask"></i>';
+        testButton.onclick = function() { testModal(); };
+        actionButtonsDiv.appendChild(testButton);
+        
+        // زر إعادة للافتراضية (إذا كانت الحدود مخصصة)
+        if (user.is_custom) {
+            const resetButton = document.createElement('button');
+            resetButton.className = 'btn btn-secondary btn-sm';
+            resetButton.title = 'إعادة للافتراضية';
+            resetButton.innerHTML = '<i class="fas fa-undo"></i>';
+            resetButton.onclick = function() { resetToDefault(user.id); };
+            actionButtonsDiv.appendChild(resetButton);
+        }
+        
+        tbody.appendChild(row);
+    });
+}
+
+// مساعدات التنسيق
+function getUserTypeBadge(userType) {
+    const badges = {
+        'normal': 'badge-secondary',
+        'regular': 'badge-secondary',
+        'kyc': 'badge-success',
+        'distributor': 'badge-primary',
+        'reseller': 'badge-primary'
+    };
+    return badges[userType] || 'badge-secondary';
+}
+
+function getUserTypeText(userType) {
+    const texts = {
+        'normal': 'عادي',
+        'regular': 'عميل عادي',
+        'kyc': 'مفعل (KYC)',
+        'distributor': 'موزع',
+        'reseller': 'موزع'
+    };
+    return texts[userType] || 'غير محدد';
+}
+
+function formatNumber(number) {
+    return parseFloat(number).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+
+// إدارة الحدود الافتراضية
+function editGlobalLimit(userType) {
+    currentGlobalLimitType = userType;
+    
+    fetch(`/admin/financial/limits/global/${userType}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('userType').value = data.limit.user_type;
+                document.getElementById('displayName').value = data.limit.display_name;
+                document.getElementById('dailyLimit').value = data.limit.daily_limit_usd;
+                document.getElementById('monthlyLimit').value = data.limit.monthly_limit_usd;
+                document.getElementById('limitDescription').value = data.limit.description || '';
+                
+                document.getElementById('globalLimitModal').style.display = 'block';
+            } else {
+                showNotification(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('حدث خطأ أثناء تحميل البيانات', 'error');
+        });
+}
+
+function closeGlobalLimitModal() {
+    document.getElementById('globalLimitModal').style.display = 'none';
+    currentGlobalLimitType = null;
+}
+
+function saveGlobalLimit() {
+    if (!currentGlobalLimitType) return;
+    
+    const formData = new FormData(document.getElementById('globalLimitForm'));
+    const data = Object.fromEntries(formData.entries());
+    
+    fetch(`/admin/financial/limits/global/${currentGlobalLimitType}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message, 'success');
+            closeGlobalLimitModal();
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showNotification(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('حدث خطأ أثناء حفظ التغييرات', 'error');
+    });
+}
+
+// إدارة حدود العميل
+function editUserLimit(userId) {
+    console.log('editUserLimit called with userId:', userId);
+    
+    if (!userId) {
+        console.error('UserId is null or undefined');
+        showNotification('خطأ: معرف المستخدم غير صحيح', 'error');
+        return;
+    }
+    
+    currentUserId = userId;
+    
+    console.log('Fetching user limits for user:', userId);
+    
+    fetch(`/admin/financial/users/${userId}/limits`)
+        .then(response => {
+            console.log('Response status:', response.status);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Response data:', data);
+            if (data.success) {
+                // التأكد من وجود العناصر
+                const userIdElement = document.getElementById('userId');
+                const userEmailElement = document.getElementById('userEmail');
+                const userDailyLimitElement = document.getElementById('userDailyLimit');
+                const userMonthlyLimitElement = document.getElementById('userMonthlyLimit');
+                const userNotesElement = document.getElementById('userNotes');
+                const resetSpendingElement = document.getElementById('resetSpending');
+                const modalElement = document.getElementById('userLimitModal');
+                
+                if (!userIdElement || !userEmailElement || !userDailyLimitElement || 
+                    !userMonthlyLimitElement || !userNotesElement || !resetSpendingElement || !modalElement) {
+                    console.error('One or more modal elements not found');
+                    showNotification('خطأ: عناصر النموذج غير موجودة', 'error');
+                    return;
+                }
+                
+                userIdElement.value = data.user.id;
+                userEmailElement.value = data.user.email;
+                userDailyLimitElement.value = data.limits.daily_limit || 0;
+                userMonthlyLimitElement.value = data.limits.monthly_limit || 0;
+                userNotesElement.value = data.limits.notes || '';
+                
+                // إزالة checked من checkbox
+                resetSpendingElement.checked = false;
+                
+                console.log('Opening modal...');
+                modalElement.style.display = 'block';
+                
+            } else {
+                console.error('Server error:', data.message);
+                showNotification(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Fetch Error:', error);
+            showNotification('حدث خطأ أثناء تحميل البيانات: ' + error.message, 'error');
+        });
+}
+
+function closeUserLimitModal() {
+    document.getElementById('userLimitModal').style.display = 'none';
+    currentUserId = null;
+}
+
+function saveUserLimit() {
+    if (!currentUserId) return;
+    
+    const formData = new FormData(document.getElementById('userLimitForm'));
+    const data = Object.fromEntries(formData.entries());
+    data.reset_spending = document.getElementById('resetSpending').checked;
+    
+    fetch(`/admin/financial/users/${currentUserId}/limits`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message, 'success');
+            closeUserLimitModal();
+            location.reload(); // إعادة تحميل الصفحة لعرض التحديثات
+        } else {
+            showNotification(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('حدث خطأ أثناء حفظ التغييرات', 'error');
+    });
+}
+
+// عرض معاملات المستخدم
+function viewUserTransactions(userId) {
+    window.open(`/admin/financial/users/${userId}/transactions`, '_blank');
+}
+
+// إعادة تعيين للحدود الافتراضية
+function resetUserLimit(userId) {
+    if (confirm('هل أنت متأكد من إعادة تعيين حدود هذا العميل للقيم الافتراضية؟')) {
+        fetch(`/admin/financial/users/${userId}/limits/reset`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification(data.message, 'success');
+                searchUsers();
+            } else {
+                showNotification(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('حدث خطأ أثناء إعادة التعيين', 'error');
+        });
+    }
+}
+
+// إغلاق المودالات عند النقر خارجها
+window.onclick = function(event) {
+    const modals = ['globalLimitModal', 'userLimitModal', 'addGlobalLimitModal'];
+    modals.forEach(modalId => {
+        const modal = document.getElementById(modalId);
+        if (event.target === modal) {
+            modal.style.display = 'none';
+        }
+    });
+}
+
+// إدارة إضافة نوع عميل جديد
+function openAddGlobalLimitModal() {
+    document.getElementById('addGlobalLimitModal').style.display = 'block';
+}
+
+function closeAddGlobalLimitModal() {
+    document.getElementById('addGlobalLimitModal').style.display = 'none';
+    document.getElementById('addGlobalLimitForm').reset();
+    // إعادة تعيين اسم العرض
+    document.getElementById('newDisplayName').value = '';
+}
+
+function updateDisplayName() {
+    const userType = document.getElementById('newUserType').value;
+    const displayNameField = document.getElementById('newDisplayName');
+    
+    const displayNames = {
+        'regular': 'عميل عادي',
+        'kyc': 'عميل مفعل (KYC)', 
+        'reseller': 'موزع'
+    };
+    
+    if (userType && displayNames[userType]) {
+        displayNameField.value = displayNames[userType];
+        displayNameField.removeAttribute('readonly');
+        displayNameField.style.background = '#444';
+        displayNameField.style.color = '#fff';
+        displayNameField.placeholder = 'يمكنك تعديل الاسم حسب الحاجة';
+    } else {
+        displayNameField.value = '';
+        displayNameField.setAttribute('readonly', 'readonly');
+        displayNameField.style.background = '#333';
+        displayNameField.style.color = '#ccc';
+        displayNameField.placeholder = 'سيتم تعبئته تلقائياً';
+    }
+}
+
+function saveNewGlobalLimit() {
+    const formData = new FormData(document.getElementById('addGlobalLimitForm'));
+    const data = Object.fromEntries(formData.entries());
+    data.is_active = document.getElementById('newIsActive').checked;
+    
+    // التحقق من البيانات
+    if (!data.user_type || !data.display_name || !data.daily_limit || !data.monthly_limit) {
+        showNotification('يرجى ملء جميع الحقول المطلوبة', 'error');
+        return;
+    }
+    
+    // التحقق من أن الحد الشهري أكبر من اليومي
+    if (parseFloat(data.monthly_limit) < parseFloat(data.daily_limit)) {
+        showNotification('الحد الشهري يجب أن يكون أكبر من أو يساوي الحد اليومي', 'error');
+        return;
+    }
+    
+    // التحقق من أن النوع المختار صحيح
+    const allowedTypes = ['regular', 'kyc', 'reseller'];
+    if (!allowedTypes.includes(data.user_type)) {
+        showNotification('يرجى اختيار نوع عميل صحيح من القائمة', 'error');
+        return;
+    }
+    
+    fetch('/admin/financial/limits/global/add', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message, 'success');
+            closeAddGlobalLimitModal();
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showNotification(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('حدث خطأ أثناء إضافة النوع الجديد', 'error');
+    });
+}
+
+// دالة عرض الإشعارات
+function showNotification(message, type = 'info') {
+    // إنشاء عنصر الإشعار
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.innerHTML = `
+        <div class="notification-content">
+            <i class="fas ${getNotificationIcon(type)}"></i>
+            <span>${message}</span>
+            <button class="notification-close" onclick="closeNotification(this)">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+    
+    // إضافة الإشعار للصفحة
+    document.body.appendChild(notification);
+    
+    // إزالة الإشعار تلقائياً بعد 5 ثوانٍ
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+        }
+    }, 5000);
+}
+
+function getNotificationIcon(type) {
+    const icons = {
+        'success': 'fa-check-circle',
+        'error': 'fa-exclamation-circle',
+        'warning': 'fa-exclamation-triangle',
+        'info': 'fa-info-circle'
+    };
+    return icons[type] || icons['info'];
+}
+
+function closeNotification(element) {
+    const notification = element.closest('.notification');
+    if (notification.parentNode) {
+        notification.parentNode.removeChild(notification);
+    }
+}
+
+// دالة اختبار المودال
+function testModal() {
+    console.log('Test modal function called');
+    
+    // اختبار فتح المودال مباشرة
+    const modal = document.getElementById('userLimitModal');
+    if (modal) {
+        console.log('Modal found, opening...');
+        
+        // تعبئة بيانات وهمية للاختبار
+        document.getElementById('userId').value = '1';
+        document.getElementById('userEmail').value = 'test@example.com';
+        document.getElementById('userDailyLimit').value = '1000';
+        document.getElementById('userMonthlyLimit').value = '30000';
+        document.getElementById('userNotes').value = 'اختبار المودال';
+        document.getElementById('resetSpending').checked = false;
+        
+        modal.style.display = 'block';
+        console.log('Modal opened successfully');
+    } else {
+        console.error('Modal not found!');
+        alert('خطأ: المودال غير موجود!');
+    }
+}
+</script>
+
+<style>
+.limit-card {
+    transition: all 0.3s ease;
+}
+
+.limit-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(255, 0, 51, 0.3);
+}
+
+.action-buttons {
+    display: flex;
+    gap: 5px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.action-buttons .btn {
+    padding: 4px 8px;
+    font-size: 0.8em;
+}
+
+.progress-bar {
+    overflow: hidden;
+}
+
+.data-table tr:hover {
+    background: linear-gradient(135deg, #333, #444);
+    transform: translateX(3px);
+}
+
+/* تحسين تصميم المودالات */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(5px);
+}
+
+.modal-content {
+    background: linear-gradient(135deg, #2a2a2a, #333);
+    margin: 5% auto;
+    padding: 0;
+    border: 1px solid #555;
+    border-radius: 15px;
+    width: 90%;
+    max-width: 700px;
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.5);
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50px) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.modal-header {
+    background: linear-gradient(135deg, #ff0033, #cc0029);
+    color: white;
+    padding: 20px 25px;
+    border-radius: 15px 15px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #555;
+}
+
+.modal-header h3 {
+    font-size: 1.3em;
+    font-weight: 600;
+}
+
+.close {
+    color: white;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    padding: 5px 10px;
+    border-radius: 50%;
+}
+
+.close:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: rotate(90deg);
+}
+
+.modal-body {
+    padding: 25px;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.modal-footer {
+    background: #333;
+    padding: 20px 25px;
+    border-radius: 0 0 15px 15px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    border-top: 1px solid #555;
+}
+
+/* تحسين النماذج */
+.form-row {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0 -10px;
+}
+
+.form-group {
+    flex: 1;
+    margin: 10px;
+    min-width: 250px;
+}
+
+.form-group.col-md-6 {
+    flex: 0 0 calc(50% - 20px);
+    min-width: 200px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #fff;
+    font-weight: 500;
+    font-size: 0.95em;
+}
+
+.form-group label i {
+    margin-right: 8px;
+    color: #ff0033;
+    width: 16px;
+}
+
+.form-control {
+    width: 100%;
+    padding: 12px 15px;
+    background: #444;
+    border: 2px solid #555;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 0.95em;
+    transition: all 0.3s ease;
+    box-sizing: border-box;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #ff0033;
+    box-shadow: 0 0 10px rgba(255, 0, 51, 0.3);
+    background: #4a4a4a;
+}
+
+.form-control.disabled {
+    background: #333;
+    color: #ccc;
+    cursor: not-allowed;
+}
+
+.form-control::placeholder {
+    color: #999;
+}
+
+/* Checkbox مخصص */
+.custom-control {
+    position: relative;
+    display: block;
+    padding-left: 35px;
+    margin-bottom: 12px;
+    cursor: pointer;
+}
+
+.custom-control-input {
+    position: absolute;
+    left: 0;
+    z-index: -1;
+    width: 20px;
+    height: 20px;
+    opacity: 0;
+}
+
+.custom-control-label {
+    color: #fff;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.custom-control-label::before {
+    position: absolute;
+    top: 2px;
+    left: -35px;
+    display: block;
+    width: 20px;
+    height: 20px;
+    content: "";
+    background: #444;
+    border: 2px solid #555;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+}
+
+.custom-control-input:checked ~ .custom-control-label::before {
+    background: linear-gradient(135deg, #ff0033, #cc0029);
+    border-color: #ff0033;
+}
+
+.custom-control-label::after {
+    position: absolute;
+    top: 6px;
+    left: -31px;
+    display: block;
+    width: 12px;
+    height: 12px;
+    content: "";
+    background: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3E%3Cpath fill='%23fff' d='m6.564.75-3.59 3.612-1.538-1.55L0 4.26 2.974 7.25 8 2.193z'/%3E%3C/svg%3E") center/contain no-repeat;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.custom-control-input:checked ~ .custom-control-label::after {
+    opacity: 1;
+}
+
+.form-text.text-muted {
+    color: #999 !important;
+    font-size: 0.85em;
+    margin-top: 5px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* تحسين الأزرار */
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.95em;
+    text-decoration: none;
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #5a6268;
+    transform: translateY(-2px);
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #28a745, #20a040);
+    color: white;
+}
+
+.btn-success:hover {
+    background: linear-gradient(135deg, #20a040, #1e8e3e);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .modal-content {
+        width: 95%;
+        margin: 10px auto;
+    }
+    
+    .form-group.col-md-6 {
+        flex: 1;
+        min-width: 100%;
+    }
+    
+    .modal-footer {
+        flex-direction: column;
+    }
+    
+    .modal-footer .btn {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .form-row {
+        margin: 0;
+    }
+    
+    .form-group {
+        margin: 10px 0;
+    }
+}
+
+/* تصميم الإشعارات */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    min-width: 300px;
+    max-width: 500px;
+    padding: 0;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 10000;
+    animation: slideInRight 0.3s ease-out;
+    overflow: hidden;
+}
+
+.notification-success {
+    background: linear-gradient(135deg, #28a745, #20a040);
+    border-left: 4px solid #1e8e3e;
+}
+
+.notification-error {
+    background: linear-gradient(135deg, #dc3545, #c82333);
+    border-left: 4px solid #bd2130;
+}
+
+.notification-warning {
+    background: linear-gradient(135deg, #ffc107, #e0a800);
+    border-left: 4px solid #d39e00;
+    color: #212529;
+}
+
+.notification-info {
+    background: linear-gradient(135deg, #17a2b8, #138496);
+    border-left: 4px solid #117a8b;
+}
+
+.notification-content {
+    display: flex;
+    align-items: center;
+    padding: 15px 20px;
+    gap: 12px;
+    color: white;
+}
+
+.notification-warning .notification-content {
+    color: #212529;
+}
+
+.notification-content i {
+    font-size: 1.2em;
+    flex-shrink: 0;
+}
+
+.notification-content span {
+    flex: 1;
+    font-weight: 500;
+}
+
+.notification-close {
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 3px;
+    transition: background 0.2s ease;
+    flex-shrink: 0;
+}
+
+.notification-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.notification-warning .notification-close:hover {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* تحسينات إضافية للمودال الجديد */
+#addGlobalLimitModal .modal-content {
+    max-width: 800px;
+}
+
+#addGlobalLimitModal .form-text.text-muted {
+    font-size: 0.8em;
+    margin-top: 3px;
+}
+</style>
+{% endblock %}

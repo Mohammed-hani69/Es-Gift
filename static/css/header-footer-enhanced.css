@@ -1,5 +1,10 @@
 /* تحسينات الهيدر والفوتر للموبايل - Es-Gift */
 
+/* Cairo Font Application for Header & Footer */
+.header, .header *, .footer, .footer * {
+  font-family: 'Cairo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
 /* تحسينات عامة للهيدر */
 .header {
   background: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%);

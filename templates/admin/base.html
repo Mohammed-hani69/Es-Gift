@@ -649,6 +649,24 @@
                     </a>
                 </div>
                 <div class="nav-item">
+                    <a href="{{ url_for('admin.employees') }}" class="nav-link">
+                        <i class="fas fa-user-tie"></i>
+                        إدارة الموظفين
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a href="{{ url_for('admin.roles_management') }}" class="nav-link">
+                        <i class="fas fa-user-shield"></i>
+                        إدارة الأدوار
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a href="{{ url_for('financial.user_limits_management') }}" class="nav-link">
+                        <i class="fas fa-wallet"></i>
+                        الحدود المالية
+                    </a>
+                </div>
+                <div class="nav-item">
                     <a href="{{ url_for('admin.kyc_requests') }}" class="nav-link">
                         <i class="fas fa-user-check"></i>
                         طلبات التحقق
@@ -715,13 +733,39 @@
         <div class="main-content">
             <div class="top-bar">
                 <h1 class="page-title">{% block page_title %}لوحة التحكم{% endblock %}</h1>
-                <div class="user-info">
-                    <div class="user-avatar">
-                        <i class="fas fa-user"></i>
+                <div style="display: flex; align-items: center; gap: 20px;">
+                    <!-- قائمة اختيار العملة -->
+                    <div class="currency-selector">
+                        <label for="admin-currency" style="color: #ccc; margin-left: 8px; font-size: 0.9em;">العملة:</label>
+                        <select id="admin-currency" onchange="changeCurrency(this.value)" style="
+                            background-color: #333; 
+                            color: #fff; 
+                            border: 2px solid #ff0033; 
+                            border-radius: 8px; 
+                            padding: 8px 15px; 
+                            font-size: 14px;
+                            cursor: pointer;
+                            outline: none;
+                            transition: all 0.3s ease;
+                        ">
+                            <option value="USD">USD ($)</option>
+                            <option value="EUR">EUR (€)</option>
+                            <option value="GBP">GBP (£)</option>
+                            <option value="SAR">SAR (ر.س)</option>
+                            <option value="AED">AED (د.إ)</option>
+                            <option value="EGP">EGP (ج.م)</option>
+                            <option value="TRY">TRY (₺)</option>
+                        </select>
                     </div>
-                    <div>
-                        <div style="font-weight: bold;">{{ current_user.email }}</div>
-                        <div style="font-size: 0.8em; color: #ccc;">مدير النظام</div>
+                    
+                    <div class="user-info">
+                        <div class="user-avatar">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div>
+                            <div style="font-weight: bold;">{{ current_user.email }}</div>
+                            <div style="font-size: 0.8em; color: #ccc;">مدير النظام</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1053,6 +1097,51 @@
             });
         });
     </script>
+
+    <script>
+        // Currency Management Functions
+        function changeCurrency(currency) {
+            // Save selected currency to localStorage
+            localStorage.setItem('admin_preferred_currency', currency);
+            
+            // Show loading indicator
+            showNotification('success', 'تم تغيير العملة إلى ' + currency);
+            
+            // Reload page to refresh currency displays if needed
+            // You can implement AJAX updates here instead of reload
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
+        }
+
+        // Load saved currency preference
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedCurrency = localStorage.getItem('admin_preferred_currency');
+            if (savedCurrency) {
+                const currencySelect = document.getElementById('admin-currency');
+                if (currencySelect) {
+                    currencySelect.value = savedCurrency;
+                }
+            }
+        });
+
+        // Currency selector hover effect
+        document.addEventListener('DOMContentLoaded', function() {
+            const currencySelect = document.getElementById('admin-currency');
+            if (currencySelect) {
+                currencySelect.addEventListener('mouseenter', function() {
+                    this.style.borderColor = '#ff3366';
+                    this.style.boxShadow = '0 0 10px rgba(255, 0, 51, 0.3)';
+                });
+                
+                currencySelect.addEventListener('mouseleave', function() {
+                    this.style.borderColor = '#ff0033';
+                    this.style.boxShadow = 'none';
+                });
+            }
+        });
+    </script>
+    
     {% block extra_js %}{% endblock %}
 </body>
 </html>
