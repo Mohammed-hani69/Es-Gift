@@ -1,6 +1,6 @@
 {% extends "admin/base.html" %}
 
-{% block page_title %}إعدادات API{% endblock %}
+{% block page_title %}إعدادات API - OneCard Integration{% endblock %}
 
 {% block content %}
 <div class="content-card">
@@ -9,10 +9,36 @@
             <i class="fas fa-cog"></i>
             إعدادات API
         </h2>
-        <a href="{{ url_for('admin.api_settings') }}" class="btn btn-primary">
-            <i class="fas fa-plus"></i>
-            إضافة API جديد
-        </a>
+        <div>
+            <a href="{{ url_for('api_admin.api_dashboard') }}" class="btn btn-info">
+                <i class="fas fa-chart-bar"></i>
+                لوحة التحكم
+            </a>
+            <a href="{{ url_for('api_admin.add_api_setting') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i>
+                إضافة API جديد
+            </a>
+        </div>
+    </div>
+
+    <!-- إحصائيات سريعة -->
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="stat-number">{{ api_settings|length }}</div>
+            <div class="stat-label">إجمالي APIs</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ api_settings|selectattr('is_active')|list|length }}</div>
+            <div class="stat-label">APIs مفعلة</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ api_settings|selectattr('api_type', 'equalto', 'onecard')|list|length }}</div>
+            <div class="stat-label">OneCard APIs</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ api_settings|selectattr('sync_status', 'equalto', 'success')|list|length }}</div>
+            <div class="stat-label">مزامنة ناجحة</div>
+        </div>
     </div>
 
     <div class="table-container">
@@ -20,42 +46,79 @@
             <thead>
                 <tr>
                     <th>اسم API</th>
+                    <th>النوع</th>
                     <th>URL</th>
+                    <th>اسم المستخدم</th>
                     <th>الحالة</th>
-                    <th>آخر تحديث</th>
+                    <th>آخر مزامنة</th>
                     <th>الإجراءات</th>
                 </tr>
             </thead>
             <tbody>
                 {% for api in api_settings %}
                 <tr>
-                    <td>{{ api.api_name }}</td>
+                    <td><strong>{{ api.api_name }}</strong></td>
                     <td>
-                        <code style="background: #f8f9fa; padding: 2px 6px; border-radius: 3px;">
-                            {{ api.api_url[:50] }}...
-                        </code>
+                        <span class="badge badge-info">{{ api.api_type|upper }}</span>
                     </td>
                     <td>
-                        <span class="status-badge {{ 'status-approved' if api.is_active else 'status-pending' }}">
-                            {{ 'نشط' if api.is_active else 'غير نشط' }}
+                        <span class="text-truncate" style="max-width: 200px;" title="{{ api.api_url }}">
+                            {{ api.api_url[:50] + '...' if api.api_url and api.api_url|length > 50 else api.api_url }}
                         </span>
                     </td>
-                    <td>{{ moment().format('YYYY-MM-DD') }}</td>
+                    <td>{{ api.reseller_username or 'غير محدد' }}</td>
                     <td>
-                        <a href="{{ url_for('admin.edit_api_setting', setting_id=api.id) }}" class="btn btn-primary btn-sm">
-                            <i class="fas fa-edit"></i>
-                            تعديل
-                        </a>
-                        {% if api.is_active %}
-                        <form method="POST" action="{{ url_for('sync_products_from_api', setting_id=api.id) }}" 
-                              style="display: inline;">
-                            <button type="submit" class="btn btn-success btn-sm">
-                                <i class="fas fa-sync"></i>
-                                مزامنة المنتجات
-                            </button>
-                        </form>
+                        <span class="status-badge {{ 'status-approved' if api.is_active else 'status-pending' }}">
+                            {{ 'مفعل' if api.is_active else 'معطل' }}
+                        </span>
+                        {% if api.sync_status %}
+                        <br>
+                        <small class="status-badge {{ 'status-approved' if api.sync_status == 'success' else 'status-rejected' if api.sync_status == 'error' else 'status-pending' }}">
+                            {{ 'نجح' if api.sync_status == 'success' else 'فشل' if api.sync_status == 'error' else 'في الانتظار' }}
+                        </small>
                         {% endif %}
                     </td>
+                    <td>
+                        {% if api.last_sync %}
+                            {{ api.last_sync.strftime('%Y-%m-%d %H:%M') }}
+                        {% else %}
+                            لم يتم
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn btn-sm btn-info" onclick="testConnection({{ api.id }})" title="اختبار الاتصال">
+                                <i class="fas fa-wifi"></i>
+                            </button>
+                            <button class="btn btn-sm btn-success" onclick="syncProducts({{ api.id }})" title="مزامنة المنتجات">
+                                <i class="fas fa-sync"></i>
+                            </button>
+                            {% if api.api_type == 'onecard' %}
+                            <button class="btn btn-sm btn-purple" onclick="checkBalance({{ api.id }})" title="فحص الرصيد">
+                                <i class="fas fa-wallet"></i>
+                            </button>
+                            <a href="{{ url_for('api_admin.onecard_operations', setting_id=api.id) }}" class="btn btn-sm btn-dark" title="عمليات OneCard">
+                                <i class="fas fa-tools"></i>
+                            </a>
+                            {% endif %}
+                            <a href="{{ url_for('api_admin.api_products', setting_id=api.id) }}" class="btn btn-sm btn-warning" title="عرض المنتجات">
+                                <i class="fas fa-box"></i>
+                            </a>
+                            <a href="{{ url_for('api_admin.api_transactions', setting_id=api.id) }}" class="btn btn-sm btn-secondary" title="المعاملات">
+                                <i class="fas fa-receipt"></i>
+                            </a>
+                            <a href="{{ url_for('api_admin.edit_api_setting', setting_id=api.id) }}" class="btn btn-sm btn-primary" title="تعديل">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <button class="btn btn-sm btn-danger" onclick="deleteAPI({{ api.id }})" title="حذف">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-center">لا توجد إعدادات API</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -69,6 +132,320 @@
         معلومات API
     </h3>
     <div class="alert alert-info">
+        <p><strong>كيفية استخدام إعدادات OneCard API:</strong></p>
+        <ul>
+            <li>قم بإضافة تفاصيل OneCard API (اسم المستخدم، المفتاح السري)</li>
+            <li>استخدم URL الاختبار: <code>https://bbapi.ocstaging.net/integration</code></li>
+            <li>استخدم URL الإنتاج: <code>https://apis.bitaqatybusiness.com/integration</code></li>
+            <li>استخدم زر "اختبار الاتصال" للتأكد من صحة البيانات</li>
+            <li>استخدم زر "فحص الرصيد" لمعرفة الرصيد المتاح</li>
+            <li>قم بمزامنة المنتجات لجلب المنتجات المتاحة</li>
+            <li>راجع المنتجات واستوردها كمنتجات محلية</li>
+            <li>استخدم "عمليات OneCard" للوصول للميزات المتقدمة</li>
+        </ul>
+    </div>
+    
+    <div class="alert alert-success">
+        <p><strong>ميزات OneCard API المدعومة:</strong></p>
+        <ul>
+            <li><i class="fas fa-check"></i> فحص الرصيد (Check Balance)</li>
+            <li><i class="fas fa-check"></i> جلب المنتجات المفصلة (Detailed Products List)</li>
+            <li><i class="fas fa-check"></i> معلومات المنتج (Product Detailed Info)</li>
+            <li><i class="fas fa-check"></i> شراء المنتجات (Purchase Product)</li>
+            <li><i class="fas fa-check"></i> فحص حالة المعاملة (Transaction Status)</li>
+            <li><i class="fas fa-check"></i> قائمة التجار (Merchant List)</li>
+            <li><i class="fas fa-check"></i> التسوية (Reconcile)</li>
+        </ul>
+    </div>
+    
+    <div class="alert alert-warning">
+        <p><strong>ملاحظات مهمة:</strong></p>
+        <ul>
+            <li>تأكد من أن بيانات API صحيحة قبل التفعيل</li>
+            <li>استخدم بيئة الاختبار أولاً قبل الانتقال للإنتاج</li>
+            <li>المزامنة قد تستغرق وقتاً حسب عدد المنتجات</li>
+            <li>يتم حفظ بيانات API بشكل آمن ومشفر</li>
+        </ul>
+    </div>
+</div>
+
+<script>
+function testConnection(apiId) {
+    const button = event.target.closest('button');
+    const originalHTML = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    button.disabled = true;
+    
+    fetch(`/admin/api/settings/test/${apiId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('تم الاتصال بنجاح!', 'success');
+        } else {
+            showAlert('فشل الاتصال: ' + data.message, 'error');
+        }
+    })
+    .catch(error => {
+        showAlert('خطأ في الاتصال: ' + error.message, 'error');
+    })
+    .finally(() => {
+        button.innerHTML = originalHTML;
+        button.disabled = false;
+    });
+}
+
+function syncProducts(apiId) {
+    const button = event.target.closest('button');
+    const originalHTML = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    button.disabled = true;
+    
+    fetch(`/admin/api/sync/${apiId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert(data.message, 'success');
+            setTimeout(() => {
+                location.reload();
+            }, 2000);
+        } else {
+            showAlert('فشل المزامنة: ' + data.message, 'error');
+        }
+    })
+    .catch(error => {
+        showAlert('خطأ في المزامنة: ' + error.message, 'error');
+    })
+    .finally(() => {
+        button.innerHTML = originalHTML;
+        button.disabled = false;
+    });
+}
+
+function checkBalance(apiId) {
+    const button = event.target.closest('button');
+    const originalHTML = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    button.disabled = true;
+    
+    fetch(`/admin/api/onecard-balance/${apiId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const balance = data.data.balance || 'غير متوفر';
+            const currency = data.data.currency || 'SAR';
+            showAlert(`الرصيد المتاح: ${balance} ${currency}`, 'success');
+        } else {
+            showAlert('فشل جلب الرصيد: ' + data.message, 'error');
+        }
+    })
+    .catch(error => {
+        showAlert('خطأ في جلب الرصيد: ' + error.message, 'error');
+    })
+    .finally(() => {
+        button.innerHTML = originalHTML;
+        button.disabled = false;
+    });
+}
+
+function deleteAPI(apiId) {
+    if (confirm('هل أنت متأكد من حذف هذه الإعدادات؟ سيتم حذف جميع البيانات المرتبطة بها.')) {
+        fetch(`/admin/api/settings/delete/${apiId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert(data.message, 'success');
+                setTimeout(() => {
+                    location.reload();
+                }, 1500);
+            } else {
+                showAlert('فشل الحذف: ' + data.message, 'error');
+            }
+        })
+        .catch(error => {
+            showAlert('خطأ في الحذف: ' + error.message, 'error');
+        });
+    }
+}
+
+function showAlert(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.style.position = 'fixed';
+    alertDiv.style.top = '20px';
+    alertDiv.style.right = '20px';
+    alertDiv.style.zIndex = '9999';
+    alertDiv.style.minWidth = '300px';
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="close" onclick="this.parentElement.remove()">
+            <span>&times;</span>
+        </button>
+    `;
+    document.body.appendChild(alertDiv);
+    
+    setTimeout(() => {
+        if (alertDiv.parentElement) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+</script>
+
+<style>
+.stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.stat-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.stat-number {
+    font-size: 2em;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.stat-label {
+    font-size: 0.9em;
+    opacity: 0.9;
+}
+
+.text-truncate {
+    display: inline-block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
+.action-buttons .btn {
+    min-width: 32px;
+}
+
+.btn-purple {
+    background-color: #6f42c1;
+    border-color: #6f42c1;
+    color: white;
+}
+
+.btn-purple:hover {
+    background-color: #5a32a3;
+    border-color: #5a32a3;
+    color: white;
+}
+
+.status-badge {
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 0.75em;
+    font-weight: bold;
+}
+
+.status-approved {
+    background-color: #28a745;
+    color: white;
+}
+
+.status-pending {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.status-rejected {
+    background-color: #dc3545;
+    color: white;
+}
+
+.badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.75em;
+    font-weight: bold;
+}
+
+.badge-info {
+    background-color: #17a2b8;
+    color: white;
+}
+
+.alert {
+    padding: 15px;
+    border-radius: 8px;
+    margin-top: 20px;
+}
+
+.alert-info {
+    background: #e3f2fd;
+    border: 1px solid #2196f3;
+    color: #1976d2;
+}
+
+.alert-warning {
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    color: #856404;
+}
+
+.alert ul {
+    margin-bottom: 0;
+    padding-right: 20px;
+}
+
+.close {
+    background: none;
+    border: none;
+    font-size: 1.5em;
+    cursor: pointer;
+    color: inherit;
+    opacity: 0.7;
+}
+
+.close:hover {
+    opacity: 1;
+}
+</style>
+
+<div class="content-card">
+    <h3>كيفية الاستخدام</h3>
+    <div class="alert alert-info">
         <p><strong>كيفية استخدام إعدادات API:</strong></p>
         <ul>
             <li>قم بإضافة تفاصيل API الخاص بمزود المنتجات</li>
@@ -78,4 +455,5 @@
         </ul>
     </div>
 </div>
+
 {% endblock %}

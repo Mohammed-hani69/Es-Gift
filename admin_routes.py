@@ -2071,11 +2071,11 @@ def add_payment_gateway():
 @admin.route('/api-settings')
 @login_required
 def api_settings():
-    """إعدادات API"""
+    """إعدادات API - إعادة توجيه للوحة تحكم API الجديدة"""
     if not current_user.is_admin:
         return redirect(url_for('main.index'))
     
-    return render_template('admin/api_settings.html')
+    return redirect(url_for('api_admin.api_settings'))
 
 # ...existing code...
 

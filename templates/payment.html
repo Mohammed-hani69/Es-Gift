@@ -979,16 +979,28 @@ document.getElementById('paymentForm').addEventListener('submit', function(e) {
         setLoadingState(false);
         
         if (data.success) {
-            showMessage(data.message, 'success');
+            // رسالة نجاح مفصلة
+            let successMessage = data.message;
+            if (data.codes_count) {
+                successMessage += `<br><small><i class="fas fa-info-circle"></i> تم شراء ${data.codes_count} كود وسيتم إرسالها على بريدك الإلكتروني</small>`;
+            }
+            showMessage(successMessage, 'success');
             
             // تأثير النجاح
             payBtn.style.background = 'linear-gradient(135deg, #28a745, #20c997)';
             btnText.innerHTML = '<i class="fas fa-check"></i> تم الدفع بنجاح!';
             
-            // التوجيه بعد ثانيتين
+            // إضافة إشعار إضافي للإيميل
+            if (data.codes_count) {
+                setTimeout(() => {
+                    showMessage('<i class="fas fa-envelope"></i> تحقق من بريدك الإلكتروني للحصول على أكواد المنتجات', 'info');
+                }, 2000);
+            }
+            
+            // التوجيه بعد 4 ثواني
             setTimeout(() => {
                 window.location.href = '/profile';
-            }, 2000);
+            }, 4000);
         } else {
             showMessage(data.message || 'حدث خطأ في الدفع', 'error');
             shakeButton();

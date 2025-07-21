@@ -6,6 +6,7 @@ db = SQLAlchemy()
 
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=True)  # اسم المستخدم
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(120), nullable=False)
     full_name = db.Column(db.String(100))
@@ -14,6 +15,11 @@ class User(UserMixin, db.Model):
     nationality = db.Column(db.String(50))
     customer_type = db.Column(db.String(20), default='regular')  # regular, kyc, reseller
     kyc_status = db.Column(db.String(20), default='none')  # none, pending, approved, rejected
+    
+    # Google OAuth fields
+    google_id = db.Column(db.String(100), unique=True, nullable=True)  # Google ID
+    profile_picture = db.Column(db.String(300))  # صورة البروفايل من Google
+    is_verified = db.Column(db.Boolean, default=False)  # تم التحقق من الإيميل
     
     # KYC Document Type
     document_type = db.Column(db.String(50))  # national_id, passport, driver_license
@@ -136,12 +142,84 @@ class Article(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class APISettings(db.Model):
+    __tablename__ = 'api_settings'
+    
     id = db.Column(db.Integer, primary_key=True)
     api_name = db.Column(db.String(100), nullable=False)
     api_url = db.Column(db.String(200))
     api_key = db.Column(db.String(200))
+    secret_key = db.Column(db.String(200))
+    reseller_username = db.Column(db.String(100))
+    api_type = db.Column(db.String(50), default='onecard')  # onecard, custom
     is_active = db.Column(db.Boolean, default=True)
     settings_json = db.Column(db.Text)
+    last_sync = db.Column(db.DateTime)
+    sync_status = db.Column(db.String(20), default='pending')  # pending, success, error
+    error_message = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class APIProduct(db.Model):
+    """منتجات مستقبلة من API"""
+    __tablename__ = 'api_product'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    api_settings_id = db.Column(db.Integer, db.ForeignKey('api_settings.id'), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey('product.id'))  # ربط مع منتج محلي
+    
+    # معرفات المنتج الخارجي
+    external_product_id = db.Column(db.String(100), nullable=False)  # معرف المنتج في API
+    provider_product_id = db.Column(db.String(100), nullable=False)  # معرف المنتج عند المزود
+    provider = db.Column(db.String(50), default='onecard')  # اسم المزود
+    provider_name = db.Column(db.String(200))  # اسم المنتج عند المزود
+    
+    # تفاصيل المنتج
+    name = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text)
+    category = db.Column(db.String(100))
+    
+    # معلومات السعر والمخزون
+    price = db.Column(db.Numeric(10, 2))
+    provider_price = db.Column(db.Numeric(10, 2))  # سعر المزود
+    currency = db.Column(db.String(3), default='SAR')
+    provider_currency = db.Column(db.String(3), default='SAR')  # عملة المزود
+    stock_status = db.Column(db.Boolean, default=True)
+    
+    # حالة التكامل
+    is_active = db.Column(db.Boolean, default=True)
+    is_imported = db.Column(db.Boolean, default=False)  # هل تم استيراده كمنتج محلي
+    
+    # بيانات إضافية
+    raw_data = db.Column(db.Text)  # البيانات الخام من API  
+    sync_data = db.Column(db.Text)  # بيانات المزامنة
+    
+    # التوقيتات
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # العلاقات
+    api_setting = db.relationship('APISettings', backref='api_products')
+    local_product = db.relationship('Product', backref='api_products')
+
+class APITransaction(db.Model):
+    """معاملات الشراء من API"""
+    __tablename__ = 'api_transaction'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    api_settings_id = db.Column(db.Integer, db.ForeignKey('api_settings.id'), nullable=False)
+    order_id = db.Column(db.Integer, db.ForeignKey('order.id'))
+    external_product_id = db.Column(db.String(100), nullable=False)
+    reseller_ref_number = db.Column(db.String(100), unique=True, nullable=False)
+    transaction_status = db.Column(db.String(20), default='pending')  # pending, success, failed
+    purchase_response = db.Column(db.Text)  # استجابة API
+    product_codes = db.Column(db.Text)  # أكواد المنتج المستلمة
+    amount = db.Column(db.Numeric(10, 2))
+    currency = db.Column(db.String(3), default='SAR')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    api_setting = db.relationship('APISettings', backref='transactions')
+    order = db.relationship('Order', backref='api_transactions')
 
 # نماذج إدارة الصفحة الرئيسية
 class MainOffer(db.Model):

@@ -1,0 +1,471 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}لوحة تحكم API{% endblock %}
+
+{% block content %}
+<div class="content-card">
+    <h2 style="color: #ff0033; margin-bottom: 20px;">
+        <i class="fas fa-chart-line"></i>
+        لوحة تحكم API
+    </h2>
+
+    <!-- إحصائيات عامة -->
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-cogs"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">{{ stats.total_api_settings or 0 }}</div>
+                <div class="stat-label">إعدادات API</div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-box"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">{{ stats.total_api_products or 0 }}</div>
+                <div class="stat-label">منتجات API</div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-exchange-alt"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">{{ stats.total_transactions or 0 }}</div>
+                <div class="stat-label">المعاملات</div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">{{ stats.successful_transactions or 0 }}</div>
+                <div class="stat-label">معاملات ناجحة</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- إعدادات API النشطة -->
+    <div class="row" style="margin-top: 30px;">
+        <div class="col-md-8">
+            <div class="content-card">
+                <h3><i class="fas fa-server"></i> إعدادات API النشطة</h3>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>اسم API</th>
+                                <th>النوع</th>
+                                <th>الحالة</th>
+                                <th>آخر مزامنة</th>
+                                <th>الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if stats.api_settings %}
+                                {% for api_setting in stats.api_settings %}
+                                <tr>
+                                    <td>{{ api_setting.api_name }}</td>
+                                    <td>
+                                        <span class="badge badge-primary">{{ api_setting.api_type or 'غير محدد' }}</span>
+                                    </td>
+                                    <td>
+                                        {% if api_setting.is_active %}
+                                            <span class="status-badge active">نشط</span>
+                                        {% else %}
+                                            <span class="status-badge inactive">غير نشط</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if api_setting.last_sync %}
+                                            {{ api_setting.last_sync.strftime('%Y-%m-%d %H:%M') }}
+                                        {% else %}
+                                            <span class="text-muted">لم يتم</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('api_admin.api_products', api_id=api_setting.id) }}" 
+                                           class="btn btn-sm btn-info">
+                                            <i class="fas fa-box"></i> المنتجات
+                                        </a>
+                                        <a href="{{ url_for('api_admin.api_transactions', api_id=api_setting.id) }}" 
+                                           class="btn btn-sm btn-warning">
+                                            <i class="fas fa-exchange-alt"></i> المعاملات
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center">لا توجد إعدادات API</td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <!-- إحصائيات اليوم -->
+            <div class="content-card">
+                <h3><i class="fas fa-calendar-day"></i> إحصائيات اليوم</h3>
+                <div class="stat-list">
+                    <div class="stat-item">
+                        <span class="label">معاملات اليوم:</span>
+                        <span class="value">{{ stats.today_transactions or 0 }}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="label">منتجات جديدة:</span>
+                        <span class="value">{{ stats.today_products or 0 }}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="label">آخر مزامنة:</span>
+                        <span class="value">
+                            {% if stats.last_sync_time %}
+                                {{ stats.last_sync_time.strftime('%H:%M') }}
+                            {% else %}
+                                لم يتم
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- إجراءات سريعة -->
+            <div class="content-card">
+                <h3><i class="fas fa-bolt"></i> إجراءات سريعة</h3>
+                <div class="quick-actions">
+                    <a href="{{ url_for('api_admin.api_settings') }}" class="action-btn primary">
+                        <i class="fas fa-plus"></i>
+                        إضافة API جديد
+                    </a>
+                    
+                    {% if stats.api_settings %}
+                        <button onclick="syncAllApis()" class="action-btn success">
+                            <i class="fas fa-sync"></i>
+                            مزامنة جميع APIs
+                        </button>
+                        
+                        <button onclick="checkAllBalances()" class="action-btn info">
+                            <i class="fas fa-wallet"></i>
+                            فحص الأرصدة
+                        </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- معاملات حديثة -->
+    {% if stats.recent_transactions %}
+    <div class="content-card" style="margin-top: 30px;">
+        <h3><i class="fas fa-history"></i> آخر المعاملات</h3>
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>رقم المرجع</th>
+                        <th>المنتج</th>
+                        <th>المبلغ</th>
+                        <th>الحالة</th>
+                        <th>التاريخ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for transaction in stats.recent_transactions %}
+                    <tr>
+                        <td>{{ transaction.reseller_ref_number }}</td>
+                        <td>{{ transaction.external_product_id }}</td>
+                        <td>{{ transaction.amount }} {{ transaction.currency or 'USD' }}</td>
+                        <td>
+                            <span class="status-badge {{ 'success' if transaction.transaction_status == 'success' else 'warning' if transaction.transaction_status == 'pending' else 'danger' }}">
+                                {{ transaction.transaction_status or 'غير محدد' }}
+                            </span>
+                        </td>
+                        <td>{{ transaction.created_at.strftime('%Y-%m-%d %H:%M') if transaction.created_at else 'غير محدد' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function syncAllApis() {
+    if (confirm('هل تريد مزامنة جميع APIs؟ قد يستغرق هذا وقتاً طويلاً.')) {
+        const button = event.target;
+        const originalHTML = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري المزامنة...';
+        button.disabled = true;
+        
+        // هنا يمكن إضافة استدعاء AJAX لمزامنة جميع APIs
+        fetch('/admin/api/sync-all', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert('تم بدء المزامنة بنجاح', 'success');
+                setTimeout(() => location.reload(), 3000);
+            } else {
+                showAlert('فشل في بدء المزامنة: ' + data.message, 'error');
+            }
+        })
+        .catch(error => {
+            showAlert('خطأ في المزامنة: ' + error.message, 'error');
+        })
+        .finally(() => {
+            button.innerHTML = originalHTML;
+            button.disabled = false;
+        });
+    }
+}
+
+function checkAllBalances() {
+    const button = event.target;
+    const originalHTML = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الفحص...';
+    button.disabled = true;
+    
+    fetch('/admin/api/check-all-balances', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('تم فحص الأرصدة بنجاح', 'success');
+            // عرض النتائج
+            console.log('Balances:', data.balances);
+        } else {
+            showAlert('فشل في فحص الأرصدة: ' + data.message, 'error');
+        }
+    })
+    .catch(error => {
+        showAlert('خطأ في فحص الأرصدة: ' + error.message, 'error');
+    })
+    .finally(() => {
+        button.innerHTML = originalHTML;
+        button.disabled = false;
+    });
+}
+
+function showAlert(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.style.position = 'fixed';
+    alertDiv.style.top = '20px';
+    alertDiv.style.right = '20px';
+    alertDiv.style.zIndex = '9999';
+    alertDiv.style.minWidth = '300px';
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="close" onclick="this.parentElement.remove()">
+            <span>&times;</span>
+        </button>
+    `;
+    document.body.appendChild(alertDiv);
+    
+    setTimeout(() => {
+        if (alertDiv.parentElement) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+</script>
+
+<style>
+.stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.stat-card {
+    background: linear-gradient(135deg, #2c3e50, #3498db);
+    border-radius: 15px;
+    padding: 25px;
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.stat-icon {
+    font-size: 2.5em;
+    opacity: 0.8;
+}
+
+.stat-content {
+    flex: 1;
+}
+
+.stat-value {
+    font-size: 2em;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.stat-label {
+    font-size: 0.9em;
+    opacity: 0.8;
+}
+
+.stat-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.stat-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #333;
+}
+
+.stat-item .label {
+    color: #bbb;
+}
+
+.stat-item .value {
+    font-weight: bold;
+    color: #ff0033;
+}
+
+.quick-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.action-btn {
+    padding: 12px 15px;
+    border: none;
+    border-radius: 8px;
+    color: white;
+    text-decoration: none;
+    font-weight: bold;
+    text-align: center;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.action-btn.primary {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+}
+
+.action-btn.success {
+    background: linear-gradient(135deg, #28a745, #1e7e34);
+}
+
+.action-btn.info {
+    background: linear-gradient(135deg, #17a2b8, #117a8b);
+}
+
+.action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    text-decoration: none;
+    color: white;
+}
+
+.status-badge {
+    padding: 5px 10px;
+    border-radius: 12px;
+    font-size: 0.8em;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.status-badge.active, .status-badge.success {
+    background: #28a745;
+    color: white;
+}
+
+.status-badge.inactive, .status-badge.danger {
+    background: #dc3545;
+    color: white;
+}
+
+.status-badge.warning {
+    background: #ffc107;
+    color: #212529;
+}
+
+.badge {
+    padding: 5px 10px;
+    border-radius: 12px;
+    font-size: 0.8em;
+    font-weight: bold;
+}
+
+.badge-primary {
+    background: #007bff;
+    color: white;
+}
+
+.text-muted {
+    color: #6c757d !important;
+}
+
+.alert {
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.alert-success {
+    background: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+}
+
+.alert-error, .alert-danger {
+    background: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+}
+
+.alert-warning {
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    color: #856404;
+}
+
+.alert .close {
+    float: left;
+    background: none;
+    border: none;
+    font-size: 1.5em;
+    cursor: pointer;
+    color: inherit;
+}
+</style>
+{% endblock %}

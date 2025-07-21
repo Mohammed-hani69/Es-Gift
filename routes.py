@@ -492,6 +492,9 @@ def payment(order_id):
 @main.route('/process-payment', methods=['POST'])
 @login_required
 def process_payment():
+    from api_services import APIManager
+    from email_service import ProductCodeEmailService
+    
     data = request.get_json()
     order_id = data.get('order_id')
     payment_method = data.get('payment_method')
@@ -500,30 +503,107 @@ def process_payment():
     if order.user_id != current_user.id:
         return jsonify({'success': False, 'message': 'غير مصرح'})
     
-    # محاكاة عملية الدفع
-    order.payment_status = 'completed'
+    # تحديث حالة الطلب
     order.payment_method = payment_method
-    order.order_status = 'completed'
+    order.payment_status = 'processing'
+    order.order_status = 'processing'
     
-    # تخصيص أكواد للمنتجات
-    for item in order.items:
-        for i in range(item.quantity):
-            available_code = ProductCode.query.filter_by(
-                product_id=item.product_id,
-                is_used=False
+    purchased_codes = []
+    api_manager = APIManager()
+    
+    try:
+        # شراء المنتجات من OneCard API
+        for item in order.items:
+            product = item.product
+            
+            # البحث عن المنتج في API
+            api_product = APIProduct.query.filter_by(
+                product_id=product.id,
+                provider='onecard'
             ).first()
             
-            if available_code:
-                available_code.is_used = True
-                available_code.used_at = datetime.utcnow()
-                available_code.order_id = order.id
-    
-    db.session.commit()
-    
-    # إرسال بريد إلكتروني بالأكواد
-    send_order_email(order)
-    
-    return jsonify({'success': True, 'message': 'تم إتمام الدفع بنجاح'})
+            if api_product:
+                # شراء من OneCard API
+                for i in range(item.quantity):
+                    purchase_result = api_manager.purchase_onecard_product(
+                        product_id=api_product.provider_product_id,
+                        amount=item.price,
+                        user=current_user,
+                        order=order
+                    )
+                    
+                    if purchase_result.get('success'):
+                        # حفظ الكود المشترى
+                        purchased_codes.append({
+                            'product_name': product.name,
+                            'product_code': purchase_result.get('product_code'),
+                            'serial_number': purchase_result.get('serial_number'),
+                            'instructions': purchase_result.get('instructions', ''),
+                            'price': item.price,
+                            'currency': order.currency
+                        })
+                    else:
+                        raise Exception(f"فشل في شراء {product.name}: {purchase_result.get('message', 'خطأ غير معروف')}")
+            else:
+                # شراء من الأكواد المخزنة محلياً
+                for i in range(item.quantity):
+                    available_code = ProductCode.query.filter_by(
+                        product_id=item.product_id,
+                        is_used=False
+                    ).first()
+                    
+                    if available_code:
+                        available_code.is_used = True
+                        available_code.used_at = datetime.utcnow()
+                        available_code.order_id = order.id
+                        
+                        purchased_codes.append({
+                            'product_name': product.name,
+                            'product_code': available_code.code,
+                            'serial_number': available_code.serial_number or '',
+                            'instructions': available_code.instructions or '',
+                            'price': item.price,
+                            'currency': order.currency
+                        })
+                    else:
+                        raise Exception(f"لا توجد أكواد متاحة للمنتج: {product.name}")
+        
+        # تحديث حالة الطلب إلى مكتمل
+        order.payment_status = 'completed'
+        order.order_status = 'completed'
+        db.session.commit()
+        
+        # إرسال بريد إلكتروني بالأكواد باستخدام النظام الجديد
+        if purchased_codes:
+            email_service = ProductCodeEmailService()
+            email_sent = email_service.send_order_codes_email(
+                user_email=current_user.email,
+                user_name=current_user.full_name or current_user.username,
+                order_number=order.order_number,
+                codes_data=purchased_codes
+            )
+            
+            if not email_sent:
+                current_app.logger.warning(f"Failed to send email for order {order.order_number}")
+        
+        return jsonify({
+            'success': True, 
+            'message': 'تم إتمام الدفع بنجاح وسيتم إرسال الأكواد على بريدك الإلكتروني',
+            'codes_count': len(purchased_codes)
+        })
+        
+    except Exception as e:
+        # في حالة الخطأ، إرجاع حالة الطلب
+        order.payment_status = 'failed'
+        order.order_status = 'failed'
+        db.session.rollback()
+        
+        current_app.logger.error(f"Payment processing failed for order {order.id}: {str(e)}")
+        
+        return jsonify({
+            'success': False, 
+            'message': f'فشل في معالجة الطلب: {str(e)}'
+        })
 
 @main.route('/set-currency/<currency>')
 def set_currency(currency):

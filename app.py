@@ -29,6 +29,13 @@ def create_app():
     login_manager.init_app(app)
     login_manager.login_view = 'main.login'
     
+    # Context processor لإضافة csrf_token للقوالب
+    @app.context_processor
+    def inject_csrf_token():
+        """إضافة csrf_token لجميع القوالب"""
+        from secrets import token_urlsafe
+        return {'csrf_token': token_urlsafe(32)}
+    
     @login_manager.user_loader
     def load_user(user_id):
         return db.session.get(User, int(user_id))
@@ -116,6 +123,14 @@ def create_app():
     # تسجيل blueprint إدارة الحدود المالية
     from admin_routes_financial import financial_bp
     app.register_blueprint(financial_bp)
+    
+    # تسجيل blueprint إدارة API
+    from api_admin_routes import api_admin_bp
+    app.register_blueprint(api_admin_bp)
+    
+    # تهيئة Google OAuth
+    from google_auth import init_google_auth
+    init_google_auth(app)
     
     return app
 

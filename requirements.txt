@@ -22,3 +22,8 @@ openpyxl==3.1.2
 matplotlib==3.7.2
 seaborn==0.12.2
 numpy==1.26.4
+google-auth==2.23.3
+google-auth-oauthlib==1.1.0
+google-auth-httplib2==0.1.1
+oauthlib==3.2.2
+pyOpenSSL==23.2.0

@@ -1,0 +1,541 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}معاملات API - {{ api_setting.api_name }}{% endblock %}
+
+{% block content %}
+<div class="content-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2>
+            <i class="fas fa-receipt"></i>
+            معاملات API - {{ api_setting.api_name }}
+        </h2>
+        <a href="{{ url_for('api_admin.api_settings') }}" class="btn btn-primary">
+            <i class="fas fa-arrow-right"></i>
+            العودة للإعدادات
+        </a>
+    </div>
+
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="stat-number">{{ transactions|length }}</div>
+            <div class="stat-label">إجمالي المعاملات</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ transactions|selectattr('transaction_status', 'equalto', 'success')|list|length }}</div>
+            <div class="stat-label">معاملات ناجحة</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ transactions|selectattr('transaction_status', 'equalto', 'pending')|list|length }}</div>
+            <div class="stat-label">في الانتظار</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ transactions|selectattr('transaction_status', 'equalto', 'failed')|list|length }}</div>
+            <div class="stat-label">فاشلة</div>
+        </div>
+    </div>
+
+    <div class="filters-section">
+        <div class="filter-group">
+            <input type="text" id="searchInput" placeholder="البحث برقم المرجع..." class="form-control">
+        </div>
+        <div class="filter-group">
+            <select id="statusFilter" class="form-control">
+                <option value="">جميع الحالات</option>
+                <option value="pending">في الانتظار</option>
+                <option value="success">ناجحة</option>
+                <option value="failed">فاشلة</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <input type="date" id="dateFilter" class="form-control">
+        </div>
+    </div>
+
+    <div class="table-container">
+        <table class="data-table" id="transactionsTable">
+            <thead>
+                <tr>
+                    <th>رقم المرجع</th>
+                    <th>معرف المنتج</th>
+                    <th>رقم الطلب</th>
+                    <th>المبلغ</th>
+                    <th>الحالة</th>
+                    <th>تاريخ الإنشاء</th>
+                    <th>الإجراءات</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for transaction in transactions %}
+                <tr data-status="{{ transaction.transaction_status }}" 
+                    data-date="{{ transaction.created_at.strftime('%Y-%m-%d') }}">
+                    <td><strong>{{ transaction.reseller_ref_number }}</strong></td>
+                    <td>{{ transaction.external_product_id }}</td>
+                    <td>
+                        {% if transaction.order %}
+                        <a href="{{ url_for('admin.view_order', order_id=transaction.order.id) }}">
+                            #{{ transaction.order.order_number }}
+                        </a>
+                        {% else %}
+                        غير مرتبط
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if transaction.amount %}
+                        <strong>{{ transaction.amount }} {{ transaction.currency }}</strong>
+                        {% else %}
+                        غير محدد
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="status-badge 
+                            {% if transaction.transaction_status == 'success' %}status-approved
+                            {% elif transaction.transaction_status == 'failed' %}status-rejected
+                            {% else %}status-pending{% endif %}">
+                            {% if transaction.transaction_status == 'success' %}نجحت
+                            {% elif transaction.transaction_status == 'failed' %}فشلت
+                            {% else %}في الانتظار{% endif %}
+                        </span>
+                    </td>
+                    <td>{{ transaction.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>
+                        <div class="action-buttons">
+                            {% if transaction.transaction_status == 'pending' %}
+                            <button class="btn btn-sm btn-info" 
+                                    onclick="checkStatus({{ transaction.id }})" 
+                                    title="فحص الحالة">
+                                <i class="fas fa-sync"></i>
+                            </button>
+                            {% endif %}
+                            
+                            <button class="btn btn-sm btn-primary" 
+                                    onclick="viewTransaction({{ transaction.id }})" 
+                                    title="عرض التفاصيل">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            
+                            {% if transaction.product_codes %}
+                            <button class="btn btn-sm btn-success" 
+                                    onclick="viewCodes({{ transaction.id }})" 
+                                    title="عرض الأكواد">
+                                <i class="fas fa-key"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-center">لا توجد معاملات</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal لعرض تفاصيل المعاملة -->
+<div id="transactionModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>تفاصيل المعاملة</h3>
+            <span class="close" onclick="closeModal('transactionModal')">&times;</span>
+        </div>
+        <div class="modal-body" id="transactionModalBody">
+            <!-- سيتم ملؤها بالمحتوى -->
+        </div>
+    </div>
+</div>
+
+<!-- Modal لعرض الأكواد -->
+<div id="codesModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>أكواد المنتج</h3>
+            <span class="close" onclick="closeModal('codesModal')">&times;</span>
+        </div>
+        <div class="modal-body" id="codesModalBody">
+            <!-- سيتم ملؤها بالمحتوى -->
+        </div>
+    </div>
+</div>
+
+<script>
+function checkStatus(transactionId) {
+    const button = event.target.closest('button');
+    const originalHTML = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    button.disabled = true;
+    
+    fetch(`/admin/api/transaction-status/${transactionId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('تم فحص الحالة بنجاح', 'success');
+            setTimeout(() => {
+                location.reload();
+            }, 2000);
+        } else {
+            showAlert('فشل فحص الحالة: ' + data.message, 'error');
+        }
+    })
+    .catch(error => {
+        showAlert('خطأ في فحص الحالة: ' + error.message, 'error');
+    })
+    .finally(() => {
+        button.innerHTML = originalHTML;
+        button.disabled = false;
+    });
+}
+
+function viewTransaction(transactionId) {
+    fetch(`/admin/api/transaction-details/${transactionId}`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const transaction = data.transaction;
+            document.getElementById('transactionModalBody').innerHTML = `
+                <div class="transaction-details">
+                    <h4>معاملة #${transaction.reseller_ref_number}</h4>
+                    <div class="details-grid">
+                        <div><strong>معرف المنتج:</strong> ${transaction.external_product_id}</div>
+                        <div><strong>الحالة:</strong> ${getStatusText(transaction.transaction_status)}</div>
+                        <div><strong>المبلغ:</strong> ${transaction.amount || 'غير محدد'} ${transaction.currency || ''}</div>
+                        <div><strong>تاريخ الإنشاء:</strong> ${new Date(transaction.created_at).toLocaleString('ar')}</div>
+                        <div><strong>آخر تحديث:</strong> ${new Date(transaction.updated_at).toLocaleString('ar')}</div>
+                    </div>
+                    
+                    ${transaction.purchase_response ? `
+                    <div class="response-section">
+                        <h5>استجابة API:</h5>
+                        <pre>${JSON.stringify(JSON.parse(transaction.purchase_response), null, 2)}</pre>
+                    </div>
+                    ` : ''}
+                    
+                    ${transaction.product_codes ? `
+                    <div class="codes-section">
+                        <h5>الأكواد المستلمة:</h5>
+                        <pre>${JSON.stringify(JSON.parse(transaction.product_codes), null, 2)}</pre>
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+            document.getElementById('transactionModal').style.display = 'flex';
+        } else {
+            showAlert('فشل في جلب تفاصيل المعاملة', 'error');
+        }
+    })
+    .catch(error => {
+        showAlert('خطأ في جلب التفاصيل: ' + error.message, 'error');
+    });
+}
+
+function viewCodes(transactionId) {
+    fetch(`/admin/api/transaction-codes/${transactionId}`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.codes) {
+            const codes = JSON.parse(data.codes);
+            let codesHTML = '<div class="codes-list">';
+            
+            if (Array.isArray(codes)) {
+                codes.forEach((code, index) => {
+                    codesHTML += `<div class="code-item">
+                        <strong>كود ${index + 1}:</strong> 
+                        <span class="code-value">${code}</span>
+                        <button class="btn btn-sm btn-outline-primary" onclick="copyToClipboard('${code}')">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>`;
+                });
+            } else {
+                codesHTML += `<div class="code-item">
+                    <span class="code-value">${JSON.stringify(codes, null, 2)}</span>
+                </div>`;
+            }
+            
+            codesHTML += '</div>';
+            document.getElementById('codesModalBody').innerHTML = codesHTML;
+            document.getElementById('codesModal').style.display = 'flex';
+        } else {
+            showAlert('لا توجد أكواد متاحة', 'warning');
+        }
+    })
+    .catch(error => {
+        showAlert('خطأ في جلب الأكواد: ' + error.message, 'error');
+    });
+}
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        showAlert('تم نسخ الكود', 'success');
+    }).catch(() => {
+        showAlert('فشل في النسخ', 'error');
+    });
+}
+
+function getStatusText(status) {
+    switch(status) {
+        case 'success': return 'نجحت';
+        case 'failed': return 'فشلت';
+        case 'pending': return 'في الانتظار';
+        default: return status;
+    }
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).style.display = 'none';
+}
+
+// فلترة المعاملات
+document.getElementById('searchInput').addEventListener('input', filterTransactions);
+document.getElementById('statusFilter').addEventListener('change', filterTransactions);
+document.getElementById('dateFilter').addEventListener('change', filterTransactions);
+
+function filterTransactions() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const statusFilter = document.getElementById('statusFilter').value;
+    const dateFilter = document.getElementById('dateFilter').value;
+    
+    const rows = document.querySelectorAll('#transactionsTable tbody tr');
+    
+    rows.forEach(row => {
+        const refNumber = row.querySelector('td:first-child').textContent.toLowerCase();
+        const status = row.dataset.status;
+        const date = row.dataset.date;
+        
+        let showRow = true;
+        
+        // فلتر البحث
+        if (searchTerm && !refNumber.includes(searchTerm)) {
+            showRow = false;
+        }
+        
+        // فلتر الحالة
+        if (statusFilter && status !== statusFilter) {
+            showRow = false;
+        }
+        
+        // فلتر التاريخ
+        if (dateFilter && date !== dateFilter) {
+            showRow = false;
+        }
+        
+        row.style.display = showRow ? '' : 'none';
+    });
+}
+
+function showAlert(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.style.position = 'fixed';
+    alertDiv.style.top = '20px';
+    alertDiv.style.right = '20px';
+    alertDiv.style.zIndex = '9999';
+    alertDiv.style.minWidth = '300px';
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="close" onclick="this.parentElement.remove()">
+            <span>&times;</span>
+        </button>
+    `;
+    document.body.appendChild(alertDiv);
+    
+    setTimeout(() => {
+        if (alertDiv.parentElement) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+</script>
+
+<style>
+.stats-row {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.stat-card {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    text-align: center;
+    flex: 1;
+}
+
+.stat-number {
+    font-size: 2em;
+    font-weight: bold;
+    color: #007bff;
+}
+
+.stat-label {
+    color: #6c757d;
+    margin-top: 5px;
+}
+
+.filters-section {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.filter-group {
+    flex: 1;
+    min-width: 200px;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
+.action-buttons .btn {
+    min-width: 32px;
+}
+
+.status-badge {
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 0.75em;
+    font-weight: bold;
+}
+
+.status-approved {
+    background-color: #28a745;
+    color: white;
+}
+
+.status-pending {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.status-rejected {
+    background-color: #dc3545;
+    color: white;
+}
+
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 700px;
+    max-height: 80%;
+    overflow-y: auto;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+.close {
+    background: none;
+    border: none;
+    font-size: 1.5em;
+    cursor: pointer;
+    color: #aaa;
+}
+
+.close:hover {
+    color: #000;
+}
+
+.transaction-details h4 {
+    color: #007bff;
+    margin-bottom: 15px;
+}
+
+.details-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.response-section, .codes-section {
+    margin-top: 20px;
+}
+
+.response-section h5, .codes-section h5 {
+    color: #28a745;
+    margin-bottom: 10px;
+}
+
+.codes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.code-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 4px;
+}
+
+.code-value {
+    font-family: monospace;
+    background: white;
+    padding: 5px 10px;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    flex: 1;
+}
+
+pre {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 4px;
+    font-size: 0.85em;
+    overflow-x: auto;
+    margin: 0;
+}
+
+@media (max-width: 768px) {
+    .details-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .stats-row {
+        flex-direction: column;
+    }
+    
+    .filters-section {
+        flex-direction: column;
+    }
+}
+</style>
+{% endblock %}
