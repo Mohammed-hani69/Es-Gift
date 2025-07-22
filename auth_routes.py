@@ -22,8 +22,8 @@ logger = logging.getLogger(__name__)
 # Create Blueprint
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
-# Initialize Google Auth Service
-google_auth = GoogleAuthService()
+# Import Google Auth Service instance
+from google_auth import google_auth_service
 
 @auth_bp.route('/google/login')
 def google_login():
@@ -36,7 +36,7 @@ def google_login():
             return redirect(url_for('main.index'))
         
         # Get Google authorization URL
-        auth_url = google_auth.get_google_auth_url()
+        auth_url = google_auth_service.get_google_auth_url()
         logger.info("Redirecting to Google OAuth")
         return redirect(auth_url)
         
@@ -66,7 +66,7 @@ def google_callback():
             return redirect(url_for('main.login'))
         
         # Handle Google callback and get user info
-        user_info = google_auth.handle_google_callback(authorization_code, state)
+        user_info = google_auth_service.handle_google_callback(authorization_code, state)
         
         if not user_info:
             flash('فشل في الحصول على معلومات المستخدم من Google', 'error')

@@ -4,7 +4,7 @@ Google OAuth Integration for ES-Gift
 =====================================
 
 This module provides Google OAuth authentication functionality for user login and registration.
-Compatible with ES-Gift's existing Flask-Login system.
+Compatible with ES-Gift's existing Login system.
 
 Author: ES-Gift Development Team
 Created: 2025
@@ -30,6 +30,7 @@ class GoogleAuthService:
     
     def __init__(self, app=None):
         self.app = app
+        self.client_secrets = None
         if app is not None:
             self.init_app(app)
     
@@ -38,12 +39,23 @@ class GoogleAuthService:
         # Load Google client secrets from file
         secrets_file = os.path.join(app.root_path, 'google_client_secrets.json')
         
+        logger.info(f"Looking for Google client secrets at: {secrets_file}")
+        
         if os.path.exists(secrets_file):
-            with open(secrets_file, 'r', encoding='utf-8') as f:
-                self.client_secrets = json.load(f)
-                logger.info("Loaded Google client secrets from file")
+            try:
+                with open(secrets_file, 'r', encoding='utf-8') as f:
+                    self.client_secrets = json.load(f)
+                    logger.info("✅ Successfully loaded Google client secrets from file")
+                    logger.info(f"Client ID loaded: {self.client_secrets['web']['client_id'][:20]}...")
+            except Exception as e:
+                logger.error(f"Error loading Google client secrets file: {str(e)}")
+                self.client_secrets = None
         else:
-            # Fallback to environment variables
+            logger.warning(f"❌ Google client secrets file not found at: {secrets_file}")
+            self.client_secrets = None
+            
+        # Fallback to environment variables if file loading failed
+        if not self.client_secrets:
             self.client_secrets = {
                 "web": {
                     "client_id": app.config.get('GOOGLE_CLIENT_ID', ''),
@@ -53,7 +65,13 @@ class GoogleAuthService:
                     "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs"
                 }
             }
-            logger.warning("Google client secrets file not found, using environment variables")
+            logger.warning("Using environment variables for Google client secrets")
+        
+        # Validate that we have the required credentials
+        if not self.client_secrets.get('web', {}).get('client_id'):
+            logger.error("Google Client ID not found in secrets or environment variables")
+        if not self.client_secrets.get('web', {}).get('client_secret'):
+            logger.error("Google Client Secret not found in secrets or environment variables")
         
         # Google OAuth Configuration
         app.config.setdefault('GOOGLE_CLIENT_ID', self.client_secrets['web']['client_id'])
@@ -80,6 +98,18 @@ class GoogleAuthService:
             str: Authorization URL for Google OAuth
         """
         try:
+            # التأكد من وجود client_secrets
+            if not hasattr(self, 'client_secrets') or not self.client_secrets:
+                logger.error("❌ Google client secrets not initialized - reinitializing...")
+                if current_app:
+                    self.init_app(current_app)
+                    if not self.client_secrets:
+                        raise Exception("Failed to initialize Google client secrets")
+                else:
+                    raise Exception("Google client secrets not initialized and no app context")
+            
+            logger.info("✅ Google client secrets verified")
+            
             # Get the correct redirect URI based on environment
             if current_app.config.get('FLASK_ENV') == 'development':
                 # Use localhost for development
@@ -128,6 +158,16 @@ class GoogleAuthService:
             dict: User information from Google
         """
         try:
+            # التأكد من وجود client_secrets
+            if not hasattr(self, 'client_secrets') or not self.client_secrets:
+                logger.error("❌ Google client secrets not initialized - reinitializing...")
+                if current_app:
+                    self.init_app(current_app)
+                    if not self.client_secrets:
+                        raise Exception("Failed to initialize Google client secrets")
+                else:
+                    raise Exception("Google client secrets not initialized and no app context")
+                
             # Verify state parameter
             if state != session.get('google_auth_state'):
                 raise Exception("حالة المصادقة غير صحيحة")

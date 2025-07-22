@@ -65,11 +65,90 @@
             pointer-events: none !important;
         }
         
+        /* إخفاء أيقونة Tawk.to الافتراضية واستخدام أيقونتنا المخصصة */
+        #tawk-bubble {
+            display: none !important;
+        }
+        
+        /* أيقونة الشات العائمة المخصصة */
+        .es-chat-floating-icon {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #ff0033 0%, #cc0027 100%);
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 9999;
+            box-shadow: 0 4px 20px rgba(255, 0, 51, 0.4);
+            transition: all 0.3s ease;
+            border: 3px solid #fff;
+            animation: chat-pulse 3s infinite;
+        }
+        
+        .es-chat-floating-icon:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 25px rgba(255, 0, 51, 0.6);
+        }
+        
+        .es-chat-floating-icon i {
+            color: white;
+            font-size: 24px;
+        }
+        
+        /* شارة الإشعارات */
+        .chat-notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #00ff00;
+            color: #fff;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #fff;
+            animation: badge-pulse 2s infinite;
+        }
+        
+        @keyframes badge-pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        
         /* تأثير نبضات للأيقونة */
-        @keyframes tawk-pulse {
+        @keyframes chat-pulse {
             0% { transform: scale(1); box-shadow: 0 4px 20px rgba(255, 0, 51, 0.4); }
             50% { transform: scale(1.05); box-shadow: 0 6px 25px rgba(255, 0, 51, 0.6); }
             100% { transform: scale(1); box-shadow: 0 4px 20px rgba(255, 0, 51, 0.4); }
+        }
+        
+        /* إظهار الأيقونة فقط في الصفحات المحددة */
+        .show-chat-icon .es-chat-floating-icon {
+            display: flex;
+        }
+        
+        /* تأثيرات للشاشات الصغيرة */
+        @media (max-width: 768px) {
+            .es-chat-floating-icon {
+                width: 50px;
+                height: 50px;
+                bottom: 15px;
+                right: 15px;
+            }
+            
+            .es-chat-floating-icon i {
+                font-size: 20px;
+            }
         }
         
         #tawk-bubble {
@@ -402,6 +481,12 @@
         </div>
     </footer>
 
+    <!-- أيقونة الشات العائمة المخصصة -->
+    <div class="es-chat-floating-icon" onclick="openEsGiftChat()" title="تحدث معنا الآن - دعم فني 24/7" style="display: none;">
+        <i class="fa-solid fa-comments"></i>
+        <div class="chat-notification-badge">1</div>
+    </div>
+
     <!-- Login/Register Modal -->
     <div id="authModal" class="modal">
         <div class="modal-content">
@@ -446,7 +531,29 @@
                     }
                 }
             {% endif %}
+            
+            // إظهار أيقونة الشات في الصفحات المحددة
+            showChatIconIfNeeded();
         });
+
+        // إظهار أيقونة الشات فقط في صفحات محددة
+        function showChatIconIfNeeded() {
+            const currentPath = window.location.pathname;
+            const allowedPages = ['/', '/cart', '/profile'];
+            
+            // التحقق من الصفحات المسموح بها
+            const shouldShowChat = allowedPages.some(page => 
+                currentPath === page || 
+                (page === '/' && currentPath === '/') ||
+                currentPath.includes('/cart') ||
+                currentPath.includes('/profile')
+            );
+            
+            const chatIcon = document.querySelector('.es-chat-floating-icon');
+            if (chatIcon && shouldShowChat) {
+                document.body.classList.add('show-chat-icon');
+            }
+        }
 
         // إخفاء/إظهار الهيدر عند التمرير
         let lastScrollTop = 0;
@@ -612,6 +719,52 @@
         window.selectSuggestion = selectSuggestion;
     </script>
 
+    <!-- Chat Icon Control Script -->
+    <script>
+        // إظهار أيقونة الشات في الصفحات المحددة فقط
+        function showChatIconIfNeeded() {
+            const currentPath = window.location.pathname;
+            const allowedPages = ['/', '/profile', '/cart'];
+            
+            // التحقق من أن الصفحة الحالية من الصفحات المسموحة
+            const shouldShowChat = allowedPages.includes(currentPath) || 
+                                   currentPath.startsWith('/profile') || 
+                                   currentPath.startsWith('/cart');
+            
+            const chatIcon = document.querySelector('.es-chat-floating-icon');
+            if (chatIcon && shouldShowChat) {
+                chatIcon.style.display = 'flex';
+                // إضافة class للبودي لتفعيل أيقونة الشات
+                document.body.classList.add('show-chat-icon');
+            }
+        }
+
+        // تشغيل الدالة عند تحميل الصفحة
+        document.addEventListener('DOMContentLoaded', showChatIconIfNeeded);
+        
+        // دالة لفتح الشات مع رسالة ترحيب مخصصة
+        window.openEsGiftChat = function() {
+            if(typeof Tawk_API !== 'undefined') {
+                {% if current_user.is_authenticated %}
+                    // إرسال معلومات المستخدم
+                    Tawk_API.setAttributes({
+                        'name' : '{{ current_user.username }}',
+                        'email' : '{{ current_user.email }}',
+                        'hash' : 'es-gift-user-{{ current_user.id }}'
+                    }, function(error){});
+                    
+                    // رسالة ترحيب للمستخدمين المسجلين
+                    Tawk_API.addEvent('Welcome back {{ current_user.username }}! كيف يمكننا مساعدتك اليوم؟');
+                {% else %}
+                    // رسالة ترحيب للزوار
+                    Tawk_API.addEvent('أهلاً وسهلاً بك في ES-Gift! كيف يمكننا مساعدتك؟');
+                {% endif %}
+                
+                Tawk_API.maximize();
+            }
+        };
+    </script>
+
     <!--Start of Tawk.to Script-->
     <script type="text/javascript">
         var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
@@ -665,6 +818,44 @@
             console.log('🔽 Chat minimized');
         };
         
+        // دالة لإظهار أيقونة الشات في الصفحات المحددة فقط
+        function showChatIconIfNeeded() {
+            const currentPath = window.location.pathname;
+            const allowedPages = ['/', '/profile', '/cart'];
+            
+            // تحقق من الصفحات المسموحة
+            const shouldShowChat = allowedPages.some(page => {
+                if (page === '/') {
+                    return currentPath === '/' || currentPath === '/index';
+                }
+                return currentPath.startsWith(page);
+            });
+            
+            const chatIcon = document.querySelector('.es-chat-floating-icon');
+            if (chatIcon) {
+                if (shouldShowChat) {
+                    // إظهار الأيقونة مع تأثير
+                    setTimeout(() => {
+                        chatIcon.style.display = 'flex';
+                        chatIcon.style.opacity = '0';
+                        chatIcon.style.transform = 'scale(0.5)';
+                        
+                        // تأثير الظهور
+                        setTimeout(() => {
+                            chatIcon.style.transition = 'all 0.5s ease';
+                            chatIcon.style.opacity = '1';
+                            chatIcon.style.transform = 'scale(1)';
+                        }, 100);
+                    }, 1000); // تأخير ثانية واحدة
+                    
+                    console.log('💬 Chat icon shown for page:', currentPath);
+                } else {
+                    chatIcon.style.display = 'none';
+                    console.log('❌ Chat icon hidden for page:', currentPath);
+                }
+            }
+        }
+        
         Tawk_API.onChatMaximized = function(){
             console.log('🔼 Chat maximized');
         };
@@ -711,6 +902,24 @@
         };
     </script>
     <!--End of Tawk.to Script-->
+
+    <!-- JavaScript للتحكم في إظهار أيقونة الشات -->
+    <script>
+        // تحديث عداد السلة وإظهار أيقونة الشات عند تحميل الصفحة
+        document.addEventListener('DOMContentLoaded', function() {
+            showChatIconIfNeeded();
+            
+            // إعادة فحص الأيقونة عند تغيير URL (في حالة التنقل داخل الصفحة)
+            let lastUrl = location.href;
+            new MutationObserver(() => {
+                const url = location.href;
+                if (url !== lastUrl) {
+                    lastUrl = url;
+                    setTimeout(showChatIconIfNeeded, 500);
+                }
+            }).observe(document, {subtree: true, childList: true});
+        });
+    </script>
 
     {% block extra_js %}{% endblock %}
 </body>
