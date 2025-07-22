@@ -12,6 +12,138 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/header-footer-enhanced.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css">
+    
+    <!-- تخصيص أيقونة الشات -->
+    <style>
+        /* تخصيص أيقونة Tawk.to لتتناسب مع تصميم Es-Gift */
+        #tawk-bubble {
+            background: linear-gradient(135deg, #ff0033 0%, #cc0027 100%) !important;
+            border: 2px solid #fff !important;
+            box-shadow: 0 4px 20px rgba(255, 0, 51, 0.4) !important;
+            transition: all 0.3s ease !important;
+        }
+        
+        #tawk-bubble:hover {
+            transform: scale(1.1) !important;
+            box-shadow: 0 6px 25px rgba(255, 0, 51, 0.6) !important;
+        }
+        
+        /* تخصيص نافذة الشات */
+        .tawk-chat-panel {
+            border-radius: 15px !important;
+            overflow: hidden !important;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3) !important;
+        }
+        
+        .tawk-header {
+            background: linear-gradient(135deg, #ff0033 0%, #cc0027 100%) !important;
+            color: white !important;
+        }
+        
+        /* تخصيص للشاشات الصغيرة */
+        @media (max-width: 768px) {
+            #tawk-bubble {
+                width: 50px !important;
+                height: 50px !important;
+                bottom: 15px !important;
+                right: 15px !important;
+            }
+            
+            .tawk-chat-panel {
+                bottom: 80px !important;
+                right: 10px !important;
+                left: 10px !important;
+                width: auto !important;
+                max-height: 70vh !important;
+            }
+        }
+        
+        /* إخفاء أيقونة الشات عند فتح القائمة الجانبية */
+        .sidebar.active ~ #tawk-bubble,
+        .search-overlay.active ~ #tawk-bubble {
+            opacity: 0.3 !important;
+            pointer-events: none !important;
+        }
+        
+        /* تأثير نبضات للأيقونة */
+        @keyframes tawk-pulse {
+            0% { transform: scale(1); box-shadow: 0 4px 20px rgba(255, 0, 51, 0.4); }
+            50% { transform: scale(1.05); box-shadow: 0 6px 25px rgba(255, 0, 51, 0.6); }
+            100% { transform: scale(1); box-shadow: 0 4px 20px rgba(255, 0, 51, 0.4); }
+        }
+        
+        #tawk-bubble {
+            animation: tawk-pulse 3s infinite !important;
+        }
+        
+        /* زر الدعم الفني في الفوتر */
+        .support-section {
+            margin-top: 20px;
+            text-align: center;
+        }
+        
+        .support-chat-btn {
+            background: linear-gradient(135deg, #00c853 0%, #00a843 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 15px rgba(0, 200, 83, 0.3);
+            font-family: 'Cairo', sans-serif;
+        }
+        
+        .support-chat-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 200, 83, 0.4);
+            background: linear-gradient(135deg, #00d95a 0%, #00b848 100%);
+        }
+        
+        .support-chat-btn i {
+            font-size: 18px;
+        }
+        
+        .online-indicator {
+            color: #4caf50;
+            font-size: 12px;
+            animation: blink 2s infinite;
+            margin-left: 5px;
+        }
+        
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.3; }
+        }
+        
+        .support-text {
+            color: #999;
+            font-size: 12px;
+            margin: 8px 0 0 0;
+        }
+        
+        /* تأثيرات للشاشات الصغيرة */
+        @media (max-width: 768px) {
+            .support-chat-btn {
+                padding: 10px 20px;
+                font-size: 14px;
+            }
+            
+            .support-chat-btn span:not(.online-indicator) {
+                display: none;
+            }
+            
+            .support-chat-btn i {
+                font-size: 20px;
+            }
+        }
+    </style>
+    
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -215,6 +347,16 @@
                 <img src="{{ url_for('static', filename='images/twitter.png') }}" alt="Twitter">
                 <img src="{{ url_for('static', filename='images/instagram.png') }}" alt="Instagram">
                 <img src="{{ url_for('static', filename='images/youtube.png') }}" alt="YouTube">
+            </div>
+            
+            <!-- زر الدعم الفني -->
+            <div class="support-section">
+                <button class="support-chat-btn" onclick="window.openEsGiftChat()" title="دردشة مباشرة مع الدعم الفني">
+                    <i class="fa-solid fa-headset"></i>
+                    <span>دعم فني فوري</span>
+                    <span class="online-indicator">●</span>
+                </button>
+                <p class="support-text">متاح 24/7 للمساعدة</p>
             </div>
         </div>
 
@@ -469,6 +611,107 @@
         // جعل الدالة متاحة عالمياً
         window.selectSuggestion = selectSuggestion;
     </script>
+
+    <!--Start of Tawk.to Script-->
+    <script type="text/javascript">
+        var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
+        
+        // إعدادات مخصصة للشات
+        Tawk_API.onLoad = function(){
+            console.log('✅ Tawk.to chat loaded successfully - Es-Gift Support');
+            
+            // إضافة معلومات المستخدم إذا كان مسجل دخول
+            {% if current_user.is_authenticated %}
+            Tawk_API.setAttributes({
+                'name' : '{{ current_user.first_name }} {{ current_user.last_name }}',
+                'email' : '{{ current_user.email }}',
+                'user_id' : '{{ current_user.id }}',
+                'account_type' : '{% if current_user.is_admin %}Admin{% elif current_user.account_type %}{{ current_user.account_type }}{% else %}Customer{% endif %}'
+            }, function(error){
+                if(!error) {
+                    console.log('✅ User attributes set successfully');
+                }
+            });
+            {% endif %}
+            
+            // رسالة ترحيب مخصصة
+            Tawk_API.addEvent('load', function(){
+                {% if current_user.is_authenticated %}
+                    var welcomeMsg = 'مرحباً {{ current_user.first_name }}! 👋\nكيف يمكننا مساعدتك اليوم؟';
+                {% else %}
+                    var welcomeMsg = 'مرحباً بك في Es-Gift! 🎮\nكيف يمكننا مساعدتك؟';
+                {% endif %}
+                
+                // إضافة رسالة ترحيب بعد ثانيتين
+                setTimeout(function(){
+                    if(Tawk_API.getStatus() === 'online') {
+                        Tawk_API.addEvent('chatMessageSystem', welcomeMsg);
+                    }
+                }, 2000);
+            });
+        };
+        
+        // عند بدء محادثة جديدة
+        Tawk_API.onChatStarted = function(){
+            console.log('💬 Chat started - Es-Gift Support');
+            
+            // إرسال معلومات إضافية عن الصفحة الحالية
+            var pageInfo = 'الصفحة الحالية: ' + document.title + '\nالرابط: ' + window.location.href;
+            Tawk_API.addEvent('chatMessageVisitor', pageInfo);
+        };
+        
+        // عند تصغير/تكبير نافذة الشات
+        Tawk_API.onChatMinimized = function(){
+            console.log('🔽 Chat minimized');
+        };
+        
+        Tawk_API.onChatMaximized = function(){
+            console.log('🔼 Chat maximized');
+        };
+        
+        // تحميل السكريبت
+        (function(){
+            var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
+            s1.async=true;
+            s1.src='https://embed.tawk.to/687e2b2c4fc0181916b601e1/1j0mdhak3';
+            s1.charset='UTF-8';
+            s1.setAttribute('crossorigin','*');
+            s0.parentNode.insertBefore(s1,s0);
+        })();
+        
+        // إعدادات موضع الأيقونة
+        Tawk_API.customStyle = {
+            visibility : {
+                desktop : {
+                    position : 'br', // bottom right
+                    xOffset : 20,
+                    yOffset : 20
+                },
+                mobile : {
+                    position : 'br',
+                    xOffset : 15,
+                    yOffset : 15
+                }
+            }
+        };
+        
+        // دالة لفتح الشات برمجياً (يمكن استخدامها في أي مكان)
+        window.openEsGiftChat = function() {
+            if(typeof Tawk_API !== 'undefined') {
+                Tawk_API.maximize();
+            }
+        };
+        
+        // دالة لإرسال رسالة مباشرة
+        window.sendChatMessage = function(message) {
+            if(typeof Tawk_API !== 'undefined') {
+                Tawk_API.addEvent('chatMessageVisitor', message);
+                Tawk_API.maximize();
+            }
+        };
+    </script>
+    <!--End of Tawk.to Script-->
+
     {% block extra_js %}{% endblock %}
 </body>
 </html>

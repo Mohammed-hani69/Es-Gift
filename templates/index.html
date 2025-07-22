@@ -71,41 +71,7 @@
     </div>
 </section>
 
-<!-- المنتجات -->
-<section class="products-container">
-    <h1 class="products-title">المنتجات الشعبية</h1>
 
-    <div class="swiper products-swiper">
-        <div class="swiper-wrapper">
-            {% for product in products %}
-            <div class="swiper-slide">
-                <div class="product-card">
-                    <a href="{{ url_for('main.product_detail', product_id=product.id, slug=product.name|create_slug) }}">
-                        {% if product.image_url %}
-                            <img src="/static/uploads/gift-cards/{{ product.image_url }}" 
-                                 alt="{{ product.name }}" class="product-image" onerror="this.src='/static/images/default-product.jpg'">
-                        {% else %}
-                            <img src="{{ url_for('static', filename='images/default-product.jpg') }}" 
-                                 alt="{{ product.name }}" class="product-image">
-                        {% endif %}
-                            <h3 class="product-card-name">{{ product.name }}</h3>
-                            <p class="product-global-symbol">{{ product.region }}</p>
-                            <div class="product-price-container">
-                                <span class="product-price" data-original-price="{{ product.original_price_sar if product.original_price_sar else product.display_price }}">
-                                    {{ product.display_price }} {{ session.get('currency', 'SAR') }}
-                                </span>
-                            </div>
-                            <button style="margin-top: 10px ;" class="add-to-cart-btn" onclick="addToCart({{ product.id }})">
-                                <i class="fa-solid fa-cart-plus"></i> إضافة للسلة
-                            </button>
-                    </a>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-        
-    </div>
-</section>
 
 <!-- بطاقات الهدايا -->
 <section class="Gift-cards">
@@ -151,32 +117,7 @@
 
 
 
-<!-- ماركات أخرى -->
-<section class="another-marks">
-    <h3 class="section-title">ماركات أخرى</h3>
-    <div class="row-marks">
-        {% for product in other_products %}
-        <div class="digital-item">
-            <a href="{{ url_for('main.product_detail', product_id=product.id, slug=product.name|create_slug) }}">
-                {% if product.image_url %}
-                    <img src="/static/uploads/gift-cards/{{ product.image_url }}" 
-                         alt="{{ product.name }}" onerror="this.src='/static/images/default-product.jpg'">
-                {% else %}
-                    <img src="{{ url_for('static', filename='images/default-product.jpg') }}" alt="{{ product.name }}">
-                {% endif %}
-                <p>{{ product.name }}</p>
-            </a>
-        </div>
-        {% endfor %}
-    </div>
-    
-    <div class="btn-container">
-        <button class="btn">
-            <span class="btn-text">اعرض اكتر</span>
-            <i class="fa-solid fa-arrow-down changed-icon"></i>
-        </button>
-    </div>
-</section>
+
 
 <!-- لماذا Es-Gift؟ -->
 <section class="why-us">
@@ -195,7 +136,11 @@
         <div class="why-item">
             <i class="fa-solid fa-headset"></i>
             <h4>دعم فني 24/7</h4>
-            <p class="second-why-para">فريق دعم فني متاح على مدار الساعة لمساعدتك</p>
+            <p class="second-why-para">فريق دعم فني متاح على مدار الساعة عبر الشات المباشر</p>
+            <button class="chat-support-btn" onclick="window.openEsGiftChat()" title="تحدث معنا الآن">
+                <i class="fa-solid fa-comments"></i>
+                تحدث معنا الآن
+            </button>
         </div>
     </div>
 </section>
@@ -504,6 +449,54 @@
     
     .gift-card-info h4 {
         font-size: 11px;
+    }
+}
+
+/* زر الدعم الفني في صفحة الرئيسية */
+.chat-support-btn {
+    background: linear-gradient(135deg, #ff0033 0%, #cc0027 100%);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 10px;
+    font-family: 'Cairo', sans-serif;
+    box-shadow: 0 3px 10px rgba(255, 0, 51, 0.3);
+}
+
+.chat-support-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(255, 0, 51, 0.4);
+    background: linear-gradient(135deg, #ff1a4a 0%, #d9003d 100%);
+}
+
+.chat-support-btn i {
+    font-size: 14px;
+}
+
+/* تأثيرات للشاشات الصغيرة */
+@media (max-width: 768px) {
+    .chat-support-btn {
+        padding: 6px 12px;
+        font-size: 11px;
+    }
+    
+    .chat-support-btn i {
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .chat-support-btn {
+        padding: 5px 10px;
+        font-size: 10px;
     }
 }
 </style>
