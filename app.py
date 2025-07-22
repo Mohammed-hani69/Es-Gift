@@ -128,9 +128,13 @@ def create_app():
     from api_admin_routes import api_admin_bp
     app.register_blueprint(api_admin_bp)
     
-    # تهيئة Google OAuth
-    from google_auth import init_google_auth
-    init_google_auth(app)
+    # تسجيل blueprint المصادقة بجوجل
+    from auth_routes import auth_bp
+    app.register_blueprint(auth_bp)
+    
+    # تهيئة Google OAuth Service
+    from google_auth import google_auth_service
+    google_auth_service.init_app(app)
     
     return app
 

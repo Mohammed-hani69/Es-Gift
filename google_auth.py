@@ -35,9 +35,29 @@ class GoogleAuthService:
     
     def init_app(self, app):
         """Initialize the Google Auth service with Flask app"""
+        # Load Google client secrets from file
+        secrets_file = os.path.join(app.root_path, 'google_client_secrets.json')
+        
+        if os.path.exists(secrets_file):
+            with open(secrets_file, 'r', encoding='utf-8') as f:
+                self.client_secrets = json.load(f)
+                logger.info("Loaded Google client secrets from file")
+        else:
+            # Fallback to environment variables
+            self.client_secrets = {
+                "web": {
+                    "client_id": app.config.get('GOOGLE_CLIENT_ID', ''),
+                    "client_secret": app.config.get('GOOGLE_CLIENT_SECRET', ''),
+                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                    "token_uri": "https://oauth2.googleapis.com/token",
+                    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs"
+                }
+            }
+            logger.warning("Google client secrets file not found, using environment variables")
+        
         # Google OAuth Configuration
-        app.config.setdefault('GOOGLE_CLIENT_ID', '712420880804-hi84lrcs4igfplrm7mgp647v19g8sggk.apps.googleusercontent.com')
-        app.config.setdefault('GOOGLE_CLIENT_SECRET', '')  # يجب إضافة هذا في ملف البيئة
+        app.config.setdefault('GOOGLE_CLIENT_ID', self.client_secrets['web']['client_id'])
+        app.config.setdefault('GOOGLE_CLIENT_SECRET', self.client_secrets['web']['client_secret'])
         app.config.setdefault('GOOGLE_DISCOVERY_URL', 'https://accounts.google.com/.well-known/openid_configuration')
         
         # OAuth 2.0 Scopes
@@ -61,30 +81,18 @@ class GoogleAuthService:
         """
         try:
             # Get the correct redirect URI based on environment
-            # Support multiple URIs for development
             if current_app.config.get('FLASK_ENV') == 'development':
-                # Try different localhost variations
-                possible_uris = [
-                    'http://localhost:5000/auth/google/callback',
-                    'http://127.0.0.1:5000/auth/google/callback'
-                ]
-                redirect_uri = current_app.config.get('GOOGLE_REDIRECT_URI', possible_uris[0])
+                # Use localhost for development
+                redirect_uri = 'http://127.0.0.1:5000/auth/google/callback'
             else:
-                redirect_uri = url_for('google_callback', _external=True)
+                # Use production URL
+                redirect_uri = 'https://es-gift.com/auth/google/callback'
             
             logger.info(f"Using redirect URI: {redirect_uri}")
             
             # Create the flow using the client secrets
             flow = Flow.from_client_config(
-                {
-                    "web": {
-                        "client_id": current_app.config['GOOGLE_CLIENT_ID'],
-                        "client_secret": current_app.config.get('GOOGLE_CLIENT_SECRET', ''),
-                        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                        "token_uri": "https://oauth2.googleapis.com/token",
-                        "redirect_uris": [redirect_uri]
-                    }
-                },
+                self.client_secrets,
                 scopes=self.scopes
             )
             
@@ -124,25 +132,16 @@ class GoogleAuthService:
             if state != session.get('google_auth_state'):
                 raise Exception("حالة المصادقة غير صحيحة")
             
-            # Create the flow using the client secrets
             # Get the correct redirect URI based on environment
             if current_app.config.get('FLASK_ENV') == 'development':
-                redirect_uri = current_app.config.get('GOOGLE_REDIRECT_URI', 'http://localhost:5000/auth/google/callback')
+                redirect_uri = 'http://127.0.0.1:5000/auth/google/callback'
             else:
-                redirect_uri = url_for('google_callback', _external=True)
+                redirect_uri = 'https://es-gift.com/auth/google/callback'
                 
             logger.info(f"Using callback redirect URI: {redirect_uri}")
                 
             flow = Flow.from_client_config(
-                {
-                    "web": {
-                        "client_id": current_app.config['GOOGLE_CLIENT_ID'],
-                        "client_secret": current_app.config.get('GOOGLE_CLIENT_SECRET', ''),
-                        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                        "token_uri": "https://oauth2.googleapis.com/token",
-                        "redirect_uris": [redirect_uri]
-                    }
-                },
+                self.client_secrets,
                 scopes=self.scopes,
                 state=state
             )
@@ -217,85 +216,6 @@ class GoogleAuthService:
 
 # Initialize Google Auth Service
 google_auth_service = GoogleAuthService()
-
-def init_google_auth(app):
-    """Initialize Google Auth with Flask app"""
-    google_auth_service.init_app(app)
-    
-    @app.route('/auth/google')
-    def google_login():
-        """Start Google OAuth flow"""
-        try:
-            auth_url = google_auth_service.get_google_auth_url()
-            return redirect(auth_url)
-        except Exception as e:
-            flash(f'خطأ في تسجيل الدخول بجوجل: {str(e)}', 'error')
-            return redirect(url_for('main.login'))
-    
-    @app.route('/auth/google/callback')
-    def google_callback():
-        """Handle Google OAuth callback"""
-        try:
-            # Get authorization code and state from request
-            authorization_code = request.args.get('code')
-            state = request.args.get('state')
-            
-            if not authorization_code:
-                flash('فشل في تسجيل الدخول بجوجل: لم يتم الحصول على كود التفويض', 'error')
-                return redirect(url_for('main.login'))
-            
-            # Handle the callback
-            user_info = google_auth_service.handle_google_callback(authorization_code, state)
-            
-            # Import here to avoid circular imports
-            from models import User, db
-            from flask_login import login_user
-            
-            # Check if user exists
-            user = User.query.filter_by(email=user_info['email']).first()
-            
-            if user:
-                # Update user's Google info if needed
-                if not user.google_id:
-                    user.google_id = user_info['google_id']
-                    user.profile_picture = user_info.get('picture')
-                    db.session.commit()
-                
-                # Log the user in
-                login_user(user, remember=True)
-                flash(f'مرحباً بك {user.username}!', 'success')
-                
-                # Redirect to next page or dashboard
-                next_page = request.args.get('next')
-                return redirect(next_page) if next_page else redirect(url_for('index'))
-            
-            else:
-                # Create new user account
-                new_user = User(
-                    username=user_info['email'].split('@')[0],  # Use email prefix as username
-                    email=user_info['email'],
-                    full_name=user_info['name'],
-                    google_id=user_info['google_id'],
-                    profile_picture=user_info.get('picture'),
-                    is_verified=user_info.get('verified_email', False),
-                    password_hash='google_oauth'  # Mark as Google OAuth user
-                )
-                
-                db.session.add(new_user)
-                db.session.commit()
-                
-                # Log the new user in
-                login_user(new_user, remember=True)
-                flash(f'تم إنشاء حسابك بنجاح! مرحباً بك {new_user.username}!', 'success')
-                
-                return redirect(url_for('main.profile'))  # Redirect to profile to complete setup
-                
-        except Exception as e:
-            logger.error(f"Error in Google callback: {str(e)}")
-            flash(f'خطأ في تسجيل الدخول بجوجل: {str(e)}', 'error')
-            return redirect(url_for('main.login'))
-    
-    logger.info("Google Auth routes registered successfully")
 
 def get_google_client_id():
     """Get Google Client ID for frontend use"""

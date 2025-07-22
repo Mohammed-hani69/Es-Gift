@@ -199,6 +199,20 @@ gunicorn --bind 0.0.0.0:5000 app:app
 4. Push للـ branch
 5. إنشاء Pull Request
 
+## 🔐 إعداد Google OAuth
+
+تم تكوين Google OAuth بالإعدادات التالية:
+
+### Authorized JavaScript Origins:
+- `https://es-gift.com` (للإنتاج)
+- `http://127.0.0.1:5000` (للتطوير)
+
+### Authorized Redirect URIs:
+- `https://es-gift.com/auth/google/callback` (للإنتاج)
+- `http://127.0.0.1:5000/auth/google/callback` (للتطوير)
+
+### Client ID:
+
 ---
 
 تم تطوير هذا المشروع بواسطة فريق ES-Gift Development Team 🚀
