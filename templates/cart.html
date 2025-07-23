@@ -18,7 +18,7 @@
             {% for item in cart_items %}
             <div class="cart-item" data-product-id="{{ item.product.id }}">
                 <div class="item-image">
-                    <img src="/static/uploads/{{ item.product.image_url }}" 
+                    <img src="/static/uploads/gift-cards/{{ item.product.image_url }}" 
                          alt="{{ item.product.name }}" onerror="this.src='/static/images/default-product.jpg'">
                 </div>
                 
@@ -36,7 +36,7 @@
                     <div class="quantity-controls">
                         <button onclick="changeQuantity({{ item.product.id }}, -1)">-</button>
                         <input type="number" value="{{ item.quantity }}" 
-                               min="1" max="{{ item.product.stock_quantity }}"
+                               min="1" max="50"
                                id="quantity-{{ item.product.id }}"
                                onchange="updateQuantity({{ item.product.id }}, this.value)">
                         <button onclick="changeQuantity({{ item.product.id }}, 1)">+</button>
@@ -144,7 +144,6 @@
 </div>
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/floating-support.css') }}">
 {% endblock %}
 
 <style>
@@ -594,7 +593,7 @@ function changeQuantity(productId, change) {
     let currentQuantity = parseInt(quantityInput.value);
     let newQuantity = currentQuantity + change;
     
-    if (newQuantity >= 1) {
+    if (newQuantity >= 1 && newQuantity <= 50) {
         quantityInput.value = newQuantity;
         updateQuantity(productId, newQuantity);
     }
@@ -735,16 +734,5 @@ function showNotification(message, type) {
 </script>
 
 {% block extra_js %}
-<script src="{{ url_for('static', filename='js/floating-support.js') }}"></script>
-<script>
-// تمرير بيانات المستخدم للدعم الفني
-window.currentUserData = {
-    name: '{{ current_user.full_name or current_user.username }}',
-    email: '{{ current_user.email }}',
-    type: '{{ current_user.customer_type }}',
-    cartItems: {{ cart_items|length if cart_items else 0 }},
-    cartTotal: '{{ total }} {{ session.get("currency", "SAR") }}'
-};
-</script>
 {% endblock %}
 {% endblock %}

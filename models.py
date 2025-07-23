@@ -464,6 +464,7 @@ class Role(db.Model):
     description = db.Column(db.Text)
     is_admin = db.Column(db.Boolean, default=False)  # هل هذا الدور مدير عام؟
     is_active = db.Column(db.Boolean, default=True)
+    allowed_pages = db.Column(db.Text)  # الصفحات المسموحة (JSON string)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class RolePermission(db.Model):

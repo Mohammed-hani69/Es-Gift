@@ -4,11 +4,72 @@
 ملف مساعد لإدارة الموظفين والصلاحيات
 """
 
+import json
 from functools import wraps
-from flask import abort, current_app, request, jsonify
+from flask import abort, current_app, request, jsonify, redirect, url_for, flash
 from flask_login import current_user
 from models import Employee, Permission, Role, RolePermission, EmployeePermission, ActivityLog, db
 from datetime import datetime
+
+def requires_page_access(page_route):
+    """
+    ديكوريتر للتحقق من صلاحية الوصول للصفحة
+    يستخدم لحماية صفحات لوحة التحكم بناءً على الأدوار
+    page_route: مسار الصفحة مثل 'admin.products' أو 'admin.users'
+    """
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if not current_user.is_authenticated:
+                return redirect(url_for('auth.login'))
+            
+            # المديرون العامون لهم وصول كامل
+            if current_user.is_admin:
+                return f(*args, **kwargs)
+            
+            # التحقق من أن المستخدم موظف
+            employee = Employee.query.filter_by(user_id=current_user.id).first()
+            if not employee:
+                flash('غير مصرح لك بالوصول لهذه الصفحة', 'error')
+                return redirect(url_for('main.index'))
+            
+            # التحقق من حالة الموظف
+            if hasattr(employee, 'status') and employee.status != 'active':
+                flash('حسابك الوظيفي غير نشط', 'error')
+                return redirect(url_for('main.index'))
+            
+            # التحقق من صلاحية الوصول للصفحة
+            if has_page_access(employee, page_route):
+                # تسجيل النشاط
+                log_activity(employee, f"page_access", f"وصول للصفحة: {page_route}")
+                return f(*args, **kwargs)
+            else:
+                flash('ليس لديك صلاحية للوصول لهذه الصفحة', 'error')
+                return redirect(url_for('admin.dashboard'))
+        
+        return decorated_function
+    return decorator
+
+def has_page_access(employee, page_route):
+    """
+    التحقق من صلاحية الوصول لصفحة محددة
+    """
+    if not employee or not employee.role:
+        return False
+    
+    # الأدوار الإدارية لها وصول كامل
+    if employee.role.is_admin:
+        return True
+    
+    # التحقق من الصفحات المسموحة للدور
+    if employee.role.allowed_pages:
+        try:
+            allowed_pages = json.loads(employee.role.allowed_pages)
+            return page_route in allowed_pages
+        except (json.JSONDecodeError, TypeError):
+            return False
+    
+    return False
 
 def requires_permission(permission_name):
     """

@@ -17,7 +17,8 @@ from urllib.parse import quote
 
 from models import *
 from utils import send_email
-from employee_utils import requires_permission, log_activity
+from employee_utils import requires_permission, requires_page_access, log_activity
+from admin_pages import get_pages_for_js, ADMIN_PAGES
 
 # إنشاء Blueprint للمسارات الإدارية
 admin = Blueprint('admin', __name__, url_prefix='/admin')
@@ -25,9 +26,12 @@ admin_bp = admin  # إضافة alias للـ blueprint
 
 @admin.route('/')
 @login_required
+@requires_page_access('admin.dashboard')
 def dashboard():
     if not current_user.is_admin:
-        return redirect(url_for('main.index'))
+        employee = Employee.query.filter_by(user_id=current_user.id).first()
+        if not employee:
+            return redirect(url_for('main.index'))
     
     # إحصائيات
     total_users = User.query.count()
@@ -51,9 +55,12 @@ def dashboard():
 
 @admin.route('/products')
 @login_required
+@requires_page_access('admin.products')
 def products():
     if not current_user.is_admin:
-        return redirect(url_for('main.index'))
+        employee = Employee.query.filter_by(user_id=current_user.id).first()
+        if not employee:
+            return redirect(url_for('main.index'))
     
     products = Product.query.all()
     categories = Category.query.filter_by(is_active=True).order_by(Category.display_order, Category.name).all()
@@ -66,9 +73,12 @@ def products():
 
 @admin.route('/users')
 @login_required
+@requires_page_access('admin.users')
 def users():
     if not current_user.is_admin:
-        return redirect(url_for('main.index'))
+        employee = Employee.query.filter_by(user_id=current_user.id).first()
+        if not employee:
+            return redirect(url_for('main.index'))
     
     users = User.query.all()
     return render_template('admin/users.html', users=users)
@@ -342,9 +352,12 @@ def user_detail(user_id):
 
 @admin.route('/orders')
 @login_required
+@requires_page_access('admin.orders')
 def orders():
     if not current_user.is_admin:
-        return redirect(url_for('main.index'))
+        employee = Employee.query.filter_by(user_id=current_user.id).first()
+        if not employee:
+            return redirect(url_for('main.index'))
     
     orders = Order.query.order_by(Order.created_at.desc()).all()
     return render_template('admin/orders.html', orders=orders)
@@ -1439,11 +1452,14 @@ def delete_subcategory(subcategory_id):
 
 @admin.route('/employees')
 @login_required
+@requires_page_access('admin.employees')
 def employees():
     """صفحة إدارة الموظفين"""
     if not current_user.is_admin:
-        flash('غير مصرح لك بالوصول لهذه الصفحة', 'error')
-        return redirect(url_for('main.index'))
+        employee = Employee.query.filter_by(user_id=current_user.id).first()
+        if not employee:
+            flash('غير مصرح لك بالوصول لهذه الصفحة', 'error')
+            return redirect(url_for('main.index'))
     
     try:
         # جلب جميع الموظفين مع بياناتهم
@@ -1459,11 +1475,15 @@ def employees():
         # الحصول على قائمة الأقسام المختلفة
         departments = list(set([emp.department for emp in employees if emp.department]))
         
+        # تمرير قائمة الصفحات للقالب
+        admin_pages = get_pages_for_js()
+        
         return render_template('admin/employees.html',
                              employees=employees,
                              roles=roles,
                              available_users=available_users,
-                             departments=departments)
+                             departments=departments,
+                             admin_pages=admin_pages)
                              
     except Exception as e:
         current_app.logger.error(f"Error in employees route: {e}")
@@ -2994,6 +3014,7 @@ def delete_product_code(product_id, code_id):
 
 @admin_bp.route('/roles')
 @login_required
+@requires_page_access('admin.roles')
 @requires_permission('roles.read')
 def roles_management():
     """صفحة إدارة الأدوار"""
@@ -3002,10 +3023,14 @@ def roles_management():
         permissions = Permission.query.all()
         employees_count = Employee.query.filter_by(status='active').count()
         
+        # تمرير قائمة الصفحات للقالب
+        admin_pages = get_pages_for_js()
+        
         return render_template('admin/roles.html',
                              roles=roles,
                              permissions=permissions,
-                             employees_count=employees_count)
+                             employees_count=employees_count,
+                             admin_pages=admin_pages)
     except Exception as e:
         flash(f'خطأ في تحميل الأدوار: {str(e)}', 'error')
         return redirect(url_for('admin.dashboard'))
@@ -3032,7 +3057,8 @@ def add_role():
             display_name=data['display_name'],
             description=data.get('description'),
             is_admin=data.get('is_admin', False),
-            is_active=True
+            is_active=True,
+            allowed_pages=json.dumps(data.get('allowed_pages', [])) if data.get('allowed_pages') else None
         )
         
         db.session.add(role)
@@ -3073,7 +3099,8 @@ def get_role(role_id):
                 'display_name': role.display_name,
                 'description': role.description,
                 'is_admin': role.is_admin,
-                'is_active': role.is_active
+                'is_active': role.is_active,
+                'allowed_pages': json.loads(role.allowed_pages) if role.allowed_pages else []
             }
         })
         
@@ -3115,6 +3142,7 @@ def edit_role(role_id):
         role.display_name = data['display_name']
         role.description = data.get('description')
         role.is_admin = data.get('is_admin', False)
+        role.allowed_pages = json.dumps(data.get('allowed_pages', [])) if data.get('allowed_pages') else None
         
         db.session.commit()
         

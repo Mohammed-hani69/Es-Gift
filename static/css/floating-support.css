@@ -1,4 +1,28 @@
-/* أيقونة الدعم الفني الثابتة - مثل أيقونة WhatsApp العائمة */
+/* إخفاء جميع أيقونات الدعم العائمة - تم استبدالها بـ Tawk.to */
+.floating-support-icon,
+.es-chat-floating-icon,
+.support-icon,
+.chat-icon,
+[class*="floating-support"],
+[class*="chat-floating"],
+[class*="support-floating"],
+[class*="whatsapp-icon"],
+[class*="chat-widget"] {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    position: absolute !important;
+    top: -9999px !important;
+    left: -9999px !important;
+    z-index: -1 !important;
+    width: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
+    transform: scale(0) !important;
+}
+
+/* تأكيد إخفاء الأيقونة العائمة بجميع الحالات */
 .floating-support-icon {
     position: fixed !important;
     bottom: 20px !important;

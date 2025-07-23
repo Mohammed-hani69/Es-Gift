@@ -2244,6 +2244,8 @@ h2 {
   font-weight: 700;
   font-size: 36px;
   margin-bottom: 40px;
+  text-align: center;
+  position: relative;
 }
 
 .know-more .section-title::after {
@@ -2258,41 +2260,48 @@ h2 {
   border-radius: 2px;
 }
 
-.know-more .row-digital {
-  grid-template-columns: repeat(4, 1fr);
-  gap: 25px;
-  max-width: 1200px;
-  margin: 0 auto;
+/* تصميم السلايدر للمقالات */
+.know-more .swiper {
+  padding: 20px 0;
+  overflow: visible;
 }
 
-.know-more .row-digital .digital-item {
+.know-more .swiper-slide {
+  height: auto;
+  display: flex;
+}
+
+.know-more .digital-item {
   width: 100%;
+  height: 100%;
   background: linear-gradient(145deg, #333 0%, #444 100%);
   border-radius: 15px;
   overflow: hidden;
   transition: all 0.4s ease;
   border: 2px solid transparent;
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
 }
 
-.know-more .row-digital .digital-item:hover {
+.know-more .digital-item:hover {
   transform: translateY(-10px);
   border-color: #ff0033;
   box-shadow: 0 15px 35px rgba(255, 0, 51, 0.3);
 }
 
-.know-more .row-digital .digital-item img {
+.know-more .digital-item img {
   height: 220px;
   width: 100%;
   object-fit: cover;
   transition: transform 0.4s ease;
 }
 
-.know-more .row-digital .digital-item:hover img {
+.know-more .digital-item:hover img {
   transform: scale(1.05);
 }
 
-.know-more .row-digital .digital-item p {
+.know-more .digital-item p {
   width: 100%;
   margin: 0;
   padding: 20px;
@@ -2301,6 +2310,43 @@ h2 {
   color: #fff;
   font-weight: 500;
   line-height: 1.4;
+}
+
+/* تصميم أزرار التنقل للسلايدر */
+.know-more .custom-navigation {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin-top: 30px;
+}
+
+.know-more .custom-prev,
+.know-more .custom-next {
+  width: 50px;
+  height: 50px;
+  background: linear-gradient(135deg, #ff0033 0%, #cc0027 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: none;
+  outline: none;
+  box-shadow: 0 4px 15px rgba(255, 0, 51, 0.3);
+}
+
+.know-more .custom-prev:hover,
+.know-more .custom-next:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 0, 51, 0.4);
+  background: linear-gradient(135deg, #ff1a4a 0%, #d9003d 100%);
+}
+
+.know-more .custom-prev i,
+.know-more .custom-next i {
+  font-size: 18px;
 }
 
 .more-btn-container {
@@ -2343,6 +2389,70 @@ h2 {
 
 .more-btn:hover i {
   transform: translateX(-3px);
+}
+
+/* تحسينات للشاشات الصغيرة */
+@media (max-width: 768px) {
+  .know-more {
+    padding: 30px 2%;
+  }
+  
+  .know-more .section-title {
+    font-size: 28px;
+    margin-bottom: 30px;
+  }
+  
+  .know-more .custom-prev,
+  .know-more .custom-next {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .know-more .custom-prev i,
+  .know-more .custom-next i {
+    font-size: 14px;
+  }
+  
+  .more-btn {
+    padding: 12px 25px;
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .know-more {
+    padding: 20px 2%;
+  }
+  
+  .know-more .section-title {
+    font-size: 24px;
+    margin-bottom: 20px;
+  }
+  
+  .know-more .custom-navigation {
+    gap: 10px;
+    margin-top: 20px;
+  }
+  
+  .know-more .custom-prev,
+  .know-more .custom-next {
+    width: 35px;
+    height: 35px;
+  }
+  
+  .know-more .custom-prev i,
+  .know-more .custom-next i {
+    font-size: 12px;
+  }
+  
+  .more-btn {
+    padding: 10px 20px;
+    font-size: 14px;
+  }
+  
+  .more-btn-container {
+    margin-top: 30px;
+  }
 }
 /* end know-more section */
 

@@ -282,16 +282,24 @@
                     <div class="form-grid">
                         <div class="form-group required">
                             <label><i class="fas fa-user-shield"></i> الدور الوظيفي:</label>
-                            <select id="roleId" name="role_id" required class="form-control">
+                            <select id="roleId" name="role_id" required class="form-control" onchange="loadRolePermissions(this.value)">
                                 <option value="">اختر الدور الوظيفي</option>
                                 {% for role in roles %}
-                                <option value="{{ role.id }}" data-admin="{{ role.is_admin }}">
+                                <option value="{{ role.id }}" data-admin="{{ role.is_admin }}" data-pages="{{ role.allowed_pages|join(',') if role.allowed_pages else '' }}">
                                     {{ role.display_name }}
                                     {% if role.is_admin %} (دور إداري){% endif %}
                                 </option>
                                 {% endfor %}
                             </select>
-                            <small class="form-help">الدور يحدد الصلاحيات الأساسية في النظام</small>
+                            <small class="form-help">الدور يحدد الصلاحيات والصفحات المسموحة للموظف</small>
+                        </div>
+                        
+                        <!-- عرض الصفحات المسموحة للدور المحدد -->
+                        <div class="form-group" id="rolePermissionsDisplay" style="display: none;">
+                            <label><i class="fas fa-sitemap"></i> الصفحات المسموحة لهذا الدور:</label>
+                            <div id="rolePagesList" class="role-pages-display">
+                                <!-- سيتم تحميل الصفحات المسموحة هنا -->
+                            </div>
                         </div>
                         
                         <div class="form-group">
@@ -667,7 +675,7 @@ function validateStep(step) {
     }
     
     if (!isValid) {
-        showNotification(errorMessage, 'error');
+        showNotification('error', errorMessage);
     }
     
     return isValid;
@@ -700,6 +708,14 @@ function closeAddEmployeeModal() {
     document.getElementById('addEmployeeModal').style.display = 'none';
     document.getElementById('addEmployeeForm').reset();
     resetStepForm();
+    
+    // إعادة تعيين جميع checkboxes
+    const checkboxes = document.querySelectorAll('#addEmployeeForm input[type="checkbox"]');
+    checkboxes.forEach(checkbox => checkbox.checked = false);
+    
+    // إعادة تعيين جميع القوائم المنسدلة
+    const selects = document.querySelectorAll('#addEmployeeForm select');
+    selects.forEach(select => select.selectedIndex = 0);
 }
 
 function submitAddEmployee() {
@@ -744,16 +760,16 @@ function submitAddEmployee() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showNotification(data.message, 'success');
+            showNotification('success', data.message || 'تم إضافة الموظف بنجاح');
             closeAddEmployeeModal();
             setTimeout(() => location.reload(), 1500);
         } else {
-            showNotification(data.message, 'error');
+            showNotification('error', data.message || 'حدث خطأ أثناء إضافة الموظف');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        showNotification('حدث خطأ أثناء إضافة الموظف', 'error');
+        showNotification('error', 'حدث خطأ أثناء إضافة الموظف');
     })
     .finally(() => {
         // إعادة تعيين الزر
@@ -993,6 +1009,80 @@ function initAdvancedSearch() {
             filterEmployees();
         }, 300); // تأخير 300ms لتحسين الأداء
     });
+}
+
+// تحميل الصفحات المسموحة للدور المحدد
+function loadRolePermissions(roleId) {
+    const permissionsDisplay = document.getElementById('rolePermissionsDisplay');
+    const pagesList = document.getElementById('rolePagesList');
+    
+    if (!roleId) {
+        permissionsDisplay.style.display = 'none';
+        return;
+    }
+    
+    // البحث عن الدور المحدد في القائمة المنسدلة
+    const selectedOption = document.querySelector(`#roleId option[value="${roleId}"]`);
+    if (!selectedOption) return;
+    
+    const isAdmin = selectedOption.dataset.admin === 'True';
+    const allowedPages = selectedOption.dataset.pages ? selectedOption.dataset.pages.split(',') : [];
+    
+    // قاموس الصفحات مع أسمائها وأيقوناتها
+    const pagesDict = {
+        'admin.dashboard': { name: 'لوحة التحكم الرئيسية', icon: 'fas fa-tachometer-alt' },
+        'admin.homepage_management': { name: 'إدارة الصفحة الرئيسية', icon: 'fas fa-home' },
+        'admin.categories': { name: 'الأقسام والفئات', icon: 'fas fa-tags' },
+        'admin.products': { name: 'المنتجات', icon: 'fas fa-box' },
+        'admin.articles': { name: 'المقالات', icon: 'fas fa-blog' },
+        'static_pages.static_pages': { name: 'الصفحات الثابتة', icon: 'fas fa-file-alt' },
+        'admin.users': { name: 'العملاء', icon: 'fas fa-users' },
+        'admin.employees': { name: 'إدارة الموظفين', icon: 'fas fa-user-tie' },
+        'admin.roles_management': { name: 'إدارة الأدوار', icon: 'fas fa-user-shield' },
+        'financial.user_limits_management': { name: 'الحدود المالية', icon: 'fas fa-wallet' },
+        'admin.kyc_requests': { name: 'طلبات التحقق', icon: 'fas fa-user-check' },
+        'admin.orders': { name: 'الطلبات', icon: 'fas fa-shopping-cart' },
+        'admin.currencies': { name: 'العملات', icon: 'fas fa-coins' },
+        'admin.payment_gateways': { name: 'بوابات الدفع', icon: 'fas fa-credit-card' },
+        'api_admin.api_settings': { name: 'إعدادات API', icon: 'fas fa-cog' },
+        'admin.reports': { name: 'التقارير', icon: 'fas fa-chart-bar' },
+        'admin.system_test': { name: 'اختبار النظام', icon: 'fas fa-vial' }
+    };
+    
+    if (isAdmin) {
+        pagesList.innerHTML = `
+            <div class="admin-role-notice">
+                <i class="fas fa-crown"></i>
+                <strong>دور إداري - وصول كامل لجميع الصفحات</strong>
+                <p>هذا الدور الإداري له صلاحية الوصول إلى جميع صفحات لوحة التحكم</p>
+            </div>
+        `;
+    } else if (allowedPages.length > 0) {
+        let pagesHtml = '<div class="allowed-pages-grid">';
+        allowedPages.forEach(pageRoute => {
+            const pageInfo = pagesDict[pageRoute];
+            if (pageInfo) {
+                pagesHtml += `
+                    <div class="allowed-page-item">
+                        <i class="${pageInfo.icon}"></i>
+                        <span>${pageInfo.name}</span>
+                    </div>
+                `;
+            }
+        });
+        pagesHtml += '</div>';
+        pagesList.innerHTML = pagesHtml;
+    } else {
+        pagesList.innerHTML = `
+            <div class="no-pages-notice">
+                <i class="fas fa-exclamation-triangle"></i>
+                <p>لم يتم تحديد صفحات مسموحة لهذا الدور</p>
+                <small>يرجى الاتصال بالمدير لتحديد الصلاحيات</small>
+            </div>
+        `;
+    }
+    
+    permissionsDisplay.style.display = 'block';
 }
 
 // تهيئة الصفحة
@@ -1600,6 +1690,104 @@ document.addEventListener('DOMContentLoaded', function() {
     .step-header h4 {
         justify-content: flex-start;
     }
+    
+    .allowed-pages-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* تصميم عرض الصفحات المسموحة */
+.role-pages-display {
+    margin-top: 10px;
+}
+
+.admin-role-notice {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+    color: white;
+}
+
+.admin-role-notice i {
+    font-size: 2em;
+    margin-bottom: 10px;
+    display: block;
+}
+
+.admin-role-notice strong {
+    display: block;
+    font-size: 1.2em;
+    margin-bottom: 10px;
+}
+
+.admin-role-notice p {
+    margin: 0;
+    opacity: 0.9;
+}
+
+.allowed-pages-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.allowed-page-item {
+    background: #333;
+    border: 1px solid #555;
+    border-radius: 8px;
+    padding: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.3s ease;
+}
+
+.allowed-page-item:hover {
+    border-color: #ff0033;
+    background: #404040;
+    transform: translateY(-2px);
+}
+
+.allowed-page-item i {
+    color: #ff0033;
+    font-size: 1.1em;
+    width: 20px;
+    text-align: center;
+}
+
+.allowed-page-item span {
+    color: #fff;
+    font-size: 0.9em;
+    font-weight: 500;
+}
+
+.no-pages-notice {
+    background: #444;
+    border: 2px dashed #666;
+    border-radius: 10px;
+    padding: 20px;
+    text-align: center;
+    color: #ccc;
+}
+
+.no-pages-notice i {
+    font-size: 2em;
+    color: #ffc107;
+    margin-bottom: 10px;
+    display: block;
+}
+
+.no-pages-notice p {
+    margin: 0 0 10px 0;
+    font-size: 1.1em;
+    color: #fff;
+}
+
+.no-pages-notice small {
+    color: #999;
+    font-style: italic;
 }
 
 @media (max-width: 480px) {

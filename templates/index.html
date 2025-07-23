@@ -27,14 +27,7 @@
             </div>
             {% endfor %}
         </div>
-        <div class="custom-navigation">
-            <div class="custom-prev">
-                <i class="fa-solid fa-chevron-right"></i>
-            </div>
-            <div class="custom-next">
-                <i class="fa-solid fa-chevron-left"></i>
-            </div>
-        </div>
+        
     </div>
 
     <!-- Icon Slider - الأقسام الفرعية -->
@@ -60,14 +53,7 @@
             </div>
             {% endfor %}
         </div>
-        <div class="custom-navigation">
-            <div class="custom-prev gift-swiper-custom-prev">
-                <i class="fa-solid fa-chevron-right"></i>
-            </div>
-            <div class="custom-next gift-swiper-custom-next">
-                <i class="fa-solid fa-chevron-left"></i>
-            </div>
-        </div>
+        
     </div>
 </section>
 
@@ -104,14 +90,7 @@
             </div>
             {% endfor %}
         </div>
-        <div class="custom-navigation">
-            <div class="custom-prev gift-swiper-custom-prev">
-                <i class="fa-solid fa-chevron-right"></i>
-            </div>
-            <div class="custom-next gift-swiper-custom-next">
-                <i class="fa-solid fa-chevron-left"></i>
-            </div>
-        </div>
+        
     </div>
 </section>
 
@@ -148,23 +127,28 @@
 <!-- عروض محدودة -->
 <section class="limited-offers">
     <h3 class="section-title">عروض محدودة</h3>
-    <div class="limited-offers-row">
-        {% for product in limited_offers %}
-        <div class="limited-offers-item">
-            <a href="{{ url_for('main.product_detail', product_id=product.id, slug=product.name|create_slug) }}">
-                {% if product.image_url %}
-                    <img src="/static/uploads/gift-cards/{{ product.image_url }}" 
-                         alt="{{ product.name }}" onerror="this.src='/static/images/default-product.jpg'">
-                {% else %}
-                    <img src="{{ url_for('static', filename='images/default-product.jpg') }}" alt="{{ product.name }}">
-                {% endif %}
-                <div class="limited-bottom-text">
-                    <h4>{{ product.name }}</h4>
-                    <p>عرض محدود</p>
+    <div class="swiper limited-offers-swiper">
+        <div class="swiper-wrapper">
+            {% for product in limited_offers %}
+            <div class="swiper-slide">
+                <div class="limited-offers-item">
+                    <a href="{{ url_for('main.product_detail', product_id=product.id, slug=product.name|create_slug) }}">
+                        {% if product.image_url %}
+                            <img src="/static/uploads/gift-cards/{{ product.image_url }}" 
+                                 alt="{{ product.name }}" onerror="this.src='/static/images/default-product.jpg'">
+                        {% else %}
+                            <img src="{{ url_for('static', filename='images/default-product.jpg') }}" alt="{{ product.name }}">
+                        {% endif %}
+                        <div class="limited-bottom-text">
+                            <h4>{{ product.name }}</h4>
+                            <p>عرض محدود</p>
+                        </div>
+                    </a>
                 </div>
-            </a>
+            </div>
+            {% endfor %}
         </div>
-        {% endfor %}
+        
     </div>
 </section>
 
@@ -172,37 +156,42 @@
 {% if published_articles %}
 <section class="know-more">
     <h3 class="section-title">تعرف على المزيد في مدونتنا</h3>
-    <div class="row-digital">
-        {% for article in published_articles %}
-        <div class="digital-item article-card">
-            <a href="{{ url_for('main.article_detail', article_id=article.id, slug=article.title|create_slug) }}" class="article-link">
-                <div class="article-image">
-                    {% if article.image_url %}
-                        <img src="/static/uploads/articles/{{ article.image_url }}" alt="{{ article.title }}" onerror="this.src='/static/images/default-article.jpg'">
-                    {% else %}
-                        <img src="{{ url_for('static', filename='images/default-article.jpg') }}" alt="{{ article.title }}">
-                    {% endif %}
-                    <div class="article-overlay">
-                        <i class="fas fa-book-open"></i>
-                    </div>
+    <div class="swiper articles-swiper">
+        <div class="swiper-wrapper">
+            {% for article in published_articles %}
+            <div class="swiper-slide">
+                <div class="digital-item article-card">
+                    <a href="{{ url_for('main.article_detail', article_id=article.id, slug=article.title|create_slug) }}" class="article-link">
+                        <div class="article-image">
+                            {% if article.image_url %}
+                                <img src="/static/uploads/articles/{{ article.image_url }}" alt="{{ article.title }}" onerror="this.src='/static/images/default-article.jpg'">
+                            {% else %}
+                                <img src="{{ url_for('static', filename='images/default-article.jpg') }}" alt="{{ article.title }}">
+                            {% endif %}
+                            <div class="article-overlay">
+                                <i class="fas fa-book-open"></i>
+                            </div>
+                        </div>
+                        <div class="article-content">
+                            <h4 class="article-title">{{ article.title }}</h4>
+                            <p class="article-excerpt">{{ article.content[:100] }}...</p>
+                            <div class="article-meta">
+                                <span class="article-author">
+                                    <i class="fas fa-user"></i>
+                                    {{ article.author or 'المحرر' }}
+                                </span>
+                                <span class="article-date">
+                                    <i class="fas fa-calendar"></i>
+                                    {{ article.created_at.strftime('%Y-%m-%d') }}
+                                </span>
+                            </div>
+                        </div>
+                    </a>
                 </div>
-                <div class="article-content">
-                    <h4 class="article-title">{{ article.title }}</h4>
-                    <p class="article-excerpt">{{ article.content[:100] }}...</p>
-                    <div class="article-meta">
-                        <span class="article-author">
-                            <i class="fas fa-user"></i>
-                            {{ article.author or 'المحرر' }}
-                        </span>
-                        <span class="article-date">
-                            <i class="fas fa-calendar"></i>
-                            {{ article.created_at.strftime('%Y-%m-%d') }}
-                        </span>
-                    </div>
-                </div>
-            </a>
+            </div>
+            {% endfor %}
         </div>
-        {% endfor %}
+        
     </div>
     <div class="more-btn-container">
         <a href="{{ url_for('main.all_articles') }}" class="more-btn">
@@ -215,7 +204,6 @@
 {% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/floating-support.css') }}">
 <style>
 /* الأيقونات المتحركة للصفحة الرئيسية */
 .home-page {
@@ -537,6 +525,7 @@
     height: 100%;
     display: flex;
     flex-direction: column;
+    width: 100%;
 }
 
 .article-card:hover {
@@ -650,6 +639,54 @@
     color: #ff0033;
 }
 
+/* تصميم سلايدر المقالات */
+.articles-swiper {
+    overflow: hidden;
+    padding: 20px 0;
+    margin: 20px 0;
+}
+
+.articles-swiper .swiper-slide {
+    height: auto;
+    display: flex;
+}
+
+.articles-swiper .custom-navigation {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 30px;
+}
+
+.articles-swiper-prev,
+.articles-swiper-next {
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, #ff0033 0%, #cc0027 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: none;
+    outline: none;
+    box-shadow: 0 4px 15px rgba(255, 0, 51, 0.3);
+}
+
+.articles-swiper-prev:hover,
+.articles-swiper-next:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 0, 51, 0.4);
+    background: linear-gradient(135deg, #ff1a4a 0%, #d9003d 100%);
+}
+
+.articles-swiper-prev i,
+.articles-swiper-next i {
+    font-size: 18px;
+}
+
 /* تحسينات للشاشات الصغيرة */
 @media (max-width: 768px) {
     .article-image {
@@ -670,6 +707,17 @@
     
     .article-meta {
         font-size: 11px;
+    }
+    
+    .articles-swiper-prev,
+    .articles-swiper-next {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .articles-swiper-prev i,
+    .articles-swiper-next i {
+        font-size: 14px;
     }
 }
 
@@ -699,6 +747,137 @@
     
     .article-overlay i {
         font-size: 24px;
+    }
+    
+    .articles-swiper {
+        padding: 10px 0;
+        margin: 10px 0;
+    }
+    
+    .articles-swiper .custom-navigation {
+        gap: 10px;
+        margin-top: 20px;
+    }
+    
+    .articles-swiper-prev,
+    .articles-swiper-next {
+        width: 35px;
+        height: 35px;
+    }
+    
+    .articles-swiper-prev i,
+    .articles-swiper-next i {
+        font-size: 12px;
+    }
+}
+
+/* تصميم سلايدر العروض المحدودة */
+.limited-offers-swiper {
+    overflow: hidden;
+    padding: 20px 0;
+    margin: 20px 0;
+}
+
+.limited-offers-swiper .swiper-slide {
+    height: auto;
+    display: flex;
+}
+
+.limited-offers-swiper .limited-offers-item {
+    width: 100%;
+    height: 100%;
+}
+
+.limited-offers-swiper .custom-navigation {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 30px;
+}
+
+.limited-offers-swiper-prev,
+.limited-offers-swiper-next {
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, #ff0033 0%, #cc0027 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: none;
+    outline: none;
+    box-shadow: 0 4px 15px rgba(255, 0, 51, 0.3);
+}
+
+.limited-offers-swiper-prev:hover,
+.limited-offers-swiper-next:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 0, 51, 0.4);
+    background: linear-gradient(135deg, #ff1a4a 0%, #d9003d 100%);
+}
+
+.limited-offers-swiper-prev i,
+.limited-offers-swiper-next i {
+    font-size: 18px;
+}
+
+/* تحسينات للشاشات الصغيرة للعروض المحدودة */
+@media (max-width: 768px) {
+    .limited-offers-swiper-prev,
+    .limited-offers-swiper-next {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .limited-offers-swiper-prev i,
+    .limited-offers-swiper-next i {
+        font-size: 14px;
+    }
+    
+    .limited-offers-swiper .limited-offers-item img {
+        height: 220px;
+    }
+}
+
+@media (max-width: 480px) {
+    .limited-offers-swiper {
+        padding: 10px 0;
+        margin: 10px 0;
+    }
+    
+    .limited-offers-swiper .custom-navigation {
+        gap: 10px;
+        margin-top: 20px;
+    }
+    
+    .limited-offers-swiper-prev,
+    .limited-offers-swiper-next {
+        width: 35px;
+        height: 35px;
+    }
+    
+    .limited-offers-swiper-prev i,
+    .limited-offers-swiper-next i {
+        font-size: 12px;
+    }
+    
+    .limited-offers-swiper .limited-offers-item img {
+        height: 180px;
+    }
+    
+    .limited-offers-swiper .limited-bottom-text {
+        padding: 20px 15px 15px;
+    }
+    
+    .limited-offers-swiper .limited-bottom-text h4 {
+        font-size: 14px;
+    }
+    
+    .limited-offers-swiper .limited-bottom-text p {
+        font-size: 12px;
     }
 }
 </style>
@@ -844,6 +1023,93 @@ function createFloatingIcons() {
     }
 }
 
+// سلايدر المقالات
+document.addEventListener('DOMContentLoaded', function() {
+    // تهيئة سلايدر المقالات
+    const articlesSwiper = new Swiper('.articles-swiper', {
+        slidesPerView: 1,
+        spaceBetween: 20,
+        loop: true,
+        autoplay: {
+            delay: 5000,
+            disableOnInteraction: false,
+        },
+        navigation: {
+            nextEl: '.articles-swiper-next',
+            prevEl: '.articles-swiper-prev',
+        },
+        breakpoints: {
+            // عندما يكون العرض >= 480px
+            480: {
+                slidesPerView: 1.5,
+                spaceBetween: 15,
+            },
+            // عندما يكون العرض >= 640px
+            640: {
+                slidesPerView: 2,
+                spaceBetween: 20,
+            },
+            // عندما يكون العرض >= 768px
+            768: {
+                slidesPerView: 2.5,
+                spaceBetween: 25,
+            },
+            // عندما يكون العرض >= 1024px
+            1024: {
+                slidesPerView: 3,
+                spaceBetween: 30,
+            },
+            // عندما يكون العرض >= 1200px
+            1200: {
+                slidesPerView: 4,
+                spaceBetween: 30,
+            }
+        }
+    });
+    
+    // تهيئة سلايدر العروض المحدودة
+    const limitedOffersSwiper = new Swiper('.limited-offers-swiper', {
+        slidesPerView: 1,
+        spaceBetween: 20,
+        loop: true,
+        autoplay: {
+            delay: 4000,
+            disableOnInteraction: false,
+        },
+        navigation: {
+            nextEl: '.limited-offers-swiper-next',
+            prevEl: '.limited-offers-swiper-prev',
+        },
+        breakpoints: {
+            // عندما يكون العرض >= 480px
+            480: {
+                slidesPerView: 1.2,
+                spaceBetween: 15,
+            },
+            // عندما يكون العرض >= 640px
+            640: {
+                slidesPerView: 1.5,
+                spaceBetween: 20,
+            },
+            // عندما يكون العرض >= 768px
+            768: {
+                slidesPerView: 2,
+                spaceBetween: 25,
+            },
+            // عندما يكون العرض >= 1024px
+            1024: {
+                slidesPerView: 2.5,
+                spaceBetween: 30,
+            },
+            // عندما يكون العرض >= 1200px
+            1200: {
+                slidesPerView: 3,
+                spaceBetween: 30,
+            }
+        }
+    });
+});
+
 // إضافة منتج للسلة
 function addToCart(productId) {
     {% if current_user.is_authenticated %}
@@ -902,22 +1168,5 @@ function updateCartCount() {
     // لا حاجة لطلبات إضافية - العدد يتم تحديثه من خلال استجابة addToCart
     console.log('Cart count updated from server response');
 }
-</script>
-<script src="{{ url_for('static', filename='js/floating-support.js') }}"></script>
-<script>
-// تمرير بيانات المستخدم للدعم الفني (إذا كان مسجل دخول)
-{% if current_user.is_authenticated %}
-window.currentUserData = {
-    name: '{{ current_user.full_name or current_user.username }}',
-    email: '{{ current_user.email }}',
-    type: '{{ current_user.customer_type }}'
-};
-{% else %}
-window.currentUserData = {
-    name: 'زائر',
-    email: '',
-    type: 'guest'
-};
-{% endif %}
 </script>
 {% endblock %}

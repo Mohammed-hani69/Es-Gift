@@ -113,7 +113,7 @@
                 <label for="quantity">الكمية:</label>
                 <div class="quantity-controls">
                     <button type="button" onclick="changeQuantity(-1)">-</button>
-                    <input type="number" id="quantity" value="1" min="1" max="{{ product.stock_quantity }}">
+                    <input type="number" id="quantity" value="1" min="1" max="50">
                     <button type="button" onclick="changeQuantity(1)">+</button>
                 </div>
             </div>
@@ -579,14 +579,14 @@
 <script>
 const productPrice = {{ product.display_price }};
 const productId = {{ product.id }};
-const maxQuantity = {{ product.stock_quantity }};
+const maxQuantity = Math.min({{ product.stock_quantity }}, 50);
 
 function changeQuantity(change) {
     const quantityInput = document.getElementById('quantity');
     let currentQuantity = parseInt(quantityInput.value);
     let newQuantity = currentQuantity + change;
     
-    if (newQuantity >= 1 && newQuantity <= maxQuantity) {
+    if (newQuantity >= 1 && newQuantity <= 50) {
         quantityInput.value = newQuantity;
         updateTotalPrice();
     }
