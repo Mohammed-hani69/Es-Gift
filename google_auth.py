@@ -4,7 +4,25 @@ Google OAuth Integration for ES-Gift
 =====================================
 
 This module provides Google OAuth authentication functionality for user login and registration.
-Compatible with ES-Gift's existing Login system.
+Compatible with ES-Gift's existin            # Get the redirect URI from environment variable or fallback based on environment
+            redirect_uri_from_env = os.getenv('GOOGLE_REDIRECT_URI')
+            
+            if redirect_uri_from_env:
+                # Use the URI from environment variable
+                redirect_uri = redirect_uri_from_env
+            else:
+                # Fallback to automatic detection based on environment
+                is_development = (
+                    app_context.config.get('FLASK_ENV') == 'development' or
+                    app_context.config.get('ENV') == 'development' or
+                    app_context.debug or
+                    request.host.startswith('127.0.0.1') or
+                    request.host.startswith('localhost') or
+                    'localhost' in request.host
+                )
+                
+                # Always use production URL
+                redirect_uri = 'https://es-gift.com/auth/google/callback'
 
 Author: ES-Gift Development Team
 Created: 2025
@@ -126,8 +144,8 @@ class GoogleAuthService:
             )
             
             if is_development:
-                # Use localhost for development
-                redirect_uri = 'http://127.0.0.1:5000/auth/google/callback'
+                # Always use production URL
+                redirect_uri = 'https://es-gift.com/auth/google/callback'
             else:
                 # Use production URL
                 redirect_uri = 'https://es-gift.com/auth/google/callback'
@@ -237,20 +255,24 @@ class GoogleAuthService:
             
             logger.info("✅ State validation successful")
             
-            # Get the correct redirect URI based on environment
-            # Check multiple ways to determine if we're in development (same as get_google_auth_url)
-            is_development = (
-                app_context.config.get('FLASK_ENV') == 'development' or
-                app_context.config.get('ENV') == 'development' or
-                app_context.debug or
-                request.host.startswith('127.0.0.1') or
-                request.host.startswith('localhost') or
-                'localhost' in request.host
-            )
+            # Get the redirect URI from environment variable or fallback based on environment
+            redirect_uri_from_env = os.getenv('GOOGLE_REDIRECT_URI')
             
-            if is_development:
-                redirect_uri = 'http://127.0.0.1:5000/auth/google/callback'
+            if redirect_uri_from_env:
+                # Use the URI from environment variable
+                redirect_uri = redirect_uri_from_env
             else:
+                # Fallback to automatic detection based on environment
+                is_development = (
+                    app_context.config.get('FLASK_ENV') == 'development' or
+                    app_context.config.get('ENV') == 'development' or
+                    app_context.debug or
+                    request.host.startswith('127.0.0.1') or
+                    request.host.startswith('localhost') or
+                    'localhost' in request.host
+                )
+                
+                # Always use production URL
                 redirect_uri = 'https://es-gift.com/auth/google/callback'
                 
             logger.info(f"Development mode: {is_development}")

@@ -17,7 +17,7 @@
 ### ✅ 2. إصلاح Google OAuth
 - تم إنشاء خدمة google_auth.py
 - تم حل مشكلة redirect_uri_mismatch
-- URL المطلوب في Google Cloud Console: `http://127.0.0.1:5000/auth/google/callback`
+- URL المطلوب في Google Cloud Console: `https://es-gift.com/auth/google/callback`
 
 ### ✅ 3. تطوير OneCard API Integration
 - تم إنشاء api_services.py مع OnecardAPIService
@@ -53,7 +53,7 @@
 
 2. **Google OAuth Setup:**
    - تحديث Redirect URI في Google Cloud Console
-   - إضافة: `http://127.0.0.1:5000/auth/google/callback`
+   - إضافة: `https://es-gift.com/auth/google/callback`
 
 ---
 
@@ -125,7 +125,7 @@ cd "d:\ES-GIFT\Es-Gift"
 python app.py
 
 # 2. الوصول للتطبيق
-http://127.0.0.1:5000
+https://es-gift.com
 
 # 3. اختبار OneCard API (إذا لزم الأمر)
 python -c "from api_services import OnecardAPIService; service = OnecardAPIService(); print(service.check_balance())"
