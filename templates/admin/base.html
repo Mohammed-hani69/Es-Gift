@@ -155,6 +155,136 @@
             color: #ccc;
         }
 
+        /* User Dropdown Menu Styles */
+        .user-dropdown-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #222;
+            border: 2px solid #333;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            min-width: 280px;
+            animation: dropdownSlide 0.3s ease-out;
+            overflow: hidden;
+        }
+
+        @keyframes dropdownSlide {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .dropdown-header {
+            padding: 20px;
+            background: linear-gradient(135deg, #ff0033, #cc0029);
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-avatar-large {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .user-details {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .user-details strong {
+            font-size: 1.1em;
+            margin-bottom: 5px;
+        }
+
+        .user-details span {
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+
+        .dropdown-divider {
+            height: 1px;
+            background: #333;
+            margin: 0;
+        }
+
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 15px 20px;
+            color: #ccc;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .dropdown-item:hover {
+            background: rgba(255, 0, 51, 0.1);
+            color: #ff0033;
+            padding-right: 25px;
+        }
+
+        .dropdown-item i {
+            width: 20px;
+            text-align: center;
+            font-size: 1.1em;
+        }
+
+        .dropdown-item.logout-item {
+            color: #ff4757;
+        }
+
+        .dropdown-item.logout-item:hover {
+            background: rgba(255, 71, 87, 0.1);
+            color: #ff4757;
+        }
+
+        .notification-badge {
+            background: #ff0033;
+            color: white;
+            border-radius: 10px;
+            padding: 2px 6px;
+            font-size: 0.7em;
+            margin-right: auto;
+            min-width: 18px;
+            text-align: center;
+        }
+
+        /* Mobile hamburger menu button */
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 1.5em;
+            cursor: pointer;
+            padding: 10px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .mobile-menu-btn:hover {
+            background: rgba(255, 0, 51, 0.2);
+            color: #ff0033;
+        }
+
         .content-card {
             background-color: #222;
             border: 2px solid #333;
@@ -604,12 +734,40 @@
                 gap: 15px;
                 text-align: center;
             }
+
+            .mobile-menu-btn {
+                display: block;
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                z-index: 1001;
+                background: #222;
+                border: 2px solid #ff0033;
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            }
+
+            .user-dropdown-menu {
+                position: fixed;
+                top: 80px;
+                left: 20px;
+                right: 20px;
+                min-width: auto;
+            }
+
+            .currency-selector {
+                order: -1;
+            }
         }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
 <body>
     <div class="admin-container">
+        <!-- Mobile Menu Button -->
+        <button class="mobile-menu-btn" onclick="toggleSidebar()">
+            <i class="fas fa-bars"></i>
+        </button>
+
         <!-- Sidebar -->
         <div class="sidebar" id="sidebar">
             <div class="sidebar-header">
@@ -640,6 +798,18 @@
                     <a href="{{ url_for('admin.products') }}" class="nav-link">
                         <i class="fas fa-box"></i>
                         المنتجات
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a href="{{ url_for('admin.articles') }}" class="nav-link">
+                        <i class="fas fa-blog"></i>
+                        المقالات
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a href="{{ url_for('static_pages.static_pages') }}" class="nav-link">
+                        <i class="fas fa-file-alt"></i>
+                        الصفحات الثابتة
                     </a>
                 </div>
                 <div class="nav-item">
@@ -694,12 +864,6 @@
                     <a href="{{ url_for('api_admin.api_settings') }}" class="nav-link">
                         <i class="fas fa-cog"></i>
                         إعدادات API
-                    </a>
-                </div>
-                <div class="nav-item">
-                    <a href="{{ url_for('admin.articles') }}" class="nav-link">
-                        <i class="fas fa-blog"></i>
-                        المقالات
                     </a>
                 </div>
                 <div class="nav-item">
@@ -758,13 +922,38 @@
                         </select>
                     </div>
                     
-                    <div class="user-info">
+                    <div class="user-info" onclick="toggleUserMenu()" style="cursor: pointer; position: relative;">
                         <div class="user-avatar">
                             <i class="fas fa-user"></i>
                         </div>
                         <div>
                             <div style="font-weight: bold;">{{ current_user.email }}</div>
                             <div style="font-size: 0.8em; color: #ccc;">مدير النظام</div>
+                        </div>
+                        <i class="fas fa-chevron-down" style="margin-right: 10px; transition: transform 0.3s ease;" id="user-menu-arrow"></i>
+                        
+                        <!-- User Dropdown Menu -->
+                        <div class="user-dropdown-menu" id="user-dropdown-menu" style="display: none;">
+                            <div class="dropdown-header">
+                                <div class="user-avatar-large">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                                <div class="user-details">
+                                    <strong>{{ current_user.email }}</strong>
+                                    <span>مدير النظام</span>
+                                </div>
+                            </div>
+                            
+                            <div class="dropdown-divider"></div>
+                            <a href="{{ url_for('main.index') }}" class="dropdown-item">
+                                <i class="fas fa-globe"></i>
+                                <span>عرض الموقع</span>
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <a href="{{ url_for('main.logout') }}" class="dropdown-item logout-item">
+                                <i class="fas fa-sign-out-alt"></i>
+                                <span>تسجيل الخروج</span>
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -842,6 +1031,50 @@
             const sidebar = document.getElementById('sidebar');
             sidebar.classList.toggle('active');
         }
+
+        // User menu toggle
+        function toggleUserMenu() {
+            const userMenu = document.getElementById('user-dropdown-menu');
+            const arrow = document.getElementById('user-menu-arrow');
+            
+            if (userMenu.style.display === 'none' || userMenu.style.display === '') {
+                userMenu.style.display = 'block';
+                arrow.style.transform = 'rotate(180deg)';
+            } else {
+                userMenu.style.display = 'none';
+                arrow.style.transform = 'rotate(0deg)';
+            }
+        }
+
+        // Close user menu when clicking outside
+        document.addEventListener('click', function(event) {
+            const userInfo = document.querySelector('.user-info');
+            const userMenu = document.getElementById('user-dropdown-menu');
+            const arrow = document.getElementById('user-menu-arrow');
+            
+            if (userInfo && !userInfo.contains(event.target)) {
+                if (userMenu) {
+                    userMenu.style.display = 'none';
+                }
+                if (arrow) {
+                    arrow.style.transform = 'rotate(0deg)';
+                }
+            }
+        });
+
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', function(event) {
+            const sidebar = document.getElementById('sidebar');
+            const mobileBtn = document.querySelector('.mobile-menu-btn');
+            
+            if (window.innerWidth <= 768 && 
+                sidebar && 
+                !sidebar.contains(event.target) && 
+                !mobileBtn.contains(event.target) &&
+                sidebar.classList.contains('active')) {
+                sidebar.classList.remove('active');
+            }
+        });
 
         // Notification system
         function showNotification(type, message, duration = 4000) {
@@ -1095,6 +1328,63 @@
                 alert.style.display = 'none';
                 showNotification(type, message);
             });
+
+            // Add keyboard shortcuts
+            document.addEventListener('keydown', function(event) {
+                // Alt + M to toggle sidebar on mobile
+                if (event.altKey && event.key === 'm') {
+                    event.preventDefault();
+                    toggleSidebar();
+                }
+                
+                // Alt + U to toggle user menu
+                if (event.altKey && event.key === 'u') {
+                    event.preventDefault();
+                    toggleUserMenu();
+                }
+                
+                // Escape to close menus
+                if (event.key === 'Escape') {
+                    const userMenu = document.getElementById('user-dropdown-menu');
+                    const arrow = document.getElementById('user-menu-arrow');
+                    const sidebar = document.getElementById('sidebar');
+                    
+                    // Close user menu
+                    if (userMenu && userMenu.style.display === 'block') {
+                        userMenu.style.display = 'none';
+                        if (arrow) arrow.style.transform = 'rotate(0deg)';
+                    }
+                    
+                    // Close sidebar on mobile
+                    if (window.innerWidth <= 768 && sidebar && sidebar.classList.contains('active')) {
+                        sidebar.classList.remove('active');
+                    }
+                }
+            });
+
+            // Add smooth hover effects for user menu items
+            const dropdownItems = document.querySelectorAll('.dropdown-item');
+            dropdownItems.forEach(item => {
+                item.addEventListener('mouseenter', function() {
+                    this.style.paddingRight = '30px';
+                });
+                
+                item.addEventListener('mouseleave', function() {
+                    this.style.paddingRight = '20px';
+                });
+            });
+
+            // Initialize tooltips for mobile menu button
+            const mobileBtn = document.querySelector('.mobile-menu-btn');
+            if (mobileBtn) {
+                mobileBtn.title = 'فتح القائمة الجانبية (Alt + M)';
+            }
+
+            // Initialize tooltips for user info
+            const userInfo = document.querySelector('.user-info');
+            if (userInfo) {
+                userInfo.title = 'قائمة المستخدم (Alt + U)';
+            }
         });
     </script>
 

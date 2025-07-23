@@ -11,6 +11,7 @@ Created: 2025
 
 from flask import Blueprint, request, redirect, url_for, flash, session, current_app
 from flask_login import login_user, current_user
+from werkzeug.security import generate_password_hash
 from models import User, db
 from google_auth import GoogleAuthService
 import logging
@@ -32,12 +33,17 @@ def google_login():
     """
     try:
         if current_user.is_authenticated:
+            logger.info(f"User {current_user.username} already authenticated, redirecting to index")
             flash('أنت مسجل دخول بالفعل', 'info')
             return redirect(url_for('main.index'))
         
+        # Clear any existing Google auth state
+        session.pop('google_auth_state', None)
+        session.pop('google_auth_timestamp', None)
+        
         # Get Google authorization URL
         auth_url = google_auth_service.get_google_auth_url()
-        logger.info("Redirecting to Google OAuth")
+        logger.info("Successfully generated Google OAuth URL, redirecting user")
         return redirect(auth_url)
         
     except Exception as e:
@@ -58,11 +64,18 @@ def google_callback():
         
         # Check for errors from Google
         if error:
+            logger.warning(f"Google OAuth error: {error}")
             flash(f'تم إلغاء تسجيل الدخول: {error}', 'warning')
             return redirect(url_for('main.login'))
         
         if not authorization_code:
+            logger.error("No authorization code received from Google")
             flash('لم يتم الحصول على كود التفويض', 'error')
+            return redirect(url_for('main.login'))
+        
+        if not state:
+            logger.error("No state parameter received from Google")
+            flash('معلومات الحالة مفقودة', 'error')
             return redirect(url_for('main.login'))
         
         # Handle Google callback and get user info
@@ -128,7 +141,7 @@ def google_callback():
         
         # Set a random password (user won't need it since they login with Google)
         import secrets
-        new_user.set_password(secrets.token_urlsafe(32))
+        new_user.password_hash = generate_password_hash(secrets.token_urlsafe(32))
         
         db.session.add(new_user)
         db.session.commit()

@@ -1,0 +1,657 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="articles-page">
+    <div class="container">
+        <!-- العنوان الرئيسي -->
+        <div class="page-header">
+            <h1 class="page-title">
+                <i class="fas fa-newspaper"></i>
+                مدونة Es-Gift
+            </h1>
+            <p class="page-subtitle">اكتشف أحدث الأخبار والمقالات في عالم الألعاب والتقنية</p>
+        </div>
+
+        <!-- شبكة المقالات -->
+        <div class="articles-grid">
+            {% if articles.items %}
+                {% for article in articles.items %}
+                <div class="article-card-large">
+                    <a href="{{ url_for('main.article_detail', article_id=article.id, slug=article.title|create_slug) }}" class="article-link">
+                        <div class="article-image">
+                            {% if article.image_url %}
+                                <img src="/static/uploads/articles/{{ article.image_url }}" alt="{{ article.title }}" loading="lazy">
+                            {% else %}
+                                <img src="{{ url_for('static', filename='images/default-article.jpg') }}" alt="{{ article.title }}" loading="lazy">
+                            {% endif %}
+                            <div class="article-overlay">
+                                <i class="fas fa-book-open"></i>
+                            </div>
+                        </div>
+                        <div class="article-content">
+                            <h3 class="article-title">{{ article.title }}</h3>
+                            <p class="article-excerpt">{{ article.content[:150] }}...</p>
+                            <div class="article-meta">
+                                <span class="article-author">
+                                    <i class="fas fa-user"></i>
+                                    {{ article.author or 'المحرر' }}
+                                </span>
+                                <span class="article-date">
+                                    <i class="fas fa-calendar"></i>
+                                    {{ article.created_at.strftime('%Y-%m-%d') }}
+                                </span>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="no-articles">
+                    <i class="fas fa-newspaper"></i>
+                    <h3>لا توجد مقالات متاحة حالياً</h3>
+                    <p>ترقبوا المزيد من المقالات قريباً</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- التصفح بين الصفحات -->
+        {% if articles.pages > 1 %}
+        <div class="pagination-container">
+            <div class="pagination">
+                {% if articles.has_prev %}
+                    <a href="{{ url_for('main.all_articles', page=articles.prev_num) }}" class="pagination-btn">
+                        <i class="fas fa-chevron-right"></i>
+                        السابق
+                    </a>
+                {% endif %}
+                
+                {% for page_num in articles.iter_pages() %}
+                    {% if page_num %}
+                        {% if page_num != articles.page %}
+                            <a href="{{ url_for('main.all_articles', page=page_num) }}" class="pagination-num">{{ page_num }}</a>
+                        {% else %}
+                            <span class="pagination-num active">{{ page_num }}</span>
+                        {% endif %}
+                    {% else %}
+                        <span class="pagination-dots">...</span>
+                    {% endif %}
+                {% endfor %}
+
+                {% if articles.has_next %}
+                    <a href="{{ url_for('main.all_articles', page=articles.next_num) }}" class="pagination-btn">
+                        التالي
+                        <i class="fas fa-chevron-left"></i>
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* خلفية الصفحة مع تأثيرات متحركة */
+.articles-page {
+    padding: 60px 0;
+    background: linear-gradient(135deg, #0a0a0a 0%, #1a0a0a 25%, #2a0a0a 50%, #1a0a0a 75%, #0a0a0a 100%);
+    min-height: 100vh;
+    position: relative;
+    overflow: hidden;
+}
+
+.articles-page::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: 
+        radial-gradient(circle at 20% 20%, rgba(255, 0, 51, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(255, 0, 51, 0.06) 0%, transparent 50%),
+        radial-gradient(circle at 40% 70%, rgba(255, 0, 51, 0.04) 0%, transparent 50%);
+    z-index: 0;
+    animation: backgroundMove 20s ease-in-out infinite;
+}
+
+@keyframes backgroundMove {
+    0%, 100% { transform: translate(0, 0) rotate(0deg); }
+    33% { transform: translate(-1%, -1%) rotate(0.5deg); }
+    66% { transform: translate(1%, 1%) rotate(-0.5deg); }
+}
+
+.container {
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 0 30px;
+    position: relative;
+    z-index: 1;
+}
+
+/* تخصيص الحاوي للشاشات المختلفة */
+@media (min-width: 1800px) {
+    .container {
+        max-width: 1800px;
+        padding: 0 40px;
+    }
+}
+
+.page-header {
+    text-align: center;
+    margin-bottom: 60px;
+    position: relative;
+}
+
+.page-title {
+    font-size: 56px;
+    font-weight: 800;
+    background: linear-gradient(135deg, #fff 0%, #ff0033 25%, #fff 50%, #ff0033 75%, #fff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 20px;
+    text-shadow: 0 0 30px rgba(255, 0, 51, 0.3);
+    position: relative;
+}
+
+.page-title::after {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 120px;
+    height: 4px;
+    background: linear-gradient(90deg, transparent, #ff0033, transparent);
+    border-radius: 2px;
+}
+
+.page-title i {
+    color: #ff0033;
+    margin-right: 20px;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+.page-subtitle {
+    font-size: 20px;
+    color: #ddd;
+    max-width: 700px;
+    margin: 0 auto;
+    line-height: 1.7;
+    font-weight: 400;
+}
+
+/* شبكة المقالات المحسنة للشاشات الكبيرة */
+.articles-grid {
+    display: contents;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 25px;
+    margin-bottom: 60px;
+    padding: 20px 0;
+}
+
+/* تخصيص للشاشات الكبيرة جداً */
+@media (min-width: 1600px) {
+    .articles-grid {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 30px;
+    }
+}
+
+/* تخصيص للشاشات الكبيرة */
+@media (min-width: 1200px) and (max-width: 1599px) {
+    .articles-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 28px;
+    }
+}
+
+/* تخصيص للشاشات المتوسطة الكبيرة */
+@media (min-width: 900px) and (max-width: 1199px) {
+    .articles-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 25px;
+    }
+}
+
+/* بطاقات المقالات المحسنة */
+.article-card-large {
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 25px;
+    overflow: hidden;
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 2px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 
+        0 10px 30px rgba(0, 0, 0, 0.3),
+        0 0 20px rgba(255, 0, 51, 0.05);
+    position: relative;
+    backdrop-filter: blur(10px);
+    height: 400px;
+    display: flex;
+    flex-direction: column;
+}
+
+/* تعديل الارتفاع للشاشات الكبيرة */
+@media (min-width: 1200px) {
+    .article-card-large {
+        height: 420px;
+    }
+}
+
+@media (min-width: 1600px) {
+    .article-card-large {
+        height: 450px;
+    }
+}
+
+.article-card-large::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, rgba(255, 0, 51, 0.03), transparent);
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    z-index: 1;
+}
+
+.article-card-large:hover {
+    transform: translateY(-15px) scale(1.02);
+    border-color: rgba(255, 0, 51, 0.4);
+    box-shadow: 
+        0 25px 50px rgba(0, 0, 0, 0.4),
+        0 0 40px rgba(255, 0, 51, 0.2),
+        0 0 80px rgba(255, 0, 51, 0.1);
+}
+
+.article-card-large:hover::before {
+    opacity: 1;
+}
+
+.article-link {
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    position: relative;
+    z-index: 2;
+}
+
+.article-image {
+    position: relative;
+    width: 100%;
+    height: 240px;
+    overflow: hidden;
+    border-radius: 20px 20px 0 0;
+}
+
+.article-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    filter: brightness(0.9);
+}
+
+.article-card-large:hover .article-image img {
+    transform: scale(1.15);
+    filter: brightness(1.1);
+}
+
+.article-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+        45deg, 
+        rgba(255, 0, 51, 0.1) 0%, 
+        rgba(255, 0, 51, 0.3) 50%, 
+        rgba(255, 0, 51, 0.5) 100%
+    );
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: all 0.4s ease;
+}
+
+.article-card-large:hover .article-overlay {
+    opacity: 1;
+}
+
+.article-overlay i {
+    font-size: 45px;
+    color: white;
+    text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.6);
+    animation: bounceIn 0.6s ease;
+}
+
+@keyframes bounceIn {
+    0% { transform: scale(0) rotate(180deg); }
+    50% { transform: scale(1.3) rotate(0deg); }
+    100% { transform: scale(1) rotate(0deg); }
+}
+
+.article-content {
+    padding: 30px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.article-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 15px 0;
+    line-height: 1.4;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.article-excerpt {
+    font-size: 16px;
+    color: #ccc;
+    line-height: 1.7;
+    margin: 0 0 20px 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    flex: 1;
+}
+
+.article-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+    color: #aaa;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 20px;
+    margin-top: auto;
+}
+
+.article-meta span {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 15px;
+    transition: all 0.3s ease;
+}
+
+.article-meta span:hover {
+    background: rgba(255, 0, 51, 0.1);
+    color: #fff;
+}
+
+.article-meta i {
+    font-size: 12px;
+    color: #ff0033;
+}
+
+/* رسالة عدم وجود مقالات */
+.no-articles {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 80px 20px;
+    color: #ccc;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 20px;
+    border: 2px dashed rgba(255, 255, 255, 0.1);
+}
+
+.no-articles i {
+    font-size: 80px;
+    color: #ff0033;
+    margin-bottom: 25px;
+    animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+.no-articles h3 {
+    font-size: 28px;
+    margin-bottom: 15px;
+    color: #fff;
+    font-weight: 600;
+}
+
+.no-articles p {
+    font-size: 16px;
+    color: #aaa;
+}
+
+/* التصفح بين الصفحات المحسن */
+.pagination-container {
+    display: flex;
+    justify-content: center;
+    margin-top: 60px;
+}
+
+.pagination {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    background: rgba(255, 255, 255, 0.04);
+    padding: 15px 25px;
+    border-radius: 25px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+}
+
+.pagination-btn,
+.pagination-num {
+    padding: 12px 18px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    text-decoration: none;
+    border-radius: 15px;
+    transition: all 0.4s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.pagination-btn:hover,
+.pagination-num:hover {
+    background: rgba(255, 0, 51, 0.2);
+    color: #fff;
+    transform: translateY(-2px);
+    border-color: rgba(255, 0, 51, 0.3);
+    box-shadow: 0 5px 15px rgba(255, 0, 51, 0.2);
+}
+
+.pagination-num.active {
+    background: linear-gradient(135deg, #ff0033, #cc0027);
+    color: #fff;
+    border-color: #ff0033;
+    box-shadow: 0 5px 15px rgba(255, 0, 51, 0.3);
+}
+
+.pagination-dots {
+    color: #666;
+    padding: 12px 8px;
+    font-weight: 600;
+}
+
+/* تحسينات للشاشات المختلفة */
+@media (max-width: 1200px) {
+    .articles-grid {
+        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)) !important;
+        gap: 30px;
+    }
+    
+    .container {
+        max-width: 1100px;
+        padding: 0 25px;
+    }
+}
+
+@media (max-width: 900px) {
+    .articles-grid {
+        grid-template-columns: 1fr !important;
+        gap: 25px;
+    }
+}
+
+@media (max-width: 768px) {
+    .articles-page {
+        padding: 40px 0;
+    }
+    
+    .container {
+        padding: 0 20px;
+    }
+    
+    .articles-grid {
+        grid-template-columns: 1fr !important;
+        gap: 25px;
+    }
+    
+    .page-title {
+        font-size: 42px;
+    }
+    
+    .page-subtitle {
+        font-size: 18px;
+    }
+    
+    .article-card-large {
+        height: auto !important;
+        min-height: 380px;
+    }
+    
+    .article-image {
+        height: 200px;
+    }
+    
+    .article-content {
+        padding: 25px;
+    }
+    
+    .article-title {
+        font-size: 20px;
+    }
+    
+    .article-excerpt {
+        font-size: 15px;
+    }
+    
+    .pagination {
+        flex-wrap: wrap;
+        gap: 10px;
+        padding: 12px 20px;
+    }
+    
+    .pagination-btn,
+    .pagination-num {
+        padding: 10px 14px;
+        font-size: 14px;
+    }
+}
+
+@media (max-width: 480px) {
+    .container {
+        padding: 0 15px;
+    }
+    
+    .page-title {
+        font-size: 32px;
+    }
+    
+    .page-title i {
+        margin-right: 10px;
+    }
+    
+    .articles-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .article-card-large {
+        min-height: 350px;
+    }
+    
+    .article-image {
+        height: 180px;
+    }
+    
+    .article-content {
+        padding: 20px;
+    }
+    
+    .article-title {
+        font-size: 18px;
+    }
+    
+    .article-excerpt {
+        font-size: 14px;
+    }
+    
+    .article-meta {
+        flex-direction: column;
+        gap: 12px;
+        align-items: flex-start;
+        text-align: center;
+    }
+    
+    .article-meta span {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .pagination {
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 10px 15px;
+    }
+    
+    .pagination-btn,
+    .pagination-num {
+        padding: 8px 12px;
+        font-size: 13px;
+        min-width: 40px;
+        justify-content: center;
+    }
+}
+
+/* تأثيرات إضافية للتفاعل */
+@media (hover: hover) {
+    .article-card-large:hover .article-title {
+        color: #ff0033;
+        transition: color 0.3s ease;
+    }
+    
+    .article-card-large:hover .article-excerpt {
+        color: #fff;
+        transition: color 0.3s ease;
+    }
+}
+</style>
+{% endblock %}

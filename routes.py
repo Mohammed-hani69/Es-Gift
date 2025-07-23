@@ -90,6 +90,9 @@ def index():
     # جلب العملات النشطة لعرضها في المنطقة العلوية
     active_currencies = Currency.query.filter_by(is_active=True).order_by(Currency.code).all()
     
+    # المقالات المنشورة للعرض في الصفحة الرئيسية
+    published_articles = Article.query.filter_by(is_published=True).order_by(Article.created_at.desc()).limit(4).all()
+    
     return render_template('index.html', 
                          products=products,
                          featured_products=featured_products,
@@ -103,6 +106,7 @@ def index():
                          main_categories=main_categories,
                          subcategories=subcategories,
                          currencies=active_currencies,
+                         published_articles=published_articles,
                          current_currency=user_currency)
 
 @main.route('/login', methods=['GET', 'POST'])
@@ -703,9 +707,14 @@ def category_products(category_id, slug=None):
         return redirect(url_for('main.category_products', category_id=category_id, slug=correct_slug))
     
     # جلب المنتجات المرئية للمستخدم في هذا القسم
-    products = get_visible_products(
-        current_user if current_user.is_authenticated else None,
-        category=category.name_en or category.name
+    # فلترة بناءً على category_id أولاً، ثم category name كـ fallback
+    products_query = get_visible_products(current_user if current_user.is_authenticated else None)
+    
+    # فلترة المنتجات بناءً على القسم الرئيسي
+    products = products_query.filter(
+        (Product.category_id == category_id) |  # النظام الجديد
+        (Product.category == category.name) |   # النظام القديم
+        (Product.category == category.name_en)  # الاسم الإنجليزي
     ).all()
     
     # تحويل الأسعار
@@ -733,12 +742,10 @@ def subcategory_products(subcategory_id, slug=None):
         return redirect(url_for('main.subcategory_products', subcategory_id=subcategory_id, slug=correct_slug))
     
     # الحصول على المنتجات المرتبطة بهذا القسم الفرعي
-    # نفترض أن المنتجات لها علاقة مع الأقسام الفرعية
-    # إذا لم تكن موجودة، يمكننا استخدام category للقسم الرئيسي
     products_query = get_visible_products(current_user if current_user.is_authenticated else None)
     
-    # فلترة المنتجات حسب القسم الرئيسي للقسم الفرعي
-    products = products_query.filter(Product.category == subcategory.parent_category.name).all()
+    # فلترة المنتجات بناءً على القسم الفرعي
+    products = products_query.filter(Product.subcategory_id == subcategory_id).all()
     
     user_currency = session.get('currency', 'SAR')
     
@@ -761,3 +768,69 @@ def all_categories():
     
     categories = Category.query.filter_by(is_active=True).order_by(Category.display_order, Category.name).all()
     return render_template('categories.html', categories=categories)
+
+# مسارات الصفحات الثابتة
+@main.route('/page/<string:slug>')
+def static_page(slug):
+    """عرض صفحة ثابتة حسب الـ slug"""
+    page = StaticPage.query.filter_by(slug=slug, is_active=True).first_or_404()
+    return render_template('static_page.html', page=page)
+
+@main.route('/privacy-policy')
+def privacy_policy():
+    """صفحة سياسة الخصوصية"""
+    page = StaticPage.query.filter_by(slug='privacy-policy', is_active=True).first()
+    if page:
+        return render_template('static_page.html', page=page)
+    return redirect(url_for('main.index'))
+
+@main.route('/contact-us')
+def contact_us():
+    """صفحة اتصل بنا"""
+    page = StaticPage.query.filter_by(slug='contact-us', is_active=True).first()
+    if page:
+        return render_template('static_page.html', page=page)
+    return redirect(url_for('main.index'))
+
+@main.route('/about-us')
+def about_us():
+    """صفحة من نحن"""
+    page = StaticPage.query.filter_by(slug='about-us', is_active=True).first()
+    if page:
+        return render_template('static_page.html', page=page)
+    return redirect(url_for('main.index'))
+
+@main.route('/terms-of-service')
+def terms_of_service():
+    """صفحة الشروط والأحكام"""
+    page = StaticPage.query.filter_by(slug='terms-of-service', is_active=True).first()
+    if page:
+        return render_template('static_page.html', page=page)
+    return redirect(url_for('main.index'))
+
+# مسارات المقالات
+@main.route('/articles')
+def all_articles():
+    """عرض جميع المقالات المنشورة"""
+    page = request.args.get('page', 1, type=int)
+    per_page = 12  # عدد المقالات في كل صفحة
+    
+    articles = Article.query.filter_by(is_published=True)\
+                           .order_by(Article.created_at.desc())\
+                           .paginate(page=page, per_page=per_page, error_out=False)
+    
+    return render_template('articles.html', articles=articles)
+
+@main.route('/article/<int:article_id>')
+@main.route('/article/<int:article_id>/<slug>')
+def article_detail(article_id, slug=None):
+    """عرض تفاصيل مقال واحد"""
+    article = Article.query.filter_by(id=article_id, is_published=True).first_or_404()
+    
+    # المقالات المشابهة (آخر 3 مقالات غير المقال الحالي)
+    related_articles = Article.query.filter_by(is_published=True)\
+                                   .filter(Article.id != article_id)\
+                                   .order_by(Article.created_at.desc())\
+                                   .limit(3).all()
+    
+    return render_template('article_detail.html', article=article, related_articles=related_articles)

@@ -17,6 +17,14 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
     
+    # إعدادات Session للـ OAuth - محسنة لـ Google OAuth
+    app.config['SESSION_COOKIE_SECURE'] = False  # True في الإنتاج مع HTTPS
+    app.config['SESSION_COOKIE_HTTPONLY'] = True
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+    app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # ساعة واحدة
+    app.config['SESSION_PERMANENT'] = True
+    app.config['SESSION_TYPE'] = 'filesystem'
+    
     # تهيئة الإضافات
     db.init_app(app)
     
@@ -68,6 +76,28 @@ def create_app():
         text = text.strip('-')
         
         return text
+    
+    # إضافة فلتر للتاريخ العربي
+    @app.template_filter('arabic_date')
+    def arabic_date_filter(date, format_type='full'):
+        """تحويل التاريخ إلى العربية"""
+        if not date:
+            return ""
+        
+        arabic_months = {
+            'January': 'يناير', 'February': 'فبراير', 'March': 'مارس',
+            'April': 'أبريل', 'May': 'مايو', 'June': 'يونيو',
+            'July': 'يوليو', 'August': 'أغسطس', 'September': 'سبتمبر',
+            'October': 'أكتوبر', 'November': 'نوفمبر', 'December': 'ديسمبر'
+        }
+        
+        if format_type == 'full':
+            english_date = date.strftime('%d %B %Y')
+            for eng, ar in arabic_months.items():
+                english_date = english_date.replace(eng, ar)
+            return english_date
+        else:
+            return date.strftime('%Y-%m-%d')
     
     # إضافة context processor للأقسام والعملات
     @app.context_processor
@@ -131,6 +161,10 @@ def create_app():
     # تسجيل blueprint المصادقة بجوجل
     from auth_routes import auth_bp
     app.register_blueprint(auth_bp)
+    
+    # تسجيل blueprint الصفحات الثابتة
+    from static_pages_routes import static_pages_bp
+    app.register_blueprint(static_pages_bp)
     
     # تهيئة Google OAuth Service
     from google_auth import google_auth_service

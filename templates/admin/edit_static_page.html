@@ -1,0 +1,348 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}تعديل صفحة: {{ page.title }}{% endblock %}
+
+{% block content %}
+<div class="content-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2>
+            <i class="fas fa-edit"></i>
+            تعديل صفحة: {{ page.title }}
+        </h2>
+        <div>
+            <a href="{{ url_for('main.static_page', slug=page.slug) }}" class="btn btn-info" target="_blank">
+                <i class="fas fa-eye"></i>
+                معاينة الصفحة
+            </a>
+            <a href="{{ url_for('static_pages.static_pages') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-right"></i>
+                العودة للقائمة
+            </a>
+        </div>
+    </div>
+
+    <form method="POST" id="pageForm">
+        <div class="form-row">
+            <div class="form-group col-md-8">
+                <label for="title">عنوان الصفحة *</label>
+                <input type="text" class="form-control" id="title" name="title" required 
+                       value="{{ page.title }}" placeholder="مثال: سياسة الخصوصية">
+            </div>
+            <div class="form-group col-md-4">
+                <label for="slug">الرابط المختصر *</label>
+                <input type="text" class="form-control" id="slug" name="slug" required 
+                       value="{{ page.slug }}" placeholder="privacy-policy" pattern="[a-z0-9-]+">
+                <small class="form-text text-muted">استخدم الأحرف الإنجليزية والأرقام والشرطة فقط</small>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="content">محتوى الصفحة *</label>
+            <textarea class="form-control" id="content" name="content" rows="15" required 
+                      placeholder="اكتب محتوى الصفحة هنا...">{{ page.content }}</textarea>
+            <small class="form-text text-muted">يمكنك استخدام HTML لتنسيق المحتوى</small>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group col-md-6">
+                <label for="meta_description">وصف السيو</label>
+                <textarea class="form-control" id="meta_description" name="meta_description" rows="3" 
+                          placeholder="وصف مختصر للصفحة لمحركات البحث">{{ page.meta_description or '' }}</textarea>
+            </div>
+            <div class="form-group col-md-6">
+                <label for="meta_keywords">كلمات مفتاحية</label>
+                <textarea class="form-control" id="meta_keywords" name="meta_keywords" rows="3" 
+                          placeholder="كلمات مفتاحية مفصولة بفواصل">{{ page.meta_keywords or '' }}</textarea>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group col-md-3">
+                <label for="display_order">ترتيب العرض</label>
+                <input type="number" class="form-control" id="display_order" name="display_order" 
+                       value="{{ page.display_order }}" min="0">
+            </div>
+            <div class="form-group col-md-9">
+                <label>خيارات العرض</label>
+                <div class="checkbox-group">
+                    <div class="custom-control custom-checkbox">
+                        <input type="checkbox" class="custom-control-input" id="show_in_footer" 
+                               name="show_in_footer" {% if page.show_in_footer %}checked{% endif %}>
+                        <label class="custom-control-label" for="show_in_footer">
+                            إظهار في الفوتر
+                        </label>
+                    </div>
+                    <div class="custom-control custom-checkbox">
+                        <input type="checkbox" class="custom-control-input" id="show_in_header" 
+                               name="show_in_header" {% if page.show_in_header %}checked{% endif %}>
+                        <label class="custom-control-label" for="show_in_header">
+                            إظهار في الهيدر
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="page-info">
+            <div class="info-row">
+                <span class="info-label">تاريخ الإنشاء:</span>
+                <span class="info-value">{{ page.created_at.strftime('%Y-%m-%d %H:%M') if page.created_at else 'غير محدد' }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">آخر تحديث:</span>
+                <span class="info-value">{{ page.updated_at.strftime('%Y-%m-%d %H:%M') if page.updated_at else 'غير محدد' }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">الحالة:</span>
+                <span class="info-value">
+                    <span class="status-badge {% if page.is_active %}status-active{% else %}status-inactive{% endif %}">
+                        {% if page.is_active %}نشطة{% else %}معطلة{% endif %}
+                    </span>
+                </span>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save"></i>
+                حفظ التعديلات
+            </button>
+            <a href="{{ url_for('static_pages.static_pages') }}" class="btn btn-secondary">
+                <i class="fas fa-times"></i>
+                إلغاء
+            </a>
+        </div>
+    </form>
+</div>
+
+<style>
+.form-row {
+    display: flex;
+    flex-wrap: wrap;
+    margin-right: -15px;
+    margin-left: -15px;
+}
+
+.form-group.col-md-3,
+.form-group.col-md-4,
+.form-group.col-md-6,
+.form-group.col-md-8,
+.form-group.col-md-9 {
+    padding-right: 15px;
+    padding-left: 15px;
+    margin-bottom: 20px;
+}
+
+.col-md-3 { flex: 0 0 25%; max-width: 25%; }
+.col-md-4 { flex: 0 0 33.333333%; max-width: 33.333333%; }
+.col-md-6 { flex: 0 0 50%; max-width: 50%; }
+.col-md-8 { flex: 0 0 66.666667%; max-width: 66.666667%; }
+.col-md-9 { flex: 0 0 75%; max-width: 75%; }
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #fff;
+    font-weight: bold;
+}
+
+.form-control {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #333;
+    border-radius: 8px;
+    background: #333;
+    color: #fff;
+    font-size: 14px;
+    transition: border-color 0.3s ease;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #ff0033;
+    background: #444;
+}
+
+.form-text {
+    margin-top: 5px;
+    font-size: 12px;
+}
+
+.text-muted {
+    color: #999 !important;
+}
+
+.checkbox-group {
+    display: flex;
+    gap: 20px;
+    margin-top: 8px;
+}
+
+.custom-control {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.custom-control-input {
+    position: absolute;
+    z-index: -1;
+    opacity: 0;
+}
+
+.custom-control-label {
+    position: relative;
+    margin-bottom: 0;
+    padding-right: 25px;
+    cursor: pointer;
+    color: #ccc;
+}
+
+.custom-control-label::before {
+    content: '';
+    position: absolute;
+    top: 2px;
+    right: 0;
+    width: 18px;
+    height: 18px;
+    background: #333;
+    border: 2px solid #555;
+    border-radius: 3px;
+    transition: all 0.3s ease;
+}
+
+.custom-control-input:checked ~ .custom-control-label::before {
+    background: #ff0033;
+    border-color: #ff0033;
+}
+
+.custom-control-label::after {
+    content: '';
+    position: absolute;
+    top: 6px;
+    right: 4px;
+    width: 10px;
+    height: 10px;
+    background: url('data:image/svg+xml;charset=utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8"><path fill="%23fff" d="m6.564.75-3.59 3.612-1.538-1.55L0 4.26l2.974 2.99L8 2.193z"/></svg>') no-repeat center center;
+    background-size: 100% 100%;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.custom-control-input:checked ~ .custom-control-label::after {
+    opacity: 1;
+}
+
+.page-info {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 20px 0;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.info-row:last-child {
+    margin-bottom: 0;
+}
+
+.info-label {
+    color: #ccc;
+    font-weight: bold;
+}
+
+.info-value {
+    color: #fff;
+}
+
+.status-badge {
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 0.85em;
+    font-weight: bold;
+}
+
+.status-active {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+}
+
+.status-inactive {
+    background: linear-gradient(135deg, #6c757d, #5a6268);
+    color: white;
+}
+
+.form-actions {
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #333;
+    display: flex;
+    gap: 15px;
+}
+
+/* تحسينات للشاشات الصغيرة */
+@media (max-width: 768px) {
+    .form-row {
+        margin-right: 0;
+        margin-left: 0;
+    }
+    
+    .form-group.col-md-3,
+    .form-group.col-md-4,
+    .form-group.col-md-6,
+    .form-group.col-md-8,
+    .form-group.col-md-9 {
+        flex: 0 0 100%;
+        max-width: 100%;
+        padding-right: 0;
+        padding-left: 0;
+    }
+    
+    .checkbox-group {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .info-row {
+        flex-direction: column;
+        gap: 5px;
+    }
+}
+</style>
+
+<script>
+// التحقق من صحة النموذج
+document.getElementById('pageForm').addEventListener('submit', function(e) {
+    const title = document.getElementById('title').value.trim();
+    const slug = document.getElementById('slug').value.trim();
+    const content = document.getElementById('content').value.trim();
+    
+    if (!title || !slug || !content) {
+        e.preventDefault();
+        alert('يرجى ملء جميع الحقول المطلوبة');
+        return;
+    }
+    
+    // التحقق من صحة الـ slug
+    const slugPattern = /^[a-z0-9-]+$/;
+    if (!slugPattern.test(slug)) {
+        e.preventDefault();
+        alert('الرابط المختصر يجب أن يحتوي على أحرف إنجليزية صغيرة وأرقام وشرطات فقط');
+        return;
+    }
+});
+</script>
+{% endblock %}

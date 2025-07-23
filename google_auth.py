@@ -12,6 +12,7 @@ Created: 2025
 
 import os
 import json
+from datetime import datetime
 from flask import current_app, session, request, url_for, redirect, flash
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -81,8 +82,8 @@ class GoogleAuthService:
         # OAuth 2.0 Scopes
         self.scopes = [
             'openid',
-            'email',
-            'profile'
+            'https://www.googleapis.com/auth/userinfo.email',
+            'https://www.googleapis.com/auth/userinfo.profile'
         ]
         
         # Store the app instance
@@ -98,11 +99,14 @@ class GoogleAuthService:
             str: Authorization URL for Google OAuth
         """
         try:
+            # Import current_app within try block to handle app context
+            from flask import current_app as app_context
+            
             # التأكد من وجود client_secrets
             if not hasattr(self, 'client_secrets') or not self.client_secrets:
                 logger.error("❌ Google client secrets not initialized - reinitializing...")
-                if current_app:
-                    self.init_app(current_app)
+                if app_context:
+                    self.init_app(app_context)
                     if not self.client_secrets:
                         raise Exception("Failed to initialize Google client secrets")
                 else:
@@ -111,14 +115,28 @@ class GoogleAuthService:
             logger.info("✅ Google client secrets verified")
             
             # Get the correct redirect URI based on environment
-            if current_app.config.get('FLASK_ENV') == 'development':
+            # Check multiple ways to determine if we're in development
+            is_development = (
+                app_context.config.get('FLASK_ENV') == 'development' or
+                app_context.config.get('ENV') == 'development' or
+                app_context.debug or
+                request.host.startswith('127.0.0.1') or
+                request.host.startswith('localhost') or
+                'localhost' in request.host
+            )
+            
+            if is_development:
                 # Use localhost for development
                 redirect_uri = 'http://127.0.0.1:5000/auth/google/callback'
             else:
                 # Use production URL
                 redirect_uri = 'https://es-gift.com/auth/google/callback'
             
+            logger.info(f"Development mode: {is_development}")
             logger.info(f"Using redirect URI: {redirect_uri}")
+            logger.info(f"Request host: {request.host}")
+            logger.info(f"FLASK_ENV: {app_context.config.get('FLASK_ENV')}")
+            logger.info(f"DEBUG: {app_context.debug}")
             
             # Create the flow using the client secrets
             flow = Flow.from_client_config(
@@ -138,6 +156,24 @@ class GoogleAuthService:
             
             # Store state in session for security
             session['google_auth_state'] = state
+            session['google_auth_timestamp'] = datetime.now().timestamp()
+            session.permanent = True  # Make session permanent
+            
+            # Force session to save immediately and verify it was stored
+            session.modified = True
+            
+            # التحقق من تخزين الـ state
+            stored_state_verification = session.get('google_auth_state')
+            if stored_state_verification != state:
+                logger.error(f"Failed to store state in session! Expected: {state}, Got: {stored_state_verification}")
+                raise Exception("فشل في حفظ حالة المصادقة")
+            
+            logger.info(f"🔐 Generated Google auth state:")
+            logger.info(f"   State: {state}")
+            logger.info(f"   Stored in session: {session.get('google_auth_state')}")
+            logger.info(f"   Session ID: {session.get('_id', 'No ID')}")
+            logger.info(f"   All session keys: {list(session.keys())}")
+            logger.info(f"   Session timestamp: {session.get('google_auth_timestamp')}")
             
             logger.info(f"Generated Google auth URL successfully")
             return authorization_url
@@ -158,32 +194,75 @@ class GoogleAuthService:
             dict: User information from Google
         """
         try:
+            # Import current_app within try block to handle app context
+            from flask import current_app as app_context
+            
             # التأكد من وجود client_secrets
             if not hasattr(self, 'client_secrets') or not self.client_secrets:
                 logger.error("❌ Google client secrets not initialized - reinitializing...")
-                if current_app:
-                    self.init_app(current_app)
+                if app_context:
+                    self.init_app(app_context)
                     if not self.client_secrets:
                         raise Exception("Failed to initialize Google client secrets")
                 else:
                     raise Exception("Google client secrets not initialized and no app context")
                 
             # Verify state parameter
-            if state != session.get('google_auth_state'):
-                raise Exception("حالة المصادقة غير صحيحة")
+            stored_state = session.get('google_auth_state')
+            stored_timestamp = session.get('google_auth_timestamp')
+            logger.info(f"🔍 State validation:")
+            logger.info(f"   Received state: {state}")
+            logger.info(f"   Stored state: {stored_state}")
+            logger.info(f"   Session keys: {list(session.keys())}")
+            
+            # Check if session state is missing
+            if not stored_state:
+                logger.warning("⚠️ Session state missing - this might be a session timeout")
+                logger.warning("⚠️ This could indicate a session management issue")
+                # لأمان أفضل، نرفض الطلب إذا لم يكن هناك state محفوظ
+                raise Exception("انتهت صلاحية جلسة المصادقة. يرجى المحاولة مرة أخرى.")
+            
+            # Check state match
+            if state != stored_state:
+                logger.error(f"State mismatch! Received: '{state}', Stored: '{stored_state}'")
+                logger.error("This could indicate a security issue or session corruption")
+                raise Exception("حالة المصادقة غير صحيحة. يرجى المحاولة مرة أخرى.")
+            
+            # Check timestamp (optional: verify state is not too old)
+            if stored_timestamp:
+                from datetime import datetime
+                time_diff = datetime.now().timestamp() - stored_timestamp
+                if time_diff > 600:  # 10 minutes
+                    logger.warning(f"State is old ({time_diff:.1f} seconds). Proceeding anyway.")
+            
+            logger.info("✅ State validation successful")
             
             # Get the correct redirect URI based on environment
-            if current_app.config.get('FLASK_ENV') == 'development':
+            # Check multiple ways to determine if we're in development (same as get_google_auth_url)
+            is_development = (
+                app_context.config.get('FLASK_ENV') == 'development' or
+                app_context.config.get('ENV') == 'development' or
+                app_context.debug or
+                request.host.startswith('127.0.0.1') or
+                request.host.startswith('localhost') or
+                'localhost' in request.host
+            )
+            
+            if is_development:
                 redirect_uri = 'http://127.0.0.1:5000/auth/google/callback'
             else:
                 redirect_uri = 'https://es-gift.com/auth/google/callback'
                 
+            logger.info(f"Development mode: {is_development}")
             logger.info(f"Using callback redirect URI: {redirect_uri}")
+            logger.info(f"Request host: {request.host}")
+            logger.info(f"FLASK_ENV: {app_context.config.get('FLASK_ENV')}")
+            logger.info(f"ENV: {app_context.config.get('ENV')}")
+            logger.info(f"DEBUG: {app_context.debug}")
                 
             flow = Flow.from_client_config(
                 self.client_secrets,
-                scopes=self.scopes,
-                state=state
+                scopes=self.scopes
             )
             
             # Set the redirect URI
@@ -259,4 +338,5 @@ google_auth_service = GoogleAuthService()
 
 def get_google_client_id():
     """Get Google Client ID for frontend use"""
+    from flask import current_app
     return current_app.config.get('GOOGLE_CLIENT_ID', '')

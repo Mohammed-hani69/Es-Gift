@@ -4,6 +4,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/profile-enhanced.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/floating-support.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -321,4 +322,16 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/floating-support.js') }}"></script>
+<script>
+// تمرير بيانات المستخدم للدعم الفني
+window.currentUserData = {
+    name: '{{ current_user.full_name or current_user.username }}',
+    email: '{{ current_user.email }}',
+    type: '{{ current_user.customer_type }}'
+};
+</script>
 {% endblock %}

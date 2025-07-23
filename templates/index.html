@@ -169,26 +169,53 @@
 </section>
 
 <!-- تعرف على المزيد -->
+{% if published_articles %}
 <section class="know-more">
     <h3 class="section-title">تعرف على المزيد في مدونتنا</h3>
     <div class="row-digital">
-        {% for i in range(4) %}
-        <div class="digital-item">
-            <img src="{{ url_for('static', filename='images/game' + (i+1)|string + '.jpeg') }}" alt="مقال {{ i+1 }}">
-            <p>مقال مفيد عن الألعاب {{ i+1 }}</p>
+        {% for article in published_articles %}
+        <div class="digital-item article-card">
+            <a href="{{ url_for('main.article_detail', article_id=article.id, slug=article.title|create_slug) }}" class="article-link">
+                <div class="article-image">
+                    {% if article.image_url %}
+                        <img src="/static/uploads/articles/{{ article.image_url }}" alt="{{ article.title }}" onerror="this.src='/static/images/default-article.jpg'">
+                    {% else %}
+                        <img src="{{ url_for('static', filename='images/default-article.jpg') }}" alt="{{ article.title }}">
+                    {% endif %}
+                    <div class="article-overlay">
+                        <i class="fas fa-book-open"></i>
+                    </div>
+                </div>
+                <div class="article-content">
+                    <h4 class="article-title">{{ article.title }}</h4>
+                    <p class="article-excerpt">{{ article.content[:100] }}...</p>
+                    <div class="article-meta">
+                        <span class="article-author">
+                            <i class="fas fa-user"></i>
+                            {{ article.author or 'المحرر' }}
+                        </span>
+                        <span class="article-date">
+                            <i class="fas fa-calendar"></i>
+                            {{ article.created_at.strftime('%Y-%m-%d') }}
+                        </span>
+                    </div>
+                </div>
+            </a>
         </div>
         {% endfor %}
     </div>
     <div class="more-btn-container">
-        <button class="more-btn">
+        <a href="{{ url_for('main.all_articles') }}" class="more-btn">
             <span>اقرأ المزيد</span>
             <i class="fa-solid fa-arrow-left"></i>
-        </button>
+        </a>
     </div>
 </section>
+{% endif %}
 {% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/floating-support.css') }}">
 <style>
 /* الأيقونات المتحركة للصفحة الرئيسية */
 .home-page {
@@ -499,6 +526,181 @@
         font-size: 10px;
     }
 }
+
+/* تصميم كارت المقالات */
+.article-card {
+    background: linear-gradient(145deg, #222 0%, #333 100%);
+    border-radius: 15px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.article-card:hover {
+    transform: translateY(-5px);
+    border-color: #ff0033;
+    box-shadow: 0 10px 25px rgba(255, 0, 51, 0.3);
+}
+
+.article-link {
+    text-decoration: none;
+    color: inherit;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.article-image {
+    position: relative;
+    width: 100%;
+    height: 200px;
+    overflow: hidden;
+}
+
+.article-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.article-card:hover .article-image img {
+    transform: scale(1.05);
+}
+
+.article-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, rgba(255, 0, 51, 0.1), rgba(255, 0, 51, 0.3));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.article-card:hover .article-overlay {
+    opacity: 1;
+}
+
+.article-overlay i {
+    font-size: 30px;
+    color: white;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.article-content {
+    padding: 20px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.article-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #fff;
+    margin: 0 0 10px 0;
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.article-excerpt {
+    font-size: 14px;
+    color: #ccc;
+    line-height: 1.5;
+    margin: 0 0 15px 0;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+}
+
+.article-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: #999;
+    border-top: 1px solid #444;
+    padding-top: 10px;
+    margin-top: auto;
+}
+
+.article-meta span {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.article-meta i {
+    font-size: 11px;
+    color: #ff0033;
+}
+
+/* تحسينات للشاشات الصغيرة */
+@media (max-width: 768px) {
+    .article-image {
+        height: 150px;
+    }
+    
+    .article-content {
+        padding: 15px;
+    }
+    
+    .article-title {
+        font-size: 14px;
+    }
+    
+    .article-excerpt {
+        font-size: 13px;
+    }
+    
+    .article-meta {
+        font-size: 11px;
+    }
+}
+
+@media (max-width: 480px) {
+    .article-image {
+        height: 120px;
+    }
+    
+    .article-content {
+        padding: 12px;
+    }
+    
+    .article-title {
+        font-size: 13px;
+    }
+    
+    .article-excerpt {
+        font-size: 12px;
+    }
+    
+    .article-meta {
+        font-size: 10px;
+        flex-direction: column;
+        gap: 5px;
+        align-items: flex-start;
+    }
+    
+    .article-overlay i {
+        font-size: 24px;
+    }
+}
 </style>
 {% endblock %}
 
@@ -700,5 +902,22 @@ function updateCartCount() {
     // لا حاجة لطلبات إضافية - العدد يتم تحديثه من خلال استجابة addToCart
     console.log('Cart count updated from server response');
 }
+</script>
+<script src="{{ url_for('static', filename='js/floating-support.js') }}"></script>
+<script>
+// تمرير بيانات المستخدم للدعم الفني (إذا كان مسجل دخول)
+{% if current_user.is_authenticated %}
+window.currentUserData = {
+    name: '{{ current_user.full_name or current_user.username }}',
+    email: '{{ current_user.email }}',
+    type: '{{ current_user.customer_type }}'
+};
+{% else %}
+window.currentUserData = {
+    name: 'زائر',
+    email: '',
+    type: 'guest'
+};
+{% endif %}
 </script>
 {% endblock %}

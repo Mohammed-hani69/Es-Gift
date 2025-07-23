@@ -143,6 +143,10 @@
     {% endif %}
 </div>
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/floating-support.css') }}">
+{% endblock %}
+
 <style>
 .cart-container {
     max-width: 1200px;
@@ -729,4 +733,18 @@ function showNotification(message, type) {
     }, 5000);
 }
 </script>
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/floating-support.js') }}"></script>
+<script>
+// تمرير بيانات المستخدم للدعم الفني
+window.currentUserData = {
+    name: '{{ current_user.full_name or current_user.username }}',
+    email: '{{ current_user.email }}',
+    type: '{{ current_user.customer_type }}',
+    cartItems: {{ cart_items|length if cart_items else 0 }},
+    cartTotal: '{{ total }} {{ session.get("currency", "SAR") }}'
+};
+</script>
+{% endblock %}
 {% endblock %}

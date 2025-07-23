@@ -1,0 +1,216 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}إدارة الصفحات الثابتة{% endblock %}
+
+{% block content %}
+<div class="content-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2>
+            <i class="fas fa-file-alt"></i>
+            إدارة الصفحات الثابتة
+        </h2>
+        <div>
+            <button class="btn btn-success" onclick="initDefaultPages()" title="إنشاء الصفحات الافتراضية">
+                <i class="fas fa-magic"></i>
+                إنشاء الصفحات الافتراضية
+            </button>
+            <a href="{{ url_for('static_pages.add_static_page') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i>
+                إضافة صفحة جديدة
+            </a>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>العنوان</th>
+                    <th>الرابط المختصر</th>
+                    <th>الحالة</th>
+                    <th>الفوتر</th>
+                    <th>الهيدر</th>
+                    <th>الترتيب</th>
+                    <th>تاريخ الإنشاء</th>
+                    <th>الإجراءات</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for page in pages %}
+                <tr>
+                    <td>
+                        <strong style="color: #fff;">{{ page.title }}</strong>
+                        {% if page.meta_description %}
+                        <br><small style="color: #ccc;">{{ page.meta_description[:100] }}...</small>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <code style="background: #333; padding: 3px 8px; border-radius: 4px; color: #ff0033;">
+                            /page/{{ page.slug }}
+                        </code>
+                    </td>
+                    <td>
+                        <span class="status-badge {% if page.is_active %}status-active{% else %}status-inactive{% endif %}">
+                            {% if page.is_active %}نشطة{% else %}معطلة{% endif %}
+                        </span>
+                    </td>
+                    <td>
+                        {% if page.show_in_footer %}
+                        <i class="fas fa-check text-success"></i>
+                        {% else %}
+                        <i class="fas fa-times text-danger"></i>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if page.show_in_header %}
+                        <i class="fas fa-check text-success"></i>
+                        {% else %}
+                        <i class="fas fa-times text-danger"></i>
+                        {% endif %}
+                    </td>
+                    <td>{{ page.display_order }}</td>
+                    <td>{{ page.created_at.strftime('%Y-%m-%d') if page.created_at else 'غير محدد' }}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <a href="{{ url_for('main.static_page', slug=page.slug) }}" class="btn btn-sm btn-info" title="عرض الصفحة" target="_blank">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <a href="{{ url_for('static_pages.edit_static_page', page_id=page.id) }}" class="btn btn-sm btn-warning" title="تعديل">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <button class="btn btn-sm {% if page.is_active %}btn-secondary{% else %}btn-success{% endif %}" 
+                                    onclick="toggleStatus({{ page.id }})" 
+                                    title="{% if page.is_active %}تعطيل{% else %}تفعيل{% endif %}">
+                                <i class="fas {% if page.is_active %}fa-pause{% else %}fa-play{% endif %}"></i>
+                            </button>
+                            <button class="btn btn-sm btn-danger" onclick="deletePage({{ page.id }})" title="حذف">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" class="text-center">لا توجد صفحات ثابتة</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+.status-badge {
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 0.85em;
+    font-weight: bold;
+}
+
+.status-active {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+}
+
+.status-inactive {
+    background: linear-gradient(135deg, #6c757d, #5a6268);
+    color: white;
+}
+
+.text-success {
+    color: #28a745 !important;
+}
+
+.text-danger {
+    color: #dc3545 !important;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 5px;
+    justify-content: center;
+}
+
+.action-buttons .btn {
+    padding: 5px 8px;
+    font-size: 0.8em;
+}
+
+code {
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+}
+</style>
+
+<script>
+function toggleStatus(pageId) {
+    if (confirm('هل أنت متأكد من تغيير حالة هذه الصفحة؟')) {
+        fetch(`/admin/static-pages/toggle-status/${pageId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('حدث خطأ: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('حدث خطأ أثناء تغيير الحالة');
+        });
+    }
+}
+
+function deletePage(pageId) {
+    if (confirm('هل أنت متأكد من حذف هذه الصفحة؟ هذا الإجراء لا يمكن التراجع عنه.')) {
+        fetch(`/admin/static-pages/delete/${pageId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('حدث خطأ: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('حدث خطأ أثناء الحذف');
+        });
+    }
+}
+
+function initDefaultPages() {
+    if (confirm('سيتم إنشاء الصفحات الافتراضية (سياسة الخصوصية، اتصل بنا، من نحن، الشروط والأحكام). هل تريد المتابعة؟')) {
+        fetch('/admin/static-pages/init-default', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert('حدث خطأ: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('حدث خطأ أثناء إنشاء الصفحات');
+        });
+    }
+}
+</script>
+{% endblock %}

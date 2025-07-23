@@ -47,13 +47,16 @@ class User(UserMixin, db.Model):
 class Product(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False)
+    name_en = db.Column(db.String(200))  # الاسم بالإنجليزية
     description = db.Column(db.Text)
+    detailed_description = db.Column(db.Text)  # وصف مفصل
     category = db.Column(db.String(100))  # للتوافق مع النظام القديم
     category_id = db.Column(db.Integer, db.ForeignKey('category.id'))  # القسم الرئيسي الجديد
     subcategory_id = db.Column(db.Integer, db.ForeignKey('subcategory.id'))  # القسم الفرعي
     region = db.Column(db.String(50))
     value = db.Column(db.String(50))
     regular_price = db.Column(db.Numeric(10, 2))
+    sale_price = db.Column(db.Numeric(10, 2))  # سعر العرض
     kyc_price = db.Column(db.Numeric(10, 2))
     reseller_price = db.Column(db.Numeric(10, 2))
     image_url = db.Column(db.String(200))
@@ -61,6 +64,9 @@ class Product(db.Model):
     expiry_date = db.Column(db.Date)
     is_active = db.Column(db.Boolean, default=True)
     stock_quantity = db.Column(db.Integer, default=0)
+    digital_delivery = db.Column(db.Boolean, default=True)  # توصيل رقمي
+    instant_delivery = db.Column(db.Boolean, default=True)  # توصيل فوري
+    is_featured = db.Column(db.Boolean, default=False)  # منتج مميز
     # إضافة ميزات التحكم في الظهور والأسعار المخصصة
     visibility = db.Column(db.String(20), default='public')  # public, restricted
     restricted_visibility = db.Column(db.Boolean, default=False)  # للتوافق مع النظام القديم
@@ -119,10 +125,17 @@ class OrderItem(db.Model):
 class PaymentGateway(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
-    fee_percentage = db.Column(db.Numeric(5, 2), default=0)
+    provider = db.Column(db.String(50), nullable=False)  # visa_mastercard, mada, stc_pay
     is_active = db.Column(db.Boolean, default=True)
+    config = db.Column(db.JSON)  # إعدادات JSON للبوابة
+    supported_currencies = db.Column(db.JSON)  # قائمة العملات المدعومة
+    min_amount = db.Column(db.Numeric(10, 2), default=1.00)
+    max_amount = db.Column(db.Numeric(10, 2), default=10000.00)
+    fee_percentage = db.Column(db.Numeric(5, 2), default=0)
+    fee_fixed = db.Column(db.Numeric(10, 2), default=0.00)
     api_key = db.Column(db.String(200))
     secret_key = db.Column(db.String(200))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Currency(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -226,8 +239,13 @@ class MainOffer(db.Model):
     """العروض الرئيسية - صورة مع رابط"""
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
+    title_en = db.Column(db.String(200))  # العنوان بالإنجليزية
+    description = db.Column(db.Text)  # وصف العرض
     image_url = db.Column(db.String(500), nullable=False)
     link_url = db.Column(db.String(500), nullable=False)
+    button_text = db.Column(db.String(100), default='اشتري الآن')  # نص الزر
+    start_date = db.Column(db.DateTime)  # تاريخ بداية العرض
+    end_date = db.Column(db.DateTime)  # تاريخ انتهاء العرض
     is_active = db.Column(db.Boolean, default=True)
     display_order = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -238,8 +256,11 @@ class GiftCardSection(db.Model):
     """بطاقات الهدايا - صورة مع رابط"""
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
+    title_en = db.Column(db.String(200))  # العنوان بالإنجليزية
+    description = db.Column(db.Text)  # وصف القسم
     image_url = db.Column(db.String(500), nullable=False)
     link_url = db.Column(db.String(500), nullable=False)
+    button_text = db.Column(db.String(100), default='تصفح الآن')  # نص الزر
     card_type = db.Column(db.String(50), default='gift')  # نوع البطاقة للفلترة (gift, shopping, mobile, films, pc, xbox, stc)
     is_active = db.Column(db.Boolean, default=True)
     display_order = db.Column(db.Integer, default=0)
@@ -249,7 +270,10 @@ class OtherBrand(db.Model):
     """ماركات أخرى - اسم وصورة ورابط"""
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
-    image_url = db.Column(db.String(500), nullable=False)
+    name_en = db.Column(db.String(100))  # الاسم بالإنجليزية
+    description = db.Column(db.Text)  # وصف العلامة التجارية
+    logo_url = db.Column(db.String(500), nullable=False)  # شعار العلامة التجارية
+    image_url = db.Column(db.String(500), nullable=False)  # للتوافق مع النظام القديم
     link_url = db.Column(db.String(500), nullable=False)
     is_active = db.Column(db.Boolean, default=True)
     display_order = db.Column(db.Integer, default=0)
@@ -264,6 +288,8 @@ class Category(db.Model):
     description = db.Column(db.Text)
     icon_class = db.Column(db.String(100))  # أيقونة FontAwesome
     image_url = db.Column(db.String(500))
+    show_in_header = db.Column(db.Boolean, default=True)  # إظهار في الهيدر
+    show_in_footer = db.Column(db.Boolean, default=True)  # إظهار في الفوتر
     is_active = db.Column(db.Boolean, default=True)
     display_order = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -555,3 +581,22 @@ class UserWallet(db.Model):
     user = db.relationship('User', backref='wallet', lazy=True)
 
 # نماذج إدارة الموظفين والصلاحيات
+
+class StaticPage(db.Model):
+    """نموذج الصفحات الثابتة"""
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)  # عنوان الصفحة
+    slug = db.Column(db.String(100), unique=True, nullable=False)  # الرابط المختصر
+    content = db.Column(db.Text, nullable=False)  # محتوى الصفحة
+    meta_description = db.Column(db.String(300))  # وصف السيو
+    meta_keywords = db.Column(db.String(500))  # كلمات مفتاحية للسيو
+    is_active = db.Column(db.Boolean, default=True)  # نشطة أم لا
+    show_in_footer = db.Column(db.Boolean, default=True)  # إظهار في الفوتر
+    show_in_header = db.Column(db.Boolean, default=False)  # إظهار في الهيدر
+    display_order = db.Column(db.Integer, default=0)  # ترتيب العرض
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_by = db.Column(db.Integer, db.ForeignKey('user.id'))  # من قام بإنشائها
+    
+    def __repr__(self):
+        return f'<StaticPage {self.title}>'
