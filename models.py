@@ -87,6 +87,7 @@ class ProductCode(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
     code = db.Column(db.String(500), nullable=False)
+    serial_number = db.Column(db.String(200))  # الرقم التسلسلي (اختياري)
     is_used = db.Column(db.Boolean, default=False)
     used_at = db.Column(db.DateTime)
     order_id = db.Column(db.Integer, db.ForeignKey('order.id'))
