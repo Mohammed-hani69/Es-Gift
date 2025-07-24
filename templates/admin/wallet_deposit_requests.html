@@ -125,7 +125,17 @@
                     <td>
                         <span class="currency-badge">{{ request.currency_code }}</span>
                     </td>
-                    <td>{{ request.payment_method }}</td>
+                    <td>
+                        {% if request.payment_method == 'bank_transfer' %}
+                            <i class="fas fa-university"></i> تحويل بنكي
+                        {% elif request.payment_method == 'usdt_trc20' %}
+                            <i class="fab fa-bitcoin"></i> USDT (TRC20)
+                        {% elif request.payment_method == 'visa' %}
+                            <i class="fas fa-credit-card"></i> فيزا/ماستركارد
+                        {% else %}
+                            <i class="fas fa-credit-card"></i> {{ request.payment_method }}
+                        {% endif %}
+                    </td>
                     <td>
                         <span class="status-badge status-{{ request.status }}">
                             {% if request.status == 'pending' %}
@@ -311,6 +321,12 @@ function submitApproval() {
         return;
     }
     
+    // إضافة مؤشر التحميل
+    const submitButton = document.querySelector('#approveModal .btn-success');
+    const originalText = submitButton.innerHTML;
+    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الموافقة...';
+    submitButton.disabled = true;
+    
     fetch(`/admin/wallet/approve-deposit/${currentRequestId}`, {
         method: 'POST',
         headers: {
@@ -327,13 +343,20 @@ function submitApproval() {
         if (data.success) {
             showNotification(data.message, 'success');
             closeModal('approveModal');
-            setTimeout(() => location.reload(), 2000);
+            // إعادة تحميل فورية للصفحة
+            location.reload();
         } else {
+            // إعادة الزر لحالته الأصلية في حالة الخطأ
+            submitButton.innerHTML = originalText;
+            submitButton.disabled = false;
             showNotification(data.message || 'حدث خطأ في الموافقة على الطلب', 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
+        // إعادة الزر لحالته الأصلية في حالة الخطأ
+        submitButton.innerHTML = originalText;
+        submitButton.disabled = false;
         showNotification('حدث خطأ في الاتصال', 'error');
     });
 }
@@ -352,6 +375,12 @@ function submitRejection() {
         return;
     }
     
+    // إضافة مؤشر التحميل
+    const submitButton = document.querySelector('#rejectModal .btn-danger');
+    const originalText = submitButton.innerHTML;
+    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الرفض...';
+    submitButton.disabled = true;
+    
     fetch(`/admin/wallet/reject-deposit/${currentRequestId}`, {
         method: 'POST',
         headers: {
@@ -366,13 +395,20 @@ function submitRejection() {
         if (data.success) {
             showNotification(data.message, 'success');
             closeModal('rejectModal');
-            setTimeout(() => location.reload(), 2000);
+            // إعادة تحميل فورية للصفحة
+            location.reload();
         } else {
+            // إعادة الزر لحالته الأصلية في حالة الخطأ
+            submitButton.innerHTML = originalText;
+            submitButton.disabled = false;
             showNotification(data.message || 'حدث خطأ في رفض الطلب', 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
+        // إعادة الزر لحالته الأصلية في حالة الخطأ
+        submitButton.innerHTML = originalText;
+        submitButton.disabled = false;
         showNotification('حدث خطأ في الاتصال', 'error');
     });
 }
@@ -575,6 +611,21 @@ function showNotification(message, type) {
     border-color: #ff0033;
     outline: none;
     box-shadow: 0 0 0 2px rgba(255, 0, 51, 0.2);
+}
+
+/* تحسينات للأزرار المعطلة */
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn:disabled .fa-spinner {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }
 
 @keyframes slideIn {

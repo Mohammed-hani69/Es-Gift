@@ -4,7 +4,7 @@
 routes المحفظة ونظام الحدود
 """
 
-from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash
+from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash, current_app
 from flask_login import login_required, current_user
 from datetime import datetime, date
 from decimal import Decimal
@@ -370,18 +370,11 @@ def deposit():
                              payment_gateways=payment_gateways)
     
     try:
-        # التحقق من طريقة الإرسال (JSON أو Form)
-        if request.is_json:
-            data = request.get_json()
-            amount = Decimal(str(data.get('amount', '0')))
-            currency_code = data.get('currency', 'USD')
-            payment_method = data.get('payment_method', 'visa')
-            notes = data.get('notes', '')
-        else:
-            amount = Decimal(request.form.get('amount', '0'))
-            currency_code = request.form.get('currency', 'USD')
-            payment_method = request.form.get('payment_method', 'visa')
-            notes = request.form.get('notes', '')
+        # استخدام FormData بدلاً من JSON لدعم رفع الملفات
+        amount = Decimal(request.form.get('amount', '0'))
+        currency_code = request.form.get('currency', 'USD')
+        payment_method = request.form.get('payment_method', 'bank_transfer')
+        notes = request.form.get('notes', '')
         
         # التحقق من صحة البيانات
         if amount <= 0:
@@ -391,6 +384,36 @@ def deposit():
         currency = Currency.query.filter_by(code=currency_code, is_active=True).first()
         if not currency:
             return jsonify({'success': False, 'message': 'العملة المحددة غير متاحة'})
+        
+        # التعامل مع رفع ملف إثبات المعاملة
+        transaction_proof_filename = None
+        if 'transaction_proof' in request.files:
+            file = request.files['transaction_proof']
+            if file and file.filename:
+                # التحقق من نوع الملف
+                allowed_extensions = {'png', 'jpg', 'jpeg', 'gif'}
+                file_extension = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
+                
+                if file_extension in allowed_extensions:
+                    # إنشاء اسم ملف آمن
+                    import os
+                    from werkzeug.utils import secure_filename
+                    import uuid
+                    
+                    filename = secure_filename(file.filename)
+                    # إضافة UUID للتأكد من عدم التكرار
+                    name, ext = os.path.splitext(filename)
+                    transaction_proof_filename = f"{current_user.id}_{uuid.uuid4().hex[:8]}_{name}{ext}"
+                    
+                    # إنشاء مجلد التحميل إذا لم يكن موجوداً
+                    upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'transaction_proofs')
+                    os.makedirs(upload_folder, exist_ok=True)
+                    
+                    # حفظ الملف
+                    file_path = os.path.join(upload_folder, transaction_proof_filename)
+                    file.save(file_path)
+                else:
+                    return jsonify({'success': False, 'message': 'نوع الملف غير مدعوم. يرجى رفع صورة (PNG, JPG, JPEG, GIF)'})
         
         # تحويل المبلغ إلى الدولار للإحصائيات
         if currency_code != 'USD':
@@ -418,18 +441,22 @@ def deposit():
             user_type=user_type,
             user_ip=request.remote_addr,
             user_agent=request.headers.get('User-Agent', ''),
-            payment_details=notes if notes else None
+            payment_details=notes if notes else None,
+            transaction_proof=transaction_proof_filename
         )
         
         db.session.add(deposit_request)
         db.session.commit()
         
-        # هنا يمكن إضافة معالجة الدفع الفعلية مع بوابة الدفع
-        # مؤقتاً سنترك الطلب في حالة pending للأدمن
+        # رسالة مختلفة حسب طريقة الدفع
+        if payment_method == 'bank_transfer':
+            message = 'تم إرسال طلب الإيداع بنجاح! يرجى التحويل للحساب البنكي المذكور وسيتم مراجعة طلبك خلال 1-3 أيام عمل.'
+        else:
+            message = 'تم إرسال طلب الإيداع بنجاح! سيتم مراجعة إثبات التحويل من قبل الإدارة خلال 24 ساعة.'
         
         return jsonify({
             'success': True, 
-            'message': 'تم إرسال طلب الإيداع بنجاح! سيتم مراجعته من قبل الإدارة.',
+            'message': message,
             'redirect': url_for('wallet.deposit_requests')
         })
         

@@ -463,16 +463,12 @@ def cart():
             total += price * quantity
     
     # الحصول على رصيد المحفظة للمقارنة
-    wallet_balance = 0
-    current_currency = 'USD'
+    wallet_balance = 0.0
+    current_currency = session.get('currency', 'USD')
     
     try:
         from wallet_utils import get_or_create_wallet, get_currency_rate
         wallet = get_or_create_wallet(current_user)
-        
-        # تحديد العملة الحالية من الجلسة أو من العملة الافتراضية
-        if 'currency' in session:
-            current_currency = session['currency']
         
         # تحويل رصيد المحفظة للعملة الحالية
         if wallet.currency != current_currency:
@@ -483,13 +479,13 @@ def cart():
             
     except Exception as e:
         print(f"خطأ في الحصول على رصيد المحفظة: {e}")
-        wallet_balance = 0
+        wallet_balance = 0.0
     
     return render_template('cart.html', 
                          cart_items=cart_items, 
-                         total=total,
-                         cart_total=total,
-                         wallet_balance=wallet_balance,
+                         total=float(total),
+                         cart_total=float(total),
+                         wallet_balance=float(wallet_balance),
                          current_currency=current_currency)
 
 @main.route('/update-cart-quantity', methods=['POST'])
@@ -609,7 +605,7 @@ def checkout_payment(order_id):
     
     return render_template('checkout_payment.html', 
                          order=order, 
-                         wallet_balance=wallet_balance,
+                         wallet_balance=float(wallet_balance),
                          wallet=wallet,  # إضافة تفاصيل المحفظة الكاملة
                          payment_gateways=payment_gateways)
 

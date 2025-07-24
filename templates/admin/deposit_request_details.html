@@ -83,6 +83,21 @@
         align-items: center;
     }
 }
+
+/* تحسينات للأزرار المعطلة */
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn:disabled .fa-spinner {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
 </style>
 {% endblock %}
 
@@ -160,7 +175,13 @@
                 <span class="detail-label">طريقة الدفع:</span>
                 <span class="detail-value">
                     <i class="fas fa-credit-card"></i>
-                    {{ 'فيزا/ماستركارد' if request.payment_method == 'visa' else request.payment_method }}
+                    {% if request.payment_method == 'bank_transfer' %}
+                        تحويل بنكي
+                    {% elif request.payment_method == 'usdt_trc20' %}
+                        USDT (TRC20)
+                    {% else %}
+                        {{ request.payment_method }}
+                    {% endif %}
                 </span>
             </div>
             
@@ -174,6 +195,40 @@
                 </span>
             </div>
         </div>
+
+        <!-- إثبات المعاملة -->
+        {% if request.transaction_proof %}
+        <div class="detail-card">
+            <h3>
+                <i class="fas fa-image"></i>
+                إثبات المعاملة
+            </h3>
+            
+            <div class="transaction-proof-section" style="text-align: center; padding: 20px;">
+                <div class="proof-image-container" style="display: inline-block; max-width: 500px; border: 2px solid rgba(255, 255, 255, 0.1); border-radius: 15px; padding: 15px; background: rgba(255, 255, 255, 0.02);">
+                    <img src="{{ url_for('static', filename='uploads/transaction_proofs/' + request.transaction_proof) }}" 
+                         alt="إثبات المعاملة" 
+                         style="max-width: 100%; height: auto; border-radius: 10px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);"
+                         onclick="openImageModal(this.src)">
+                    
+                    <div style="margin-top: 15px; display: flex; gap: 10px; justify-content: center;">
+                        <a href="{{ url_for('static', filename='uploads/transaction_proofs/' + request.transaction_proof) }}" 
+                           target="_blank" 
+                           class="btn btn-primary btn-sm">
+                            <i class="fas fa-external-link-alt"></i>
+                            فتح في نافذة جديدة
+                        </a>
+                        
+                        <button onclick="downloadImage('{{ url_for('static', filename='uploads/transaction_proofs/' + request.transaction_proof) }}', '{{ request.transaction_proof }}')" 
+                                class="btn btn-secondary btn-sm">
+                            <i class="fas fa-download"></i>
+                            تحميل
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
 
         <!-- التواريخ والمعالجة -->
         <div class="detail-card">
@@ -403,6 +458,12 @@ function submitApproval() {
         return;
     }
     
+    // إضافة مؤشر التحميل
+    const submitButton = document.querySelector('#approveModal .btn-success');
+    const originalText = submitButton.innerHTML;
+    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الموافقة...';
+    submitButton.disabled = true;
+    
     fetch(`/admin/wallet/approve-deposit/{{ request.id }}`, {
         method: 'POST',
         headers: {
@@ -415,13 +476,20 @@ function submitApproval() {
         if (data.success) {
             showNotification(data.message, 'success');
             closeApproveModal();
-            setTimeout(() => location.reload(), 2000);
+            // إعادة تحميل فورية للصفحة
+            location.reload();
         } else {
+            // إعادة الزر لحالته الأصلية في حالة الخطأ
+            submitButton.innerHTML = originalText;
+            submitButton.disabled = false;
             showNotification(data.message, 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
+        // إعادة الزر لحالته الأصلية في حالة الخطأ
+        submitButton.innerHTML = originalText;
+        submitButton.disabled = false;
         showNotification('حدث خطأ أثناء معالجة الطلب', 'error');
     });
 }
@@ -445,6 +513,12 @@ function submitRejection() {
         return;
     }
     
+    // إضافة مؤشر التحميل
+    const submitButton = document.querySelector('#rejectModal .btn-danger');
+    const originalText = submitButton.innerHTML;
+    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الرفض...';
+    submitButton.disabled = true;
+    
     fetch(`/admin/wallet/reject-deposit/{{ request.id }}`, {
         method: 'POST',
         headers: {
@@ -457,15 +531,100 @@ function submitRejection() {
         if (data.success) {
             showNotification(data.message, 'success');
             closeRejectModal();
-            setTimeout(() => location.reload(), 2000);
+            // إعادة تحميل فورية للصفحة
+            location.reload();
         } else {
+            // إعادة الزر لحالته الأصلية في حالة الخطأ
+            submitButton.innerHTML = originalText;
+            submitButton.disabled = false;
             showNotification(data.message, 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
+        // إعادة الزر لحالته الأصلية في حالة الخطأ
+        submitButton.innerHTML = originalText;
+        submitButton.disabled = false;
         showNotification('حدث خطأ أثناء معالجة الطلب', 'error');
     });
+}
+
+// عرض صورة إثبات المعاملة في مودال
+function openImageModal(imageSrc) {
+    // إنشاء مودال لعرض الصورة
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        cursor: pointer;
+    `;
+    
+    const img = document.createElement('img');
+    img.src = imageSrc;
+    img.style.cssText = `
+        max-width: 90%;
+        max-height: 90%;
+        border-radius: 10px;
+        box-shadow: 0 4px 20px rgba(255, 255, 255, 0.1);
+    `;
+    
+    const closeBtn = document.createElement('button');
+    closeBtn.innerHTML = '&times;';
+    closeBtn.style.cssText = `
+        position: absolute;
+        top: 20px;
+        right: 30px;
+        background: rgba(255, 255, 255, 0.2);
+        border: none;
+        color: white;
+        font-size: 40px;
+        cursor: pointer;
+        border-radius: 50%;
+        width: 60px;
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    `;
+    
+    modal.appendChild(img);
+    modal.appendChild(closeBtn);
+    document.body.appendChild(modal);
+    
+    // إغلاق المودال
+    const closeModal = () => {
+        document.body.removeChild(modal);
+    };
+    
+    modal.onclick = closeModal;
+    closeBtn.onclick = closeModal;
+    
+    // إغلاق بزر Escape
+    const escHandler = (e) => {
+        if (e.key === 'Escape') {
+            closeModal();
+            document.removeEventListener('keydown', escHandler);
+        }
+    };
+    document.addEventListener('keydown', escHandler);
+}
+
+// تحميل الصورة
+function downloadImage(imageSrc, filename) {
+    const link = document.createElement('a');
+    link.href = imageSrc;
+    link.download = filename || 'transaction_proof.jpg';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
 
 // إغلاق المودال عند النقر خارجه

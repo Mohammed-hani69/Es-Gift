@@ -239,8 +239,19 @@
                                 <div class="currency-info">≈ {{ request.amount_usd }} USD</div>
                             </td>
                             <td>
-                                <i class="fas fa-credit-card"></i>
-                                {{ 'فيزا/ماستركارد' if request.payment_method == 'visa' else request.payment_method }}
+                                {% if request.payment_method == 'bank_transfer' %}
+                                    <i class="fas fa-university"></i>
+                                    تحويل بنكي
+                                {% elif request.payment_method == 'usdt_trc20' %}
+                                    <i class="fab fa-bitcoin"></i>
+                                    USDT (TRC20)
+                                {% elif request.payment_method == 'visa' %}
+                                    <i class="fas fa-credit-card"></i>
+                                    فيزا/ماستركارد
+                                {% else %}
+                                    <i class="fas fa-credit-card"></i>
+                                    {{ request.payment_method }}
+                                {% endif %}
                             </td>
                             <td>
                                 <span class="status-badge status-{{ request.status }}">

@@ -271,6 +271,210 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* تنسيقات بيانات البنك */
+.bank-details-card, .usdt-details-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    padding: 25px;
+    margin-top: 15px;
+}
+
+.bank-details-card h3, .usdt-details-card h3 {
+    color: #ff0033;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.2rem;
+}
+
+.bank-info, .crypto-info {
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.bank-item, .crypto-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.bank-item:last-child, .crypto-item:last-child {
+    border-bottom: none;
+}
+
+.bank-item label, .crypto-item label {
+    color: #ccc;
+    font-weight: 500;
+    min-width: 120px;
+}
+
+.account-number, .iban-number, .wallet-address {
+    font-family: 'Courier New', monospace;
+    background: rgba(255, 0, 51, 0.1);
+    padding: 8px 12px;
+    border-radius: 6px;
+    color: #fff;
+    font-weight: bold;
+    margin-right: 10px;
+}
+
+.crypto-currency, .network-type {
+    background: rgba(40, 167, 69, 0.2);
+    color: #28a745;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-weight: bold;
+}
+
+.copy-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.copy-btn:hover {
+    background: #ff0033;
+    transform: scale(1.05);
+}
+
+.bank-instructions, .crypto-instructions {
+    background: rgba(255, 193, 7, 0.1);
+    border: 1px solid rgba(255, 193, 7, 0.3);
+    border-radius: 10px;
+    padding: 20px;
+}
+
+.bank-instructions h4, .crypto-instructions h4 {
+    color: #ffc107;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.bank-instructions ul, .crypto-instructions ul {
+    color: #fff;
+    margin: 0;
+    padding-right: 20px;
+}
+
+.bank-instructions li, .crypto-instructions li {
+    margin-bottom: 8px;
+    line-height: 1.5;
+}
+
+/* رمز QR */
+.qr-code-section {
+    text-align: center;
+    margin: 20px 0;
+}
+
+.qr-code-section h4 {
+    color: #fff;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.qr-placeholder {
+    background: rgba(255, 255, 255, 0.05);
+    border: 2px dashed rgba(255, 255, 255, 0.3);
+    border-radius: 10px;
+    padding: 30px;
+    display: inline-block;
+    margin: 0 auto;
+}
+
+.qr-placeholder i {
+    font-size: 3rem;
+    color: #ccc;
+    margin-bottom: 10px;
+}
+
+.qr-placeholder p {
+    color: #ccc;
+    margin: 0;
+}
+
+/* رفع الملف */
+.file-upload-section {
+    margin-top: 20px;
+}
+
+.file-upload-area {
+    border: 2px dashed rgba(255, 255, 255, 0.3);
+    border-radius: 10px;
+    padding: 30px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.file-upload-area:hover {
+    border-color: #ff0033;
+    background: rgba(255, 0, 51, 0.05);
+}
+
+.upload-icon i {
+    font-size: 2.5rem;
+    color: #ff0033;
+    margin-bottom: 15px;
+}
+
+.upload-text p {
+    color: #fff;
+    font-weight: 500;
+    margin-bottom: 5px;
+}
+
+.upload-text small {
+    color: #ccc;
+}
+
+.selected-file {
+    background: rgba(40, 167, 69, 0.1);
+    border: 1px solid rgba(40, 167, 69, 0.3);
+    border-radius: 8px;
+    padding: 12px;
+    margin-top: 10px;
+    color: #28a745;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.copy-success {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(40, 167, 69, 0.9);
+    color: white;
+    padding: 15px 30px;
+    border-radius: 10px;
+    font-weight: bold;
+    z-index: 1000;
+    animation: fadeInOut 2s ease-in-out;
+}
+
+@keyframes fadeInOut {
+    0%, 100% { opacity: 0; }
+    50% { opacity: 1; }
+}
 </style>
 {% endblock %}
 
@@ -315,7 +519,7 @@
                         <i class="fas fa-coins"></i>
                         عملة الإيداع
                     </label>
-                    <select id="currency" name="currency" class="form-control form-select" required>
+                    <select id="currency" name="currency" class="form-control form-select" required onchange="updatePaymentMethods()">
                         <option value="">اختر العملة</option>
                         {% for currency in currencies %}
                         <option value="{{ currency.code }}" 
@@ -336,36 +540,122 @@
                     </div>
                 </div>
                 
-                <div class="form-group">
+                <!-- بيانات الحساب البنكي للريال -->
+                <div class="form-group" id="bankDetailsSection" style="display: none;">
+                    <div class="bank-details-card">
+                        <h3>
+                            <i class="fas fa-university"></i>
+                            بيانات الحساب البنكي للتحويل
+                        </h3>
+                        <div class="bank-info">
+                            <div class="bank-item">
+                                <label>اسم البنك:</label>
+                                <span>البنك الأهلي السعودي</span>
+                            </div>
+                            <div class="bank-item">
+                                <label>اسم المستفيد:</label>
+                                <span>شركة إس جيفت للهدايا الرقمية</span>
+                            </div>
+                            <div class="bank-item">
+                                <label>رقم الحساب:</label>
+                                <span class="account-number">SA12 1000 0012 3456 7890 1234</span>
+                                <button type="button" class="copy-btn" onclick="copyToClipboard('SA12 1000 0012 3456 7890 1234')">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                            <div class="bank-item">
+                                <label>رقم الآيبان:</label>
+                                <span class="iban-number">SA12 1000 0012 3456 7890 1234</span>
+                                <button type="button" class="copy-btn" onclick="copyToClipboard('SA12 1000 0012 3456 7890 1234')">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="bank-instructions">
+                            <h4><i class="fas fa-info-circle"></i> تعليمات التحويل</h4>
+                            <ul>
+                                <li>قم بالتحويل بالمبلغ المحدد أعلاه</li>
+                                <li>تأكد من كتابة اسمك الكامل في وصف التحويل</li>
+                                <li>احتفظ بإيصال التحويل للمراجعة</li>
+                                <li>سيتم إضافة المبلغ خلال 1-3 أيام عمل</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- بيانات محفظة USDT للدولار -->
+                <div class="form-group" id="usdtDetailsSection" style="display: none;">
+                    <div class="usdt-details-card">
+                        <h3>
+                            <i class="fab fa-bitcoin"></i>
+                            بيانات محفظة USDT للإيداع
+                        </h3>
+                        <div class="crypto-info">
+                            <div class="crypto-item">
+                                <label>نوع العملة:</label>
+                                <span class="crypto-currency">USDT (Tether)</span>
+                            </div>
+                            <div class="crypto-item">
+                                <label>الشبكة:</label>
+                                <span class="network-type">TRC20 (TRON)</span>
+                            </div>
+                            <div class="crypto-item">
+                                <label>عنوان المحفظة:</label>
+                                <span class="wallet-address">TQz8xvWKmpLgGrza5pXcZECyPfWzNEXxzf</span>
+                                <button type="button" class="copy-btn" onclick="copyToClipboard('TQz8xvWKmpLgGrza5pXcZECyPfWzNEXxzf')">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="qr-code-section">
+                            <h4><i class="fas fa-qrcode"></i> رمز QR للمحفظة</h4>
+                            <div class="qr-placeholder">
+                                <i class="fas fa-qrcode"></i>
+                                <p>امسح الرمز بمحفظتك</p>
+                            </div>
+                        </div>
+                        
+                        <div class="crypto-instructions">
+                            <h4><i class="fas fa-exclamation-triangle"></i> تعليمات مهمة</h4>
+                            <ul>
+                                <li><strong>استخدم شبكة TRC20 فقط</strong> - أي شبكة أخرى ستؤدي لفقدان الأموال</li>
+                                <li>تأكد من المبلغ المرسل بالضبط</li>
+                                <li>ارفق صورة للمعاملة أدناه</li>
+                                <li>سيتم مراجعة الطلب خلال 24 ساعة</li>
+                            </ul>
+                        </div>
+                        
+                        <!-- رفع صورة المعاملة -->
+                        <div class="file-upload-section">
+                            <label for="transactionProof" class="form-label">
+                                <i class="fas fa-camera"></i>
+                                إثبات المعاملة (صورة)
+                            </label>
+                            <div class="file-upload-area" onclick="document.getElementById('transactionProof').click()">
+                                <div class="upload-icon">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                </div>
+                                <div class="upload-text">
+                                    <p>اضغط لاختيار صورة إثبات المعاملة</p>
+                                    <small>PNG, JPG, JPEG - حد أقصى 5MB</small>
+                                </div>
+                            </div>
+                            <input type="file" id="transactionProof" name="transaction_proof" accept="image/*" style="display: none;" onchange="handleFileSelect(this)">
+                            <div id="selectedFile" class="selected-file" style="display: none;"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- طريقة الدفع تظهر تلقائياً حسب العملة -->
+                <div class="form-group" id="paymentMethodSection" style="display: none;">
                     <label class="form-label">
                         <i class="fas fa-credit-card"></i>
                         طريقة الدفع
                     </label>
                     
-                    <div class="payment-methods">
-                        {% if payment_gateways %}
-                            {% for gateway in payment_gateways %}
-                            <div class="payment-method" onclick="selectPaymentMethod('{{ gateway.code }}')">
-                                <input type="radio" name="payment_method" value="{{ gateway.code }}" id="pm_{{ gateway.code }}">
-                                <div class="payment-icon">
-                                    <i class="fas fa-credit-card"></i>
-                                </div>
-                                <div class="payment-name">{{ gateway.display_name }}</div>
-                                {% if gateway.description %}
-                                <div class="payment-desc">{{ gateway.description }}</div>
-                                {% endif %}
-                            </div>
-                            {% endfor %}
-                        {% else %}
-                            <div class="payment-method selected" onclick="selectPaymentMethod('visa')">
-                                <input type="radio" name="payment_method" value="visa" id="pm_visa" checked>
-                                <div class="payment-icon">
-                                    <i class="fas fa-credit-card"></i>
-                                </div>
-                                <div class="payment-name">فيزا/ماستركارد</div>
-                                <div class="payment-desc">دفع آمن بالبطاقة الائتمانية</div>
-                            </div>
-                        {% endif %}
+                    <div class="payment-methods" id="paymentMethodsContainer">
+                        <!-- سيتم إضافة طرق الدفع ديناميكياً حسب العملة -->
                     </div>
                 </div>
                 
@@ -386,7 +676,112 @@
 </div>
 
 <script>
-// تحديث معلومات العملة
+// تحديث طرق الدفع حسب العملة المختارة
+function updatePaymentMethods() {
+    const currencySelect = document.getElementById('currency');
+    const selectedCurrency = currencySelect.value;
+    const bankDetailsSection = document.getElementById('bankDetailsSection');
+    const usdtDetailsSection = document.getElementById('usdtDetailsSection');
+    const paymentMethodSection = document.getElementById('paymentMethodSection');
+    const paymentMethodsContainer = document.getElementById('paymentMethodsContainer');
+    
+    // إخفاء جميع الأقسام أولاً
+    bankDetailsSection.style.display = 'none';
+    usdtDetailsSection.style.display = 'none';
+    paymentMethodSection.style.display = 'none';
+    paymentMethodsContainer.innerHTML = '';
+    
+    if (selectedCurrency === 'SAR') {
+        // إظهار بيانات البنك للريال السعودي
+        bankDetailsSection.style.display = 'block';
+        paymentMethodSection.style.display = 'block';
+        
+        // إضافة طريقة التحويل البنكي
+        paymentMethodsContainer.innerHTML = `
+            <div class="payment-method selected" onclick="selectPaymentMethod('bank_transfer')">
+                <input type="radio" name="payment_method" value="bank_transfer" id="pm_bank_transfer" checked>
+                <div class="payment-icon">
+                    <i class="fas fa-university"></i>
+                </div>
+                <div class="payment-name">تحويل بنكي</div>
+                <div class="payment-desc">حوّل للحساب البنكي المذكور أعلاه</div>
+            </div>
+        `;
+        
+    } else if (selectedCurrency === 'USD') {
+        // إظهار بيانات محفظة USDT للدولار
+        usdtDetailsSection.style.display = 'block';
+        paymentMethodSection.style.display = 'block';
+        
+        // إضافة طريقة USDT
+        paymentMethodsContainer.innerHTML = `
+            <div class="payment-method selected" onclick="selectPaymentMethod('usdt_trc20')">
+                <input type="radio" name="payment_method" value="usdt_trc20" id="pm_usdt_trc20" checked>
+                <div class="payment-icon">
+                    <i class="fab fa-bitcoin"></i>
+                </div>
+                <div class="payment-name">USDT (TRC20)</div>
+                <div class="payment-desc">أرسل USDT عبر شبكة TRON</div>
+            </div>
+        `;
+    }
+}
+
+// التعامل مع اختيار الملف
+function handleFileSelect(input) {
+    const selectedFileDiv = document.getElementById('selectedFile');
+    const uploadText = document.querySelector('.upload-text');
+    
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        const fileName = file.name;
+        const fileSize = (file.size / 1024 / 1024).toFixed(2); // بالميجابايت
+        
+        selectedFileDiv.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: rgba(40, 167, 69, 0.2); border-radius: 8px; color: #28a745;">
+                <i class="fas fa-check-circle"></i>
+                <span>${fileName} (${fileSize} MB)</span>
+                <button type="button" onclick="clearFile()" style="background: none; border: none; color: #dc3545; cursor: pointer; margin-left: auto;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `;
+        selectedFileDiv.style.display = 'block';
+        uploadText.innerHTML = '<p style="color: #28a745;"><i class="fas fa-check"></i> تم اختيار الملف بنجاح</p>';
+    }
+}
+
+// مسح الملف المختار
+function clearFile() {
+    const fileInput = document.getElementById('transactionProof');
+    const selectedFileDiv = document.getElementById('selectedFile');
+    const uploadText = document.querySelector('.upload-text');
+    
+    fileInput.value = '';
+    selectedFileDiv.style.display = 'none';
+    uploadText.innerHTML = `
+        <p>اضغط لاختيار صورة إثبات المعاملة</p>
+        <small>PNG, JPG, JPEG - حد أقصى 5MB</small>
+    `;
+}
+
+// نسخ النص إلى الحافظة
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(function() {
+        // إظهار رسالة نجاح
+        const successMsg = document.createElement('div');
+        successMsg.className = 'copy-success';
+        successMsg.textContent = 'تم النسخ بنجاح!';
+        document.body.appendChild(successMsg);
+        
+        setTimeout(() => {
+            document.body.removeChild(successMsg);
+        }, 2000);
+    }).catch(function(err) {
+        console.error('فشل في النسخ: ', err);
+        alert('فشل في نسخ النص');
+    });
+}
 document.getElementById('currency').addEventListener('change', function() {
     const selectedOption = this.options[this.selectedIndex];
     const currencyInfo = document.getElementById('currencyInfo');
@@ -459,6 +854,7 @@ document.getElementById('depositForm').addEventListener('submit', function(e) {
     const amount = document.getElementById('amount').value;
     const currency = document.getElementById('currency').value;
     const paymentMethod = document.querySelector('input[name="payment_method"]:checked');
+    const transactionProof = document.getElementById('transactionProof');
     
     if (!amount || amount <= 0) {
         alert('يرجى إدخال مبلغ صحيح');
@@ -475,6 +871,12 @@ document.getElementById('depositForm').addEventListener('submit', function(e) {
         return;
     }
     
+    // التحقق من رفع صورة إثبات المعاملة للعملات المشفرة
+    if (currency === 'USD' && paymentMethod.value === 'usdt_trc20' && !transactionProof.files.length) {
+        alert('يرجى رفع صورة إثبات التحويل للعملات المشفرة');
+        return;
+    }
+    
     // إظهار حالة التحميل
     submitBtn.disabled = true;
     loadingSpinner.style.display = 'inline-block';
@@ -485,6 +887,11 @@ document.getElementById('depositForm').addEventListener('submit', function(e) {
     formData.append('amount', amount);
     formData.append('currency', currency);
     formData.append('payment_method', paymentMethod.value);
+    
+    // إضافة صورة إثبات المعاملة إذا كانت متوفرة
+    if (transactionProof.files.length > 0) {
+        formData.append('transaction_proof', transactionProof.files[0]);
+    }
     
     fetch('{{ url_for("wallet.deposit") }}', {
         method: 'POST',

@@ -644,6 +644,7 @@ class WalletDepositRequest(db.Model):
     payment_method = db.Column(db.String(50), default='visa')  # طريقة الدفع
     payment_reference = db.Column(db.String(200))  # مرجع الدفع من البوابة
     payment_details = db.Column(db.Text)  # تفاصيل إضافية للدفع (JSON)
+    transaction_proof = db.Column(db.String(300))  # مسار ملف إثبات المعاملة
     
     # حالة الطلب
     status = db.Column(db.String(20), default='pending')  # pending, approved, rejected, cancelled
