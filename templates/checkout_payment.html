@@ -637,20 +637,244 @@ function showMessage(message, type = 'error') {
     const successDiv = document.getElementById('successMessage');
     
     if (type === 'error') {
-        errorDiv.textContent = message;
+        errorDiv.innerHTML = message.replace(/\n/g, '<br>');
         errorDiv.style.display = 'block';
         successDiv.style.display = 'none';
     } else {
-        successDiv.textContent = message;
+        successDiv.innerHTML = message.replace(/\n/g, '<br>');
         successDiv.style.display = 'block';
         errorDiv.style.display = 'none';
     }
     
-    // إخفاء الرسالة بعد 5 ثوان
+    // إخفاء الرسالة بعد 10 ثوان للرسائل الطويلة
     setTimeout(() => {
         errorDiv.style.display = 'none';
         successDiv.style.display = 'none';
-    }, 5000);
+    }, type === 'error' ? 10000 : 5000);
+}
+
+function showInsufficientBalanceMessage(result) {
+    const balanceInfo = result.balance_info || {};
+    const deficit = balanceInfo.deficit || 0;
+    const currency = balanceInfo.currency || 'USD';
+    
+    const messageHTML = `
+        <div style="text-align: center; padding: 30px; max-width: 500px; margin: 0 auto;">
+            <div style="font-size: 4rem; margin-bottom: 20px;">�</div>
+            <h2 style="color: #ff4757; margin-bottom: 25px; font-size: 1.8rem;">رصيد المحفظة غير كافٍ</h2>
+            
+            <div style="background: rgba(255, 71, 87, 0.1); padding: 25px; border-radius: 15px; margin: 25px 0; border: 2px solid rgba(255, 71, 87, 0.3);">
+                <h4 style="color: #fff; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                    <i class="fas fa-chart-pie"></i>
+                    تفاصيل العملية
+                </h4>
+                <div style="display: flex; justify-content: space-between; margin: 15px 0; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                    <span style="color: #ddd;">💳 الرصيد المتاح:</span>
+                    <span style="color: #ffc107; font-weight: bold; font-size: 1.1rem;">${(balanceInfo.current_balance || 0).toFixed(2)} ${currency}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin: 15px 0; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                    <span style="color: #ddd;">💰 المبلغ المطلوب:</span>
+                    <span style="color: #17a2b8; font-weight: bold; font-size: 1.1rem;">${(balanceInfo.required_amount || 0).toFixed(2)} ${currency}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin: 15px 0; padding: 12px; background: rgba(255,71,87,0.2); border-radius: 8px; border: 1px solid rgba(255,71,87,0.4);">
+                    <span style="color: #fff; font-weight: bold;">⚠️ المبلغ الناقص:</span>
+                    <span style="color: #ff4757; font-weight: bold; font-size: 1.3rem;">${deficit.toFixed(2)} ${currency}</span>
+                </div>
+            </div>
+            
+            <div style="background: linear-gradient(135deg, rgba(255, 193, 7, 0.15), rgba(255, 152, 0, 0.15)); padding: 20px; border-radius: 15px; margin: 25px 0; border: 1px solid rgba(255, 193, 7, 0.3);">
+                <div style="display: flex; align-items: center; gap: 12px; color: #ffc107; margin-bottom: 10px;">
+                    <i class="fas fa-lightbulb" style="font-size: 1.3rem;"></i>
+                    <strong style="font-size: 1.1rem;">حل سريع وآمن:</strong>
+                </div>
+                <p style="margin: 0; color: #fff; line-height: 1.7; font-size: 1rem;">
+                    يمكنك إيداع المبلغ الناقص في دقائق معدودة من خلال صفحة المحفظة، أو الدفع مباشرة بالبطاقة البنكية
+                </p>
+            </div>
+            
+            <div style="display: flex; gap: 15px; justify-content: center; margin-top: 30px; flex-wrap: wrap;">
+                <a href="/wallet/deposit" class="btn" style="background: linear-gradient(135deg, #28a745, #20c997); color: white; padding: 15px 30px; border-radius: 30px; text-decoration: none; display: inline-flex; align-items: center; gap: 10px; font-weight: bold; box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3); transition: all 0.3s ease;">
+                    <i class="fas fa-plus-circle"></i>
+                    إيداع في المحفظة
+                </a>
+                <button onclick="selectPaymentMethod('card')" class="btn" style="background: linear-gradient(135deg, #007bff, #0056b3); color: white; padding: 15px 30px; border-radius: 30px; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 10px; font-weight: bold; box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3); transition: all 0.3s ease;">
+                    <i class="fas fa-credit-card"></i>
+                    الدفع بالبطاقة
+                </button>
+            </div>
+            
+            <div style="margin-top: 25px; padding: 15px; background: rgba(255,255,255,0.02); border-radius: 10px;">
+                <small style="color: #999; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <i class="fas fa-shield-alt"></i>
+                    جميع المعاملات محمية بأعلى معايير الأمان
+                </small>
+            </div>
+        </div>
+    `;
+    
+    // إنشاء مودال مخصص للرسالة
+    showCustomModal(messageHTML);
+}
+
+function showCustomModal(content) {
+    // إنشاء مودال مؤقت
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.85);
+        backdrop-filter: blur(5px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        animation: fadeIn 0.3s ease-out;
+        padding: 20px;
+        box-sizing: border-box;
+    `;
+    
+    // إضافة محتوى المودال
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+        background: linear-gradient(135deg, #1a1a1a, #2a2a2a);
+        border-radius: 20px;
+        max-width: 600px;
+        width: 100%;
+        position: relative;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+        animation: slideIn 0.4s ease-out;
+        max-height: 90vh;
+        overflow-y: auto;
+    `;
+    
+    modalContent.innerHTML = content;
+    
+    // إضافة زر الإغلاق
+    const closeBtn = document.createElement('button');
+    closeBtn.innerHTML = '&times;';
+    closeBtn.style.cssText = `
+        position: absolute;
+        top: 15px;
+        right: 20px;
+        background: rgba(255, 255, 255, 0.1);
+        border: none;
+        color: #fff;
+        font-size: 24px;
+        cursor: pointer;
+        width: 35px;
+        height: 35px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+    `;
+    
+    closeBtn.onmouseover = function() {
+        this.style.background = 'rgba(255, 71, 87, 0.2)';
+        this.style.transform = 'scale(1.1)';
+    };
+    
+    closeBtn.onmouseout = function() {
+        this.style.background = 'rgba(255, 255, 255, 0.1)';
+        this.style.transform = 'scale(1)';
+    };
+    
+    closeBtn.onclick = function() {
+        modal.style.animation = 'fadeOut 0.3s ease-out';
+        setTimeout(() => document.body.removeChild(modal), 300);
+    };
+    
+    modalContent.appendChild(closeBtn);
+    modal.appendChild(modalContent);
+    
+    // إضافة أنيميشن CSS
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+        
+        @keyframes slideIn {
+            from { 
+                transform: translateY(-30px) scale(0.95);
+                opacity: 0;
+            }
+            to { 
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+        }
+    `;
+    document.head.appendChild(style);
+    
+    // إضافة المودال للصفحة
+    document.body.appendChild(modal);
+    
+    // إغلاق عند النقر خارج المحتوى
+    modal.onclick = function(e) {
+        if (e.target === modal) {
+            closeBtn.onclick();
+        }
+    };
+    
+    // إغلاق عند الضغط على Escape
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeBtn.onclick();
+        }
+    });
+}
+        justify-content: center;
+        z-index: 10000;
+        backdrop-filter: blur(5px);
+    `;
+    
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+        background: linear-gradient(135deg, #1a1a1a, #2a2a2a);
+        border-radius: 20px;
+        padding: 30px;
+        max-width: 500px;
+        width: 90%;
+        border: 1px solid rgba(255, 0, 51, 0.3);
+        box-shadow: 0 20px 60px rgba(255, 0, 51, 0.3);
+        position: relative;
+    `;
+    
+    modalContent.innerHTML = content + `
+        <button onclick="this.closest('div[style*=\"position: fixed\"]').remove()" 
+                style="position: absolute; top: 15px; left: 15px; background: rgba(255, 255, 255, 0.1); border: none; color: #ccc; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+            <i class="fas fa-times"></i>
+        </button>
+    `;
+    
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+    
+    // إزالة المودال عند النقر خارجه
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+    
+    // إزالة المودال بعد 15 ثانية
+    setTimeout(() => {
+        if (modal.parentNode) {
+            modal.remove();
+        }
+    }, 15000);
 }
 
 function showLoading(show = true) {
@@ -702,7 +926,21 @@ async function processPayment() {
                 window.location.href = result.redirect || '/order/success/{{ order.id }}';
             }, 3000);
         } else {
-            showMessage(result.message || 'حدث خطأ أثناء معالجة الدفع');
+            // التحقق من نوع الخطأ لعرض رسالة مخصصة
+            if (result.error_type === 'insufficient_balance') {
+                // تشغيل صوت تنبيه
+                try {
+                    const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvGIZBjuR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvGIZBjuR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvGIZBjuR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvGIZBjuR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvGIZBjuR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvGIZBjuR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvGIZBjuR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvGIZBjuR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvGIZBjuR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvGIZBjuR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvGIZBjuR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvGIZBjuR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvGIZBjuR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvGIZBjuR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvGIZBjuR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvGIZBjuR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvGIZBjuR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvGIZBjuR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvGIZBjuR1/LNeSsFJHfH8N2QQAoUXrTp66hVFA==');
+                    audio.volume = 0.3;
+                    audio.play().catch(e => console.log('Could not play audio:', e));
+                } catch (e) {
+                    console.log('Audio not supported');
+                }
+                
+                showInsufficientBalanceMessage(result);
+            } else {
+                showMessage(result.message || 'حدث خطأ أثناء معالجة الدفع');
+            }
         }
     } catch (error) {
         console.error('Error:', error);

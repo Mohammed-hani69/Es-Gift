@@ -105,6 +105,46 @@
                 </div>
                 
                 <div class="checkout-section">
+                    <!-- تحذير رصيد المحفظة -->
+                    {% if current_user.is_authenticated and wallet_balance is defined and cart_total %}
+                        {% if wallet_balance < cart_total %}
+                        <div class="wallet-warning" style="background: rgba(255, 193, 7, 0.15); border: 1px solid rgba(255, 193, 7, 0.3); border-radius: 12px; padding: 15px; margin-bottom: 20px;">
+                            <div style="display: flex; align-items: center; gap: 10px; color: #ffc107; margin-bottom: 10px;">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <strong>تنبيه: رصيد المحفظة غير كافي</strong>
+                            </div>
+                            <div style="color: #fff; font-size: 0.9rem; margin-bottom: 12px;">
+                                <div style="display: flex; justify-content: space-between; margin: 5px 0;">
+                                    <span>رصيد المحفظة:</span>
+                                    <span style="color: #ffc107; font-weight: bold;">{{ "%.2f"|format(wallet_balance) }} {{ current_currency or 'USD' }}</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin: 5px 0;">
+                                    <span>إجمالي العربة:</span>
+                                    <span style="color: #17a2b8; font-weight: bold;">{{ "%.2f"|format(cart_total) }} {{ current_currency or 'USD' }}</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin: 8px 0; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.1);">
+                                    <span>المبلغ الناقص:</span>
+                                    <span style="color: #ff4757; font-weight: bold;">{{ "%.2f"|format(cart_total - wallet_balance) }} {{ current_currency or 'USD' }}</span>
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                <a href="{{ url_for('wallet.deposit') }}" style="background: linear-gradient(135deg, #28a745, #20c997); color: white; padding: 8px 15px; border-radius: 20px; text-decoration: none; font-size: 0.85rem; display: flex; align-items: center; gap: 6px;">
+                                    <i class="fas fa-plus-circle"></i>
+                                    إيداع سريع
+                                </a>
+                                <span style="color: #ccc; font-size: 0.8rem; padding: 8px 0;">أو استخدم بطاقة بنكية عند الدفع</span>
+                            </div>
+                        </div>
+                        {% elif wallet_balance >= cart_total %}
+                        <div class="wallet-sufficient" style="background: rgba(40, 167, 69, 0.15); border: 1px solid rgba(40, 167, 69, 0.3); border-radius: 12px; padding: 12px; margin-bottom: 15px;">
+                            <div style="display: flex; align-items: center; gap: 8px; color: #28a745;">
+                                <i class="fas fa-check-circle"></i>
+                                <span style="font-size: 0.9rem;">رصيد محفظتك كافٍ لإتمام هذا الطلب! 💰</span>
+                            </div>
+                        </div>
+                        {% endif %}
+                    {% endif %}
+                    
                     <button class="checkout-btn" onclick="proceedToCheckout()">
                         <i class="fa-solid fa-credit-card"></i>
                         المتابعة للدفع

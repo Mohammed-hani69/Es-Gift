@@ -420,9 +420,21 @@ def deduct_from_wallet(user_id, amount, currency_code='USD', description='Purcha
         
         # التحقق من كفاية الرصيد
         if float(wallet.balance) < amount_in_wallet_currency:
+            deficit = amount_in_wallet_currency - float(wallet.balance)
             return {
                 'success': False, 
-                'message': f'رصيد المحفظة غير كافي. الرصيد المتاح: {wallet.balance} {wallet.currency}, المطلوب: {amount_in_wallet_currency:.2f} {wallet.currency}'
+                'message': f'❌ رصيد المحفظة غير كافي لإتمام العملية!\n\n'
+                          f'💰 الرصيد المتاح: {wallet.balance} {wallet.currency}\n'
+                          f'💳 المبلغ المطلوب: {amount_in_wallet_currency:.2f} {wallet.currency}\n'
+                          f'⚠️ المبلغ الناقص: {deficit:.2f} {wallet.currency}\n\n'
+                          f'💡 يمكنك إيداع المبلغ الناقص من خلال الذهاب إلى صفحة المحفظة وطلب إيداع.',
+                'error_type': 'insufficient_balance',
+                'balance_info': {
+                    'current_balance': float(wallet.balance),
+                    'required_amount': amount_in_wallet_currency,
+                    'deficit': deficit,
+                    'currency': wallet.currency
+                }
             }
         
         # خصم المبلغ من المحفظة

@@ -462,7 +462,35 @@ def cart():
             })
             total += price * quantity
     
-    return render_template('cart.html', cart_items=cart_items, total=total)
+    # الحصول على رصيد المحفظة للمقارنة
+    wallet_balance = 0
+    current_currency = 'USD'
+    
+    try:
+        from wallet_utils import get_or_create_wallet, get_currency_rate
+        wallet = get_or_create_wallet(current_user)
+        
+        # تحديد العملة الحالية من الجلسة أو من العملة الافتراضية
+        if 'currency' in session:
+            current_currency = session['currency']
+        
+        # تحويل رصيد المحفظة للعملة الحالية
+        if wallet.currency != current_currency:
+            exchange_rate = get_currency_rate(wallet.currency, current_currency)
+            wallet_balance = float(wallet.balance) * exchange_rate
+        else:
+            wallet_balance = float(wallet.balance)
+            
+    except Exception as e:
+        print(f"خطأ في الحصول على رصيد المحفظة: {e}")
+        wallet_balance = 0
+    
+    return render_template('cart.html', 
+                         cart_items=cart_items, 
+                         total=total,
+                         cart_total=total,
+                         wallet_balance=wallet_balance,
+                         current_currency=current_currency)
 
 @main.route('/update-cart-quantity', methods=['POST'])
 @login_required
@@ -811,9 +839,22 @@ def process_wallet_payment(order):
         
         # التحقق من كفاية الرصيد
         if float(wallet.balance) < amount_needed_in_wallet_currency:
+            deficit = amount_needed_in_wallet_currency - float(wallet.balance)
             return {
                 'success': False, 
-                'message': f'رصيد المحفظة غير كافٍ. الرصيد المتاح: {wallet.balance} {wallet.currency}, المطلوب: {amount_needed_in_wallet_currency:.2f} {wallet.currency}'
+                'message': f'💳 رصيد المحفظة غير كافٍ لإتمام هذا الطلب\n\n'
+                          f'📊 تفاصيل العملية:\n'
+                          f'• الرصيد المتاح: {wallet.balance:.2f} {wallet.currency}\n'
+                          f'• المبلغ المطلوب: {amount_needed_in_wallet_currency:.2f} {wallet.currency}\n'
+                          f'• المبلغ الناقص: {deficit:.2f} {wallet.currency}\n\n'
+                          f'💡 يمكنك إيداع المبلغ الناقص من خلال الذهاب إلى صفحة المحفظة',
+                'error_type': 'insufficient_balance',
+                'balance_info': {
+                    'current_balance': float(wallet.balance),
+                    'required_amount': amount_needed_in_wallet_currency,
+                    'deficit': deficit,
+                    'currency': wallet.currency
+                }
             }
         
         # التحقق من حدود الإنفاق
