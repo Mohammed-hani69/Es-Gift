@@ -150,6 +150,10 @@ def create_app():
     from wallet_routes import wallet_bp
     app.register_blueprint(wallet_bp)
     
+    # تسجيل blueprint إدارة المحفظة للأدمن
+    from admin_wallet_routes import admin_wallet_bp
+    app.register_blueprint(admin_wallet_bp)
+    
     # تسجيل blueprint إدارة الحدود المالية
     from admin_routes_financial import financial_bp
     app.register_blueprint(financial_bp)

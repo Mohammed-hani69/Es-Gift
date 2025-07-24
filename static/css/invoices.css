@@ -1,0 +1,243 @@
+/* أنماط CSS خاصة بالفواتير والملف الشخصي */
+
+/* قسم الفواتير في الملف الشخصي */
+.recent-invoices {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.invoice-item {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 20px;
+    transition: all 0.3s ease;
+}
+
+.invoice-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: #ff0033;
+    transform: translateY(-2px);
+}
+
+.invoice-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.invoice-number {
+    font-weight: bold;
+    color: #ff0033;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.invoice-date {
+    color: #999;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.invoice-details {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.invoice-total {
+    font-weight: bold;
+    color: #28a745;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.invoice-status {
+    padding: 4px 12px;
+    border-radius: 15px;
+    font-size: 0.85rem;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.invoice-status.status-completed {
+    background: rgba(40, 167, 69, 0.2);
+    color: #28a745;
+    border: 1px solid #28a745;
+}
+
+.invoice-status.status-pending {
+    background: rgba(255, 193, 7, 0.2);
+    color: #ffc107;
+    border: 1px solid #ffc107;
+}
+
+.invoice-status.status-failed {
+    background: rgba(220, 53, 69, 0.2);
+    color: #dc3545;
+    border: 1px solid #dc3545;
+}
+
+.invoice-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.invoice-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+}
+
+.invoice-btn.view-btn {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+}
+
+.invoice-btn.view-btn:hover {
+    background: linear-gradient(135deg, #5a6fd8, #6a42a0);
+    transform: translateY(-1px);
+}
+
+.invoice-btn.download-btn {
+    background: rgba(108, 117, 125, 0.2);
+    color: #6c757d;
+    border: 1px solid #6c757d;
+}
+
+.invoice-btn.download-btn:hover {
+    background: #6c757d;
+    color: white;
+}
+
+.invoices-footer {
+    text-align: center;
+    margin-top: 20px;
+}
+
+.view-all-invoices {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 25px;
+    background: linear-gradient(135deg, #ff0033, #ff3366);
+    color: white;
+    text-decoration: none;
+    border-radius: 25px;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.view-all-invoices:hover {
+    background: linear-gradient(135deg, #e60029, #ff1f4d);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(255, 0, 51, 0.3);
+}
+
+.no-invoices {
+    text-align: center;
+    padding: 40px 20px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.no-invoices i {
+    font-size: 3rem;
+    color: #666;
+    margin-bottom: 15px;
+}
+
+.no-invoices h3 {
+    color: #fff;
+    margin-bottom: 10px;
+}
+
+.no-invoices p {
+    color: #999;
+    margin: 0;
+}
+
+/* أنماط متجاوبة للفواتير */
+@media (max-width: 768px) {
+    .invoice-header {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+    }
+    
+    .invoice-details {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+    }
+    
+    .invoice-actions {
+        justify-content: center;
+    }
+    
+    .invoice-btn {
+        font-size: 0.8rem;
+        padding: 6px 12px;
+    }
+}
+
+/* تحسينات إضافية للفواتير */
+.invoice-amount {
+    background: rgba(40, 167, 69, 0.1);
+    padding: 8px 12px;
+    border-radius: 8px;
+    color: #28a745;
+    font-weight: bold;
+    border: 1px solid rgba(40, 167, 69, 0.3);
+}
+
+.invoice-payment-method {
+    font-size: 0.85rem;
+    color: #999;
+    margin-top: 5px;
+}
+
+.invoice-payment-method i {
+    margin-left: 5px;
+}
+
+/* تأثيرات بصرية للفواتير */
+.invoice-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 4px;
+    height: 100%;
+    background: linear-gradient(to bottom, #ff0033, #ff6b6b);
+    border-radius: 0 12px 12px 0;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.invoice-item {
+    position: relative;
+}
+
+.invoice-item:hover::before {
+    opacity: 1;
+}

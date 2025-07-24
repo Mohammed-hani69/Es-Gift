@@ -144,11 +144,20 @@ def google_callback():
         new_user.password_hash = generate_password_hash(secrets.token_urlsafe(32))
         
         db.session.add(new_user)
+        db.session.flush()  # للحصول على user.id قبل commit
+        
+        # إنشاء حدود المستخدم بالقيم الافتراضية للمستخدم العادي
+        from wallet_utils import create_user_limits, get_or_create_wallet
+        user_limits = create_user_limits(new_user)
+        
+        # إنشاء محفظة المستخدم
+        wallet = get_or_create_wallet(new_user)
+        
         db.session.commit()
         
         # Log in the new user
         login_user(new_user)
-        flash(f'مرحباً بك في ES-Gift، {new_user.username}! تم إنشاء حسابك بنجاح', 'success')
+        flash(f'مرحباً بك في ES-Gift، {new_user.username}! تم إنشاء حسابك بنجاح مع إعداد الحدود المالية', 'success')
         logger.info(f"New Google user registered and logged in: {new_user.username}")
         
         return redirect(url_for('main.index'))

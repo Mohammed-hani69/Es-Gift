@@ -1,4 +1,4 @@
-from flask import Blueprint, current_app, render_template, request, jsonify, redirect, url_for, session, flash
+from flask import Blueprint, current_app, render_template, request, jsonify, redirect, url_for, session, flash, send_file
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
@@ -154,9 +154,11 @@ def register():
         data = request.get_json()
         email = data.get('email')
         password = data.get('password')
+        name = data.get('name', '').strip()  # الاسم الكامل (اختياري)
     else:
         email = request.form.get('email')
         password = request.form.get('password')
+        name = request.form.get('name', '').strip()  # الاسم الكامل (اختياري)
     
     # التحقق من صحة البيانات
     if not email or not password:
@@ -186,15 +188,26 @@ def register():
     try:
         user = User(
             email=email,
+            full_name=name if name else None,  # حفظ الاسم الكامل إذا تم إدخاله
             password_hash=generate_password_hash(password),
             created_at=datetime.utcnow()
         )
         db.session.add(user)
+        db.session.flush()  # للحصول على user.id قبل commit
+        
+        # إنشاء حدود المستخدم بالقيم الافتراضية للمستخدم العادي
+        from wallet_utils import create_user_limits
+        user_limits = create_user_limits(user)
+        
+        # إنشاء محفظة المستخدم
+        from wallet_utils import get_or_create_wallet
+        wallet = get_or_create_wallet(user)
+        
         db.session.commit()
         
         login_user(user)
         
-        success_msg = 'تم إنشاء الحساب بنجاح'
+        success_msg = 'تم إنشاء الحساب بنجاح مع إعداد الحدود المالية'
         if request.is_json:
             return jsonify({'success': True, 'message': success_msg})
         else:
@@ -219,7 +232,59 @@ def logout():
 @main.route('/profile')
 @login_required
 def profile():
-    return render_template('profile.html', user=current_user)
+    # الحصول على آخر الطلبات
+    recent_orders = Order.query.filter_by(user_id=current_user.id).order_by(Order.created_at.desc()).limit(5).all()
+    
+    # الحصول على آخر الفواتير
+    recent_invoices = Invoice.query.filter_by(user_id=current_user.id).order_by(Invoice.created_at.desc()).limit(3).all()
+    
+    return render_template('profile.html', 
+                         user=current_user, 
+                         recent_orders=recent_orders,
+                         recent_invoices=recent_invoices)
+
+@main.route('/invoices')
+@login_required
+def user_invoices():
+    """عرض جميع فواتير المستخدم"""
+    page = request.args.get('page', 1, type=int)
+    invoices = Invoice.query.filter_by(user_id=current_user.id)\
+                           .order_by(Invoice.created_at.desc())\
+                           .paginate(page=page, per_page=10, error_out=False)
+    
+    return render_template('user_invoices.html', invoices=invoices)
+
+@main.route('/invoice/<int:invoice_id>')
+@login_required
+def view_invoice(invoice_id):
+    """عرض تفاصيل فاتورة محددة"""
+    invoice = Invoice.query.get_or_404(invoice_id)
+    
+    # التأكد من أن الفاتورة تخص المستخدم الحالي
+    if invoice.user_id != current_user.id:
+        flash('غير مسموح لك بعرض هذه الفاتورة', 'error')
+        return redirect(url_for('main.user_invoices'))
+    
+    return render_template('invoice_detail.html', invoice=invoice)
+
+@main.route('/invoice/<int:invoice_id>/download')
+@login_required
+def download_invoice(invoice_id):
+    """تحميل الفاتورة بصيغة PDF"""
+    invoice = Invoice.query.get_or_404(invoice_id)
+    
+    # التأكد من أن الفاتورة تخص المستخدم الحالي
+    if invoice.user_id != current_user.id:
+        flash('غير مسموح لك بتحميل هذه الفاتورة', 'error')
+        return redirect(url_for('main.user_invoices'))
+    
+    if invoice.pdf_file_path and os.path.exists(invoice.pdf_file_path):
+        return send_file(invoice.pdf_file_path, 
+                        as_attachment=True, 
+                        download_name=f"invoice_{invoice.invoice_number}.pdf")
+    else:
+        flash('ملف الفاتورة غير متوفر', 'error')
+        return redirect(url_for('main.view_invoice', invoice_id=invoice_id))
 
 @main.route('/kyc-upgrade', methods=['GET', 'POST'])
 @login_required
@@ -469,7 +534,8 @@ def checkout():
                 order_id=order.id,
                 product_id=product.id,
                 quantity=quantity,
-                price=price
+                price=price,
+                currency=order.currency
             )
             db.session.add(order_item)
             total_amount += price * quantity
@@ -480,7 +546,44 @@ def checkout():
     # مسح السلة
     session.pop('cart', None)
     
-    return jsonify({'success': True, 'order_id': order.id, 'redirect': url_for('main.payment', order_id=order.id)})
+    return jsonify({'success': True, 'order_id': order.id, 'redirect': url_for('main.checkout_payment', order_id=order.id)})
+
+@main.route('/checkout/payment/<int:order_id>')
+@login_required
+def checkout_payment(order_id):
+    """صفحة الدفع الجديدة مع دعم المحفظة والبطاقة البنكية"""
+    from wallet_utils import get_user_wallet_balance, get_or_create_wallet
+    
+    order = Order.query.get_or_404(order_id)
+    if order.user_id != current_user.id:
+        return redirect(url_for('main.index'))
+    
+    # التحقق من أن الطلب لم يتم دفعه بعد
+    if order.payment_status == 'completed':
+        flash('تم دفع هذا الطلب بالفعل', 'info')
+        return redirect(url_for('main.order_detail', order_id=order.id))
+    
+    # الحصول على رصيد المحفظة
+    wallet_balance = get_user_wallet_balance(current_user.id, order.currency)
+    
+    # الحصول على تفاصيل المحفظة الكاملة للتحقق
+    wallet = get_or_create_wallet(current_user)
+    
+    # طباعة تفاصيل المحفظة للتطوير والتتبع
+    print(f"تفاصيل المحفظة للمستخدم {current_user.id}:")
+    print(f"- رصيد المحفظة: {wallet.balance} {wallet.currency}")
+    print(f"- رصيد محول لعملة الطلب: {wallet_balance} {order.currency}")
+    print(f"- مبلغ الطلب: {order.total_amount} {order.currency}")
+    print(f"- كافي للدفع: {'نعم' if wallet_balance >= float(order.total_amount) else 'لا'}")
+    
+    # الحصول على بوابات الدفع النشطة
+    payment_gateways = PaymentGateway.query.filter_by(is_active=True).all()
+    
+    return render_template('checkout_payment.html', 
+                         order=order, 
+                         wallet_balance=wallet_balance,
+                         wallet=wallet,  # إضافة تفاصيل المحفظة الكاملة
+                         payment_gateways=payment_gateways)
 
 @main.route('/payment/<int:order_id>')
 @login_required
@@ -498,25 +601,63 @@ def payment(order_id):
 def process_payment():
     from api_services import APIManager
     from email_service import ProductCodeEmailService
+    from wallet_utils import check_spending_limit, record_spending, get_user_wallet_balance, deduct_from_wallet
+    from invoice_service import InvoiceService, ExcelReportService
     
     data = request.get_json()
     order_id = data.get('order_id')
     payment_method = data.get('payment_method')
+    gateway = data.get('gateway')
     
     order = Order.query.get_or_404(order_id)
     if order.user_id != current_user.id:
         return jsonify({'success': False, 'message': 'غير مصرح'})
     
-    # تحديث حالة الطلب
-    order.payment_method = payment_method
-    order.payment_status = 'processing'
-    order.order_status = 'processing'
+    # التحقق من أن الطلب لم يتم دفعه بعد
+    if order.payment_status == 'completed':
+        return jsonify({'success': False, 'message': 'تم دفع هذا الطلب بالفعل'})
     
-    purchased_codes = []
-    api_manager = APIManager()
+    # قائمة للتتبع العمليات المنجزة
+    completed_operations = {
+        'payment_processed': False,
+        'products_purchased': False,
+        'invoice_created': False,
+        'email_sent': False,
+        'spending_recorded': False
+    }
     
     try:
-        # شراء المنتجات من OneCard API
+        print(f"🔄 بدء معالجة الدفع للطلب #{order.order_number}")
+        
+        # تحديث طريقة الدفع
+        order.payment_method = f"{payment_method}_{gateway}" if gateway else payment_method
+        
+        # معالجة الدفع حسب الطريقة المختارة
+        payment_result = None
+        if payment_method == 'wallet':
+            # الدفع بالمحفظة
+            payment_result = process_wallet_payment(order)
+            if not payment_result['success']:
+                return jsonify(payment_result)
+        elif payment_method == 'card':
+            # الدفع بالبطاقة البنكية
+            payment_result = process_card_payment(order, gateway)
+            if not payment_result['success']:
+                return jsonify(payment_result)
+        else:
+            return jsonify({'success': False, 'message': 'طريقة دفع غير صحيحة'})
+        
+        completed_operations['payment_processed'] = True
+        print(f"✅ تم إنجاز معالجة الدفع")
+        
+        # تحديث حالة الطلب
+        order.payment_status = 'completed'
+        order.order_status = 'completed'
+        
+        # شراء المنتجات وتوليد الأكواد
+        purchased_codes = []
+        api_manager = APIManager()
+        
         for item in order.items:
             product = item.product
             
@@ -537,17 +678,14 @@ def process_payment():
                     )
                     
                     if purchase_result.get('success'):
-                        # حفظ الكود المشترى
                         purchased_codes.append({
-                            'product_name': product.name,
-                            'product_code': purchase_result.get('product_code'),
-                            'serial_number': purchase_result.get('serial_number'),
-                            'instructions': purchase_result.get('instructions', ''),
-                            'price': item.price,
-                            'currency': order.currency
+                            'اسم المنتج': product.name,
+                            'الكود': purchase_result.get('product_code'),
+                            'الرقم التسلسلي': purchase_result.get('serial_number', ''),
+                            'التعليمات': purchase_result.get('instructions', product.instructions or ''),
+                            'السعر': float(item.price),
+                            'العملة': order.currency
                         })
-                    else:
-                        raise Exception(f"فشل في شراء {product.name}: {purchase_result.get('message', 'خطأ غير معروف')}")
             else:
                 # شراء من الأكواد المخزنة محلياً
                 for i in range(item.quantity):
@@ -562,52 +700,186 @@ def process_payment():
                         available_code.order_id = order.id
                         
                         purchased_codes.append({
-                            'product_name': product.name,
-                            'product_code': available_code.code,
-                            'serial_number': available_code.serial_number or '',
-                            'instructions': available_code.instructions or '',
-                            'price': item.price,
-                            'currency': order.currency
+                            'اسم المنتج': product.name,
+                            'الكود': available_code.code,
+                            'الرقم التسلسلي': available_code.serial_number or '',
+                            'التعليمات': product.instructions or '',
+                            'السعر': float(item.price),
+                            'العملة': order.currency
                         })
-                    else:
-                        raise Exception(f"لا توجد أكواد متاحة للمنتج: {product.name}")
         
-        # تحديث حالة الطلب إلى مكتمل
-        order.payment_status = 'completed'
-        order.order_status = 'completed'
+        completed_operations['products_purchased'] = True
+        print(f"✅ تم إنجاز شراء المنتجات وتوليد {len(purchased_codes)} كود")
+        
+        # حفظ التغييرات قبل إنشاء الفاتورة
         db.session.commit()
         
-        # إرسال بريد إلكتروني بالأكواد باستخدام النظام الجديد
-        if purchased_codes:
-            email_service = ProductCodeEmailService()
-            email_sent = email_service.send_order_codes_email(
-                user_email=current_user.email,
-                user_name=current_user.full_name or current_user.username,
-                order_number=order.order_number,
-                codes_data=purchased_codes
+        # إنشاء الفاتورة
+        try:
+            invoice = InvoiceService.create_invoice(order)
+            completed_operations['invoice_created'] = True
+            print(f"✅ تم إنجاز إنشاء الفاتورة #{invoice.invoice_number}")
+        except Exception as e:
+            print(f"❌ خطأ في إنشاء الفاتورة: {e}")
+            invoice = None
+        
+        # إنشاء ملف Excel وإرساله
+        try:
+            excel_path = ExcelReportService.create_order_excel(order, purchased_codes)
+            if excel_path:
+                ExcelReportService.send_order_email_with_excel(order, purchased_codes, excel_path)
+                completed_operations['email_sent'] = True
+                print(f"✅ تم إنجاز إرسال البريد الإلكتروني مع ملف Excel")
+        except Exception as e:
+            print(f"❌ خطأ في إرسال البريد الإلكتروني: {e}")
+        
+        # تسجيل عملية الإنفاق في نظام الحدود
+        try:
+            from wallet_utils import get_currency_rate
+            order_amount_usd = get_currency_rate(order.currency, 'USD') * float(order.total_amount)
+            record_spending(
+                user_id=current_user.id,
+                amount_usd=order_amount_usd,
+                transaction_type='purchase',
+                description=f"شراء طلب #{order.order_number}",
+                reference_id=order.id,
+                reference_type='order',
+                currency_code=order.currency,
+                exchange_rate=get_currency_rate('USD', order.currency)
             )
-            
-            if not email_sent:
-                current_app.logger.warning(f"Failed to send email for order {order.order_number}")
+            completed_operations['spending_recorded'] = True
+            print(f"✅ تم إنجاز تسجيل عملية الإنفاق")
+        except Exception as e:
+            print(f"❌ خطأ في تسجيل الإنفاق: {e}")
+        
+        # التحقق من إتمام العمليات الأساسية
+        essential_operations = ['payment_processed', 'products_purchased']
+        all_essential_completed = all(completed_operations[op] for op in essential_operations)
+        
+        if not all_essential_completed:
+            # إذا فشلت العمليات الأساسية، التراجع عن الدفع
+            db.session.rollback()
+            return jsonify({
+                'success': False, 
+                'message': 'فشل في إتمام العمليات الأساسية',
+                'operations_status': completed_operations
+            })
+        
+        print(f"🎉 تم إتمام الطلب بنجاح!")
+        print(f"📊 حالة العمليات: {completed_operations}")
         
         return jsonify({
-            'success': True, 
-            'message': 'تم إتمام الدفع بنجاح وسيتم إرسال الأكواد على بريدك الإلكتروني',
-            'codes_count': len(purchased_codes)
+            'success': True,
+            'message': 'تم إتمام الدفع وإرسال الأكواد بنجاح',
+            'redirect': url_for('main.order_success', order_id=order.id),
+            'invoice_id': invoice.id if invoice else None,
+            'operations_completed': completed_operations,
+            'codes_generated': len(purchased_codes)
         })
         
     except Exception as e:
-        # في حالة الخطأ، إرجاع حالة الطلب
-        order.payment_status = 'failed'
-        order.order_status = 'failed'
         db.session.rollback()
-        
-        current_app.logger.error(f"Payment processing failed for order {order.id}: {str(e)}")
-        
+        print(f"❌ خطأ عام في معالجة الدفع: {e}")
         return jsonify({
             'success': False, 
-            'message': f'فشل في معالجة الطلب: {str(e)}'
+            'message': f'حدث خطأ في معالجة الدفع: {str(e)}',
+            'operations_status': completed_operations
         })
+
+
+def process_wallet_payment(order):
+    """معالجة الدفع بالمحفظة"""
+    from wallet_utils import get_user_wallet_balance, deduct_from_wallet, check_spending_limit, get_or_create_wallet
+    
+    try:
+        # الحصول على تفاصيل المحفظة الكاملة
+        user = User.query.get(order.user_id)
+        wallet = get_or_create_wallet(user)
+        
+        print(f"معالجة دفع المحفظة:")
+        print(f"- مبلغ الطلب: {order.total_amount} {order.currency}")
+        print(f"- رصيد المحفظة: {wallet.balance} {wallet.currency}")
+        
+        # تحويل مبلغ الطلب إلى عملة المحفظة للمقارنة
+        from wallet_utils import get_currency_rate
+        if order.currency != wallet.currency:
+            exchange_rate = get_currency_rate(order.currency, wallet.currency)
+            amount_needed_in_wallet_currency = float(order.total_amount) * exchange_rate
+            print(f"- المبلغ المطلوب بعملة المحفظة: {amount_needed_in_wallet_currency:.2f} {wallet.currency}")
+        else:
+            amount_needed_in_wallet_currency = float(order.total_amount)
+        
+        # التحقق من كفاية الرصيد
+        if float(wallet.balance) < amount_needed_in_wallet_currency:
+            return {
+                'success': False, 
+                'message': f'رصيد المحفظة غير كافٍ. الرصيد المتاح: {wallet.balance} {wallet.currency}, المطلوب: {amount_needed_in_wallet_currency:.2f} {wallet.currency}'
+            }
+        
+        # التحقق من حدود الإنفاق
+        order_amount_usd = get_currency_rate(order.currency, 'USD') * float(order.total_amount)
+        can_spend, message = check_spending_limit(order.user_id, order_amount_usd)
+        if not can_spend:
+            return {'success': False, 'message': message}
+        
+        # خصم المبلغ من المحفظة
+        deduction_result = deduct_from_wallet(
+            user_id=order.user_id,
+            amount=float(order.total_amount),
+            currency_code=order.currency,
+            description=f"شراء طلب #{order.order_number}",
+            order_id=order.id
+        )
+        
+        if not deduction_result['success']:
+            return {'success': False, 'message': deduction_result['message']}
+        
+        print(f"✅ تم خصم المبلغ من المحفظة بنجاح")
+        return {'success': True, 'message': 'تم خصم المبلغ من المحفظة بنجاح', 'deduction_details': deduction_result}
+        
+    except Exception as e:
+        print(f"خطأ في معالجة الدفع بالمحفظة: {e}")
+        return {'success': False, 'message': 'حدث خطأ في معالجة الدفع بالمحفظة'}
+
+
+def process_card_payment(order, gateway):
+    """معالجة الدفع بالبطاقة البنكية"""
+    try:
+        # هنا يمكن إضافة التكامل مع بوابات الدفع الحقيقية
+        # مثل Moyasar, PayTabs, Hyperpay وغيرها
+        
+        # للمحاكاة، سنفترض أن الدفع نجح
+        # في التطبيق الحقيقي، ستحتاج لاستدعاء API بوابة الدفع
+        
+        payment_gateway = PaymentGateway.query.filter_by(name=gateway, is_active=True).first()
+        if not payment_gateway:
+            return {'success': False, 'message': 'بوابة الدفع غير متاحة'}
+        
+        # محاكاة نجاح الدفع
+        # في الواقع، هنا ستقوم بإرسال طلب إلى بوابة الدفع
+        payment_success = True  # نتيجة من بوابة الدفع
+        
+        if payment_success:
+            return {'success': True, 'message': 'تم الدفع بالبطاقة البنكية بنجاح'}
+        else:
+            return {'success': False, 'message': 'فشل في الدفع بالبطاقة البنكية'}
+            
+    except Exception as e:
+        print(f"خطأ في معالجة الدفع بالبطاقة: {e}")
+        return {'success': False, 'message': 'حدث خطأ في معالجة الدفع بالبطاقة'}
+
+
+@main.route('/order/success/<int:order_id>')
+@login_required
+def order_success(order_id):
+    """صفحة نجاح الطلب"""
+    order = Order.query.get_or_404(order_id)
+    if order.user_id != current_user.id:
+        return redirect(url_for('main.index'))
+    
+    invoice = Invoice.query.filter_by(order_id=order.id).first()
+    
+    return render_template('order_success.html', order=order, invoice=invoice)
 
 @main.route('/set-currency/<currency>')
 def set_currency(currency):

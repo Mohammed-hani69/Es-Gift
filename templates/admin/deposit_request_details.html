@@ -1,0 +1,486 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}تفاصيل طلب الإيداع #{{ request.id }}{% endblock %}
+
+{% block extra_css %}
+<style>
+/* تنسيقات خاصة بصفحة التفاصيل */
+.request-details-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.detail-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.detail-card h3 {
+    color: var(--primary-color);
+    margin-bottom: 15px;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.detail-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.detail-item:last-child {
+    border-bottom: none;
+}
+
+.detail-label {
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.detail-value {
+    color: var(--text-color);
+    font-weight: 600;
+}
+
+.amount-highlight {
+    font-size: 1.3rem;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+.actions-section {
+    grid-column: 1 / -1;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 15px;
+}
+
+@media (max-width: 768px) {
+    .request-details-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .action-buttons {
+        flex-direction: column;
+        align-items: center;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h2>
+            <i class="fas fa-file-alt"></i>
+            تفاصيل طلب الإيداع #{{ request.id }}
+        </h2>
+        <a href="{{ url_for('admin_wallet.deposit_requests') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-right"></i>
+            العودة للقائمة
+        </a>
+    </div>
+</div>
+
+<div class="content-card">
+    <div class="request-details-grid">
+        <!-- معلومات المستخدم -->
+        <div class="detail-card">
+            <h3>
+                <i class="fas fa-user"></i>
+                معلومات المستخدم
+            </h3>
+            
+            <div class="detail-item">
+                <span class="detail-label">الاسم:</span>
+                <span class="detail-value">{{ request.user.full_name or 'غير محدد' }}</span>
+            </div>
+            
+            <div class="detail-item">
+                <span class="detail-label">البريد الإلكتروني:</span>
+                <span class="detail-value">{{ request.user.email }}</span>
+            </div>
+            
+            <div class="detail-item">
+                <span class="detail-label">نوع العضوية:</span>
+                <span class="detail-value">
+                    <span class="badge badge-{{ 'warning' if request.user_type == 'reseller' else 'info' if request.user_type == 'kyc' else 'secondary' }}">
+                        {{ 'عادي' if request.user_type == 'regular' else 'موثق' if request.user_type == 'kyc' else 'موزع' if request.user_type == 'reseller' else 'عادي' }}
+                    </span>
+                </span>
+            </div>
+            
+            <div class="detail-item">
+                <span class="detail-label">عنوان IP:</span>
+                <span class="detail-value">{{ request.user_ip or 'غير متوفر' }}</span>
+            </div>
+        </div>
+
+        <!-- تفاصيل الطلب -->
+        <div class="detail-card">
+            <h3>
+                <i class="fas fa-money-check-alt"></i>
+                تفاصيل الطلب
+            </h3>
+            
+            <div class="detail-item">
+                <span class="detail-label">المبلغ:</span>
+                <span class="detail-value amount-highlight">{{ request.amount }} {{ request.currency_code }}</span>
+            </div>
+            
+            <div class="detail-item">
+                <span class="detail-label">المبلغ بالدولار:</span>
+                <span class="detail-value">{{ request.amount_usd }} USD</span>
+            </div>
+            
+            <div class="detail-item">
+                <span class="detail-label">سعر الصرف:</span>
+                <span class="detail-value">{{ request.exchange_rate }}</span>
+            </div>
+            
+            <div class="detail-item">
+                <span class="detail-label">طريقة الدفع:</span>
+                <span class="detail-value">
+                    <i class="fas fa-credit-card"></i>
+                    {{ 'فيزا/ماستركارد' if request.payment_method == 'visa' else request.payment_method }}
+                </span>
+            </div>
+            
+            <div class="detail-item">
+                <span class="detail-label">الحالة:</span>
+                <span class="detail-value">
+                    <span class="badge badge-{{ 'warning' if request.status == 'pending' else 'success' if request.status == 'approved' else 'danger' }}">
+                        <i class="fas fa-{{ 'clock' if request.status == 'pending' else 'check' if request.status == 'approved' else 'times' }}"></i>
+                        {{ 'قيد المراجعة' if request.status == 'pending' else 'موافق' if request.status == 'approved' else 'مرفوض' }}
+                    </span>
+                </span>
+            </div>
+        </div>
+
+        <!-- التواريخ والمعالجة -->
+        <div class="detail-card">
+            <h3>
+                <i class="fas fa-history"></i>
+                التواريخ والمعالجة
+            </h3>
+            
+            <div class="detail-item">
+                <span class="detail-label">تاريخ الطلب:</span>
+                <span class="detail-value">{{ request.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</span>
+            </div>
+            
+            {% if request.processed_at %}
+            <div class="detail-item">
+                <span class="detail-label">تاريخ المعالجة:</span>
+                <span class="detail-value">{{ request.processed_at.strftime('%Y-%m-%d %H:%M:%S') }}</span>
+            </div>
+            {% endif %}
+            
+            {% if request.processor %}
+            <div class="detail-item">
+                <span class="detail-label">معالج الطلب:</span>
+                <span class="detail-value">{{ request.processor.full_name or request.processor.email }}</span>
+            </div>
+            {% endif %}
+            
+            {% if request.wallet_amount_added %}
+            <div class="detail-item">
+                <span class="detail-label">المبلغ المضاف:</span>
+                <span class="detail-value">{{ request.wallet_amount_added }} {{ request.wallet_currency_added }}</span>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- الملاحظات -->
+        <div class="detail-card">
+            <h3>
+                <i class="fas fa-sticky-note"></i>
+                الملاحظات
+            </h3>
+            
+            {% if request.payment_details %}
+            <div class="detail-item">
+                <span class="detail-label">ملاحظات المستخدم:</span>
+                <span class="detail-value">{{ request.payment_details }}</span>
+            </div>
+            {% endif %}
+            
+            {% if request.admin_notes %}
+            <div class="detail-item">
+                <span class="detail-label">ملاحظات الإدارة:</span>
+                <span class="detail-value">{{ request.admin_notes }}</span>
+            </div>
+            {% endif %}
+            
+            {% if request.rejection_reason %}
+            <div class="detail-item">
+                <span class="detail-label">سبب الرفض:</span>
+                <span class="detail-value" style="color: var(--danger-color);">{{ request.rejection_reason }}</span>
+            </div>
+            {% endif %}
+            
+            {% if not request.payment_details and not request.admin_notes and not request.rejection_reason %}
+            <div class="detail-item">
+                <span class="detail-value" style="color: var(--text-muted); font-style: italic;">لا توجد ملاحظات</span>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- الإجراءات -->
+        {% if request.status == 'pending' %}
+        <div class="actions-section">
+            <h3>
+                <i class="fas fa-cogs"></i>
+                الإجراءات المتاحة
+            </h3>
+            
+            <div class="action-buttons">
+                <button type="button" class="btn btn-success" onclick="approveRequest()">
+                    <i class="fas fa-check"></i>
+                    موافقة على الطلب
+                </button>
+                <button type="button" class="btn btn-danger" onclick="rejectRequest()">
+                    <i class="fas fa-times"></i>
+                    رفض الطلب
+                </button>
+            </div>
+        </div>
+        {% else %}
+        <div class="actions-section">
+            <h3>
+                <i class="fas fa-info-circle"></i>
+                حالة الطلب
+            </h3>
+            
+            <p style="color: var(--text-muted); margin: 15px 0;">
+                تم معالجة هذا الطلب بالفعل ولا يمكن تعديله.
+            </p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- مودال الموافقة -->
+<div id="approveModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h5 class="modal-title">
+                <i class="fas fa-check-circle"></i>
+                موافقة على طلب الإيداع
+            </h5>
+            <button type="button" class="btn-close" onclick="closeApproveModal()"></button>
+        </div>
+        <div class="modal-body">
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i>
+                سيتم إضافة المبلغ المحدد إلى محفظة المستخدم فوراً. تأكد من صحة المبلغ والعملة قبل المتابعة.
+            </div>
+            
+            <form id="approveForm">
+                <div class="form-group">
+                    <label class="form-label">المبلغ المراد إضافته:</label>
+                    <input type="number" id="approveAmount" name="amount" 
+                           value="{{ request.amount }}" 
+                           required min="0.01" step="0.01" 
+                           placeholder="أدخل المبلغ" class="form-control">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">العملة:</label>
+                    <select id="approveCurrency" name="currency" required class="form-control">
+                        {% for currency in currencies %}
+                        <option value="{{ currency.code }}" 
+                                {{ 'selected' if currency.code == request.currency_code else '' }}>
+                            {{ currency.symbol }} {{ currency.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">ملاحظات الإدارة (اختياري):</label>
+                    <textarea id="approveNotes" name="admin_notes" rows="3" 
+                              placeholder="أي ملاحظات إضافية..." class="form-control"></textarea>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeApproveModal()">
+                <i class="fas fa-times"></i>
+                إلغاء
+            </button>
+            <button type="button" class="btn btn-success" onclick="submitApproval()">
+                <i class="fas fa-check"></i>
+                تأكيد الموافقة
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- مودال الرفض -->
+<div id="rejectModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h5 class="modal-title">
+                <i class="fas fa-times-circle"></i>
+                رفض طلب الإيداع
+            </h5>
+            <button type="button" class="btn-close" onclick="closeRejectModal()"></button>
+        </div>
+        <div class="modal-body">
+            <form id="rejectForm">
+                <div class="form-group">
+                    <label class="form-label">سبب الرفض <span style="color: var(--danger-color);">*</span>:</label>
+                    <textarea id="rejectReason" name="rejection_reason" rows="3" required
+                              placeholder="يرجى توضيح سبب رفض الطلب..." class="form-control"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">ملاحظات إضافية (اختياري):</label>
+                    <textarea id="rejectNotes" name="admin_notes" rows="2" 
+                              placeholder="أي ملاحظات إضافية..." class="form-control"></textarea>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeRejectModal()">
+                <i class="fas fa-times"></i>
+                إلغاء
+            </button>
+            <button type="button" class="btn btn-danger" onclick="submitRejection()">
+                <i class="fas fa-ban"></i>
+                تأكيد الرفض
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+// دالة إظهار الإشعارات
+function showNotification(message, type = 'info') {
+    // استخدام نظام الإشعارات الموجود في الأدمن
+    if (typeof showAlert !== 'undefined') {
+        showAlert(message, type);
+    } else {
+        alert(message);
+    }
+}
+
+// مودال الموافقة
+function approveRequest() {
+    document.getElementById('approveModal').style.display = 'block';
+}
+
+function closeApproveModal() {
+    document.getElementById('approveModal').style.display = 'none';
+    document.getElementById('approveForm').reset();
+}
+
+function submitApproval() {
+    const formData = new FormData(document.getElementById('approveForm'));
+    const data = Object.fromEntries(formData.entries());
+    
+    if (!data.amount || parseFloat(data.amount) <= 0) {
+        showNotification('يرجى إدخال مبلغ صحيح', 'error');
+        return;
+    }
+    
+    fetch(`/admin/wallet/approve-deposit/{{ request.id }}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message, 'success');
+            closeApproveModal();
+            setTimeout(() => location.reload(), 2000);
+        } else {
+            showNotification(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('حدث خطأ أثناء معالجة الطلب', 'error');
+    });
+}
+
+// مودال الرفض
+function rejectRequest() {
+    document.getElementById('rejectModal').style.display = 'block';
+}
+
+function closeRejectModal() {
+    document.getElementById('rejectModal').style.display = 'none';
+    document.getElementById('rejectForm').reset();
+}
+
+function submitRejection() {
+    const formData = new FormData(document.getElementById('rejectForm'));
+    const data = Object.fromEntries(formData.entries());
+    
+    if (!data.rejection_reason || data.rejection_reason.trim() === '') {
+        showNotification('يرجى إدخال سبب الرفض', 'error');
+        return;
+    }
+    
+    fetch(`/admin/wallet/reject-deposit/{{ request.id }}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message, 'success');
+            closeRejectModal();
+            setTimeout(() => location.reload(), 2000);
+        } else {
+            showNotification(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('حدث خطأ أثناء معالجة الطلب', 'error');
+    });
+}
+
+// إغلاق المودال عند النقر خارجه
+window.onclick = function(event) {
+    const approveModal = document.getElementById('approveModal');
+    const rejectModal = document.getElementById('rejectModal');
+    
+    if (event.target === approveModal) {
+        closeApproveModal();
+    }
+    
+    if (event.target === rejectModal) {
+        closeRejectModal();
+    }
+}
+</script>
+
+{% endblock %}

@@ -1,0 +1,734 @@
+{% extends "base.html" %}
+
+{% block title %}إتمام الدفع - {{ config.SITE_NAME }}{% endblock %}
+
+{% block extra_css %}
+<style>
+* {
+    font-family: 'Cairo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.payment-container {
+    min-height: 100vh;
+    background: #111;
+    padding: 100px 20px 50px;
+}
+
+.payment-content {
+    max-width: 1000px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 350px;
+    gap: 30px;
+}
+
+@media (max-width: 768px) {
+    .payment-content {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+}
+
+.payment-main {
+    background: linear-gradient(135deg, #1a1a1a, #2a2a2a);
+    border-radius: 20px;
+    padding: 30px;
+    border: 1px solid rgba(255, 0, 51, 0.3);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.payment-sidebar {
+    background: linear-gradient(135deg, #1a1a1a, #2a2a2a);
+    border-radius: 20px;
+    padding: 25px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    height: fit-content;
+}
+
+.payment-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.payment-title {
+    color: #ff0033;
+    font-size: 2.2rem;
+    margin-bottom: 10px;
+    font-weight: bold;
+}
+
+.order-info {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 30px;
+}
+
+.order-info h3 {
+    color: #fff;
+    margin-bottom: 15px;
+    font-size: 1.1rem;
+}
+
+.order-detail {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    color: #ccc;
+}
+
+.order-detail.total {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 10px;
+    margin-top: 10px;
+    font-weight: bold;
+    color: #fff;
+    font-size: 1.1rem;
+}
+
+.payment-methods {
+    margin-bottom: 30px;
+}
+
+.payment-methods h3 {
+    color: #fff;
+    margin-bottom: 20px;
+    font-size: 1.2rem;
+}
+
+.payment-option {
+    background: rgba(255, 255, 255, 0.05);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.payment-option:hover {
+    border-color: rgba(255, 0, 51, 0.5);
+    background: rgba(255, 0, 51, 0.05);
+}
+
+.payment-option.active {
+    border-color: #ff0033;
+    background: rgba(255, 0, 51, 0.1);
+}
+
+.payment-option input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.payment-option-content {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.payment-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: white;
+}
+
+.wallet-payment .payment-icon {
+    background: linear-gradient(135deg, #28a745, #20c997);
+}
+
+.card-payment .payment-icon {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+}
+
+.payment-details {
+    flex: 1;
+}
+
+.payment-details h4 {
+    color: #fff;
+    margin-bottom: 5px;
+    font-size: 1.1rem;
+}
+
+.payment-details p {
+    color: #ccc;
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+.wallet-balance {
+    background: rgba(40, 167, 69, 0.1);
+    padding: 10px 15px;
+    border-radius: 8px;
+    margin-top: 10px;
+    border-left: 3px solid #28a745;
+}
+
+.wallet-balance-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.balance-amount {
+    color: #28a745;
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+.insufficient-balance {
+    background: rgba(220, 53, 69, 0.1);
+    border-left-color: #dc3545;
+}
+
+.insufficient-balance .balance-amount {
+    color: #dc3545;
+}
+
+.wallet-warning {
+    color: #ffc107;
+    font-size: 0.85rem;
+    margin-top: 5px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.wallet-sufficient {
+    color: #28a745;
+    font-size: 0.85rem;
+    margin-top: 5px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.wallet-details {
+    margin-top: 8px;
+}
+
+.wallet-details small {
+    font-size: 0.75rem;
+    opacity: 0.7;
+}
+
+.card-gateways {
+    margin-top: 15px;
+    display: none;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 10px;
+}
+
+.gateway-option {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 15px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.gateway-option:hover {
+    border-color: #ff0033;
+    background: rgba(255, 0, 51, 0.1);
+}
+
+.gateway-option.selected {
+    border-color: #ff0033;
+    background: rgba(255, 0, 51, 0.2);
+}
+
+.gateway-option img {
+    width: 40px;
+    height: 30px;
+    object-fit: contain;
+    margin-bottom: 8px;
+}
+
+.gateway-option span {
+    display: block;
+    color: #fff;
+    font-size: 0.85rem;
+}
+
+.payment-actions {
+    margin-top: 30px;
+}
+
+.pay-button {
+    width: 100%;
+    background: linear-gradient(135deg, #ff0033, #ff3366);
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    border-radius: 12px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.pay-button:hover {
+    background: linear-gradient(135deg, #e6002e, #ff2958);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(255, 0, 51, 0.3);
+}
+
+.pay-button:disabled {
+    background: #555;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.security-info {
+    text-align: center;
+    margin-top: 20px;
+    color: #999;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.loading {
+    display: none;
+    text-align: center;
+    margin: 20px 0;
+}
+
+.spinner {
+    border: 3px solid rgba(255, 255, 255, 0.1);
+    border-top: 3px solid #ff0033;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 10px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.error-message, .success-message {
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    display: none;
+}
+
+.error-message {
+    background: rgba(220, 53, 69, 0.1);
+    border: 1px solid #dc3545;
+    color: #ff6b7d;
+}
+
+.success-message {
+    background: rgba(40, 167, 69, 0.1);
+    border: 1px solid #28a745;
+    color: #5dcea3;
+}
+
+/* Order Summary Sidebar */
+.order-summary h3 {
+    color: #fff;
+    margin-bottom: 20px;
+    font-size: 1.2rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 10px;
+}
+
+.order-items {
+    margin-bottom: 20px;
+}
+
+.order-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.item-info h4 {
+    color: #fff;
+    font-size: 1rem;
+    margin-bottom: 5px;
+}
+
+.item-info p {
+    color: #999;
+    font-size: 0.85rem;
+    margin: 0;
+}
+
+.item-price {
+    color: #ff0033;
+    font-weight: bold;
+}
+
+.order-totals {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 15px;
+}
+
+.total-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    color: #ccc;
+}
+
+.total-row.final {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #fff;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 10px;
+    margin-top: 10px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="payment-container">
+    <div class="payment-content">
+        <!-- القسم الرئيسي للدفع -->
+        <div class="payment-main">
+            <div class="payment-header">
+                <h1 class="payment-title">
+                    <i class="fas fa-credit-card"></i>
+                    إتمام الدفع
+                </h1>
+            </div>
+
+            <!-- معلومات الطلب -->
+            <div class="order-info">
+                <h3>
+                    <i class="fas fa-receipt"></i>
+                    معلومات الطلب
+                </h3>
+                <div class="order-detail">
+                    <span>رقم الطلب:</span>
+                    <span>{{ order.order_number }}</span>
+                </div>
+                <div class="order-detail">
+                    <span>تاريخ الطلب:</span>
+                    <span>{{ order.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                </div>
+                <div class="order-detail total">
+                    <span>المبلغ الإجمالي:</span>
+                    <span>{{ order.total_amount }} {{ order.currency }}</span>
+                </div>
+            </div>
+
+            <!-- رسائل الخطأ والنجاح -->
+            <div class="error-message" id="errorMessage"></div>
+            <div class="success-message" id="successMessage"></div>
+            <div class="loading" id="loadingIndicator">
+                <div class="spinner"></div>
+                <p>جاري معالجة الدفع...</p>
+            </div>
+
+            <!-- طرق الدفع -->
+            <div class="payment-methods">
+                <h3>
+                    <i class="fas fa-wallet"></i>
+                    اختر طريقة الدفع
+                </h3>
+
+                <!-- الدفع بالمحفظة -->
+                <div class="payment-option wallet-payment" onclick="selectPaymentMethod('wallet')">
+                    <input type="radio" name="payment_method" value="wallet" id="wallet_payment">
+                    <div class="payment-option-content">
+                        <div class="payment-icon">
+                            <i class="fas fa-wallet"></i>
+                        </div>
+                        <div class="payment-details">
+                            <h4>الدفع من المحفظة</h4>
+                            <p>ادفع مباشرة من رصيد محفظتك</p>
+                            <div class="wallet-balance {% if wallet_balance < order.total_amount %}insufficient-balance{% endif %}">
+                                <div class="wallet-balance-info">
+                                    <span>الرصيد المتاح:</span>
+                                    <span class="balance-amount">{{ "%.2f"|format(wallet_balance) }} {{ order.currency }}</span>
+                                </div>
+                                {% if wallet %}
+                                <div class="wallet-details">
+                                    <small class="text-muted">
+                                        رصيد المحفظة الأصلي: {{ "%.2f"|format(wallet.balance) }} {{ wallet.currency }}
+                                    </small>
+                                </div>
+                                {% endif %}
+                                {% if wallet_balance < order.total_amount %}
+                                <div class="wallet-warning">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    رصيدك غير كافٍ لإتمام هذا الطلب (يحتاج {{ "%.2f"|format(order.total_amount - wallet_balance) }} {{ order.currency }} إضافية)
+                                </div>
+                                {% else %}
+                                <div class="wallet-sufficient">
+                                    <i class="fas fa-check-circle"></i>
+                                    رصيدك كافٍ لإتمام هذا الطلب
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- الدفع بالبطاقة البنكية -->
+                <div class="payment-option card-payment" onclick="selectPaymentMethod('card')">
+                    <input type="radio" name="payment_method" value="card" id="card_payment">
+                    <div class="payment-option-content">
+                        <div class="payment-icon">
+                            <i class="fas fa-credit-card"></i>
+                        </div>
+                        <div class="payment-details">
+                            <h4>الدفع بالبطاقة البنكية</h4>
+                            <p>ادفع باستخدام بطاقتك الائتمانية أو المدين</p>
+                        </div>
+                    </div>
+                    
+                    <!-- بوابات الدفع -->
+                    <div class="card-gateways" id="cardGateways">
+                        {% for gateway in payment_gateways %}
+                        <div class="gateway-option" onclick="selectGateway('{{ gateway.name }}')" data-gateway="{{ gateway.name }}">
+                            <img src="/static/images/gateways/{{ gateway.name.lower() }}.png" alt="{{ gateway.name }}" onerror="this.style.display='none'">
+                            <span>{{ gateway.name }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- أزرار الدفع -->
+            <div class="payment-actions">
+                <button class="pay-button" id="payButton" onclick="processPayment()" disabled>
+                    <i class="fas fa-lock"></i>
+                    تأكيد الدفع
+                </button>
+                
+                <div class="security-info">
+                    <i class="fas fa-shield-alt"></i>
+                    جميع المعاملات محمية بتشفير SSL
+                </div>
+            </div>
+        </div>
+
+        <!-- الشريط الجانبي - ملخص الطلب -->
+        <div class="payment-sidebar">
+            <div class="order-summary">
+                <h3>
+                    <i class="fas fa-shopping-cart"></i>
+                    ملخص الطلب
+                </h3>
+                
+                <div class="order-items">
+                    {% for item in order.items %}
+                    <div class="order-item">
+                        <div class="item-info">
+                            <h4>{{ item.product.name }}</h4>
+                            <p>الكمية: {{ item.quantity }}</p>
+                        </div>
+                        <div class="item-price">
+                            {{ item.price * item.quantity }} {{ order.currency }}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="order-totals">
+                    <div class="total-row">
+                        <span>المجموع الفرعي:</span>
+                        <span>{{ order.total_amount }} {{ order.currency }}</span>
+                    </div>
+                    <div class="total-row">
+                        <span>الضرائب:</span>
+                        <span>0.00 {{ order.currency }}</span>
+                    </div>
+                    <div class="total-row final">
+                        <span>المجموع الكلي:</span>
+                        <span>{{ order.total_amount }} {{ order.currency }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let selectedPaymentMethod = null;
+let selectedGateway = null;
+
+function selectPaymentMethod(method) {
+    selectedPaymentMethod = method;
+    
+    // إزالة التحديد من جميع الخيارات
+    document.querySelectorAll('.payment-option').forEach(option => {
+        option.classList.remove('active');
+    });
+    
+    // تحديد الخيار المختار
+    if (method === 'wallet') {
+        document.querySelector('.wallet-payment').classList.add('active');
+        document.getElementById('wallet_payment').checked = true;
+        document.getElementById('cardGateways').style.display = 'none';
+        selectedGateway = null;
+    } else if (method === 'card') {
+        document.querySelector('.card-payment').classList.add('active');
+        document.getElementById('card_payment').checked = true;
+        document.getElementById('cardGateways').style.display = 'grid';
+    }
+    
+    updatePayButton();
+}
+
+function selectGateway(gateway) {
+    selectedGateway = gateway;
+    
+    // إزالة التحديد من جميع البوابات
+    document.querySelectorAll('.gateway-option').forEach(option => {
+        option.classList.remove('selected');
+    });
+    
+    // تحديد البوابة المختارة
+    document.querySelector(`[data-gateway="${gateway}"]`).classList.add('selected');
+    
+    updatePayButton();
+}
+
+function updatePayButton() {
+    const payButton = document.getElementById('payButton');
+    const walletBalance = {{ wallet_balance }};
+    const orderTotal = {{ order.total_amount }};
+    
+    let canPay = false;
+    
+    if (selectedPaymentMethod === 'wallet') {
+        canPay = walletBalance >= orderTotal;
+        payButton.innerHTML = '<i class="fas fa-wallet"></i> دفع من المحفظة';
+    } else if (selectedPaymentMethod === 'card' && selectedGateway) {
+        canPay = true;
+        payButton.innerHTML = '<i class="fas fa-credit-card"></i> دفع بالبطاقة البنكية';
+    } else {
+        payButton.innerHTML = '<i class="fas fa-lock"></i> تأكيد الدفع';
+    }
+    
+    payButton.disabled = !canPay;
+}
+
+function showMessage(message, type = 'error') {
+    const errorDiv = document.getElementById('errorMessage');
+    const successDiv = document.getElementById('successMessage');
+    
+    if (type === 'error') {
+        errorDiv.textContent = message;
+        errorDiv.style.display = 'block';
+        successDiv.style.display = 'none';
+    } else {
+        successDiv.textContent = message;
+        successDiv.style.display = 'block';
+        errorDiv.style.display = 'none';
+    }
+    
+    // إخفاء الرسالة بعد 5 ثوان
+    setTimeout(() => {
+        errorDiv.style.display = 'none';
+        successDiv.style.display = 'none';
+    }, 5000);
+}
+
+function showLoading(show = true) {
+    const loading = document.getElementById('loadingIndicator');
+    const payButton = document.getElementById('payButton');
+    
+    if (show) {
+        loading.style.display = 'block';
+        payButton.disabled = true;
+    } else {
+        loading.style.display = 'none';
+        updatePayButton();
+    }
+}
+
+async function processPayment() {
+    if (!selectedPaymentMethod) {
+        showMessage('يرجى اختيار طريقة الدفع');
+        return;
+    }
+    
+    if (selectedPaymentMethod === 'card' && !selectedGateway) {
+        showMessage('يرجى اختيار بوابة الدفع');
+        return;
+    }
+    
+    showLoading(true);
+    
+    try {
+        const response = await fetch('/process-payment', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                order_id: {{ order.id }},
+                payment_method: selectedPaymentMethod,
+                gateway: selectedGateway
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showMessage('تم إتمام الدفع بنجاح! سيتم إرسال تفاصيل الطلب والأكواد على بريدك الإلكتروني', 'success');
+            
+            // تحويل المستخدم بعد 3 ثواني
+            setTimeout(() => {
+                window.location.href = result.redirect || '/order/success/{{ order.id }}';
+            }, 3000);
+        } else {
+            showMessage(result.message || 'حدث خطأ أثناء معالجة الدفع');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showMessage('حدث خطأ في الاتصال. يرجى المحاولة مرة أخرى.');
+    } finally {
+        showLoading(false);
+    }
+}
+
+// تحديد طريقة الدفع الافتراضية
+document.addEventListener('DOMContentLoaded', function() {
+    const walletBalance = {{ wallet_balance }};
+    const orderTotal = {{ order.total_amount }};
+    
+    // إذا كان رصيد المحفظة كافٍ، اختر المحفظة كخيار افتراضي
+    if (walletBalance >= orderTotal) {
+        selectPaymentMethod('wallet');
+    } else {
+        selectPaymentMethod('card');
+        // اختر أول بوابة دفع متاحة
+        const firstGateway = document.querySelector('.gateway-option');
+        if (firstGateway) {
+            const gatewayName = firstGateway.getAttribute('data-gateway');
+            selectGateway(gatewayName);
+        }
+    }
+});
+</script>
+{% endblock %}

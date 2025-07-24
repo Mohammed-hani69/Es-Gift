@@ -329,6 +329,38 @@ class ProductCodeEmailService:
 # إنشاء مثيل الخدمة
 email_service = ProductCodeEmailService()
 
+def send_email(to_email, subject, html_content, attachments=None):
+    """دالة بسيطة لإرسال إيميل"""
+    try:
+        from flask import current_app
+        from flask_mail import Message, Mail
+        
+        mail = Mail(current_app)
+        
+        msg = Message(
+            subject=subject,
+            recipients=[to_email] if isinstance(to_email, str) else to_email,
+            html=html_content,
+            sender=current_app.config.get('MAIL_DEFAULT_SENDER')
+        )
+        
+        # إضافة المرفقات إذا توفرت
+        if attachments:
+            for attachment in attachments:
+                if isinstance(attachment, dict):
+                    msg.attach(
+                        filename=attachment.get('filename', 'attachment'),
+                        content_type=attachment.get('content_type', 'application/octet-stream'),
+                        data=attachment.get('data', b'')
+                    )
+        
+        mail.send(msg)
+        return True
+        
+    except Exception as e:
+        current_app.logger.error(f"Error sending email: {str(e)}")
+        return False
+
 def init_email_service(app):
     """تهيئة خدمة الإيميل مع Flask app"""
     email_service.init_app(app)

@@ -1,0 +1,585 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}طلبات المحفظة{% endblock %}
+
+{% block content %}
+<div class="content-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2>
+            <i class="fas fa-wallet"></i>
+            طلبات المحفظة
+        </h2>
+        <div style="display: flex; gap: 10px;">
+            <input type="text" placeholder="البحث..." class="form-control" style="width: 200px;" id="searchInput">
+        </div>
+    </div>
+
+    <!-- إحصائيات سريعة -->
+    <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 20px;">
+        <div class="stat-card success">
+            <div class="stat-icon">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="stat-details">
+                <h3>{{ pending_count }}</h3>
+                <p>طلبات معلقة</p>
+            </div>
+        </div>
+        
+        <div class="stat-card info">
+            <div class="stat-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="stat-details">
+                <h3>{{ approved_count }}</h3>
+                <p>طلبات مقبولة</p>
+            </div>
+        </div>
+        
+        <div class="stat-card warning">
+            <div class="stat-icon">
+                <i class="fas fa-times-circle"></i>
+            </div>
+            <div class="stat-details">
+                <h3>{{ rejected_count }}</h3>
+                <p>طلبات مرفوضة</p>
+            </div>
+        </div>
+        
+        <div class="stat-card danger">
+            <div class="stat-icon">
+                <i class="fas fa-money-bill-wave"></i>
+            </div>
+            <div class="stat-details">
+                <h3>{{ total_amount }}</h3>
+                <p>إجمالي المبالغ</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- فلاتر البحث -->
+    <div style="display: flex; gap: 15px; margin-bottom: 20px; align-items: end;">
+        <div class="form-group">
+            <label>الحالة</label>
+            <select class="form-control" id="statusFilter">
+                <option value="">جميع الحالات</option>
+                <option value="pending">معلق</option>
+                <option value="approved">مقبول</option>
+                <option value="rejected">مرفوض</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>نوع المستخدم</label>
+            <select class="form-control" id="userTypeFilter">
+                <option value="">جميع الأنواع</option>
+                <option value="regular">عادي</option>
+                <option value="kyc">موثق</option>
+                <option value="reseller">موزع</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>العملة</label>
+            <select class="form-control" id="currencyFilter">
+                <option value="">جميع العملات</option>
+                {% for currency in currencies %}
+                <option value="{{ currency.code }}">{{ currency.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <button class="btn btn-primary" onclick="clearFilters()">
+            <i class="fas fa-refresh"></i> مسح الفلاتر
+        </button>
+    </div>
+
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>رقم الطلب</th>
+                    <th>المستخدم</th>
+                    <th>المبلغ</th>
+                    <th>العملة</th>
+                    <th>طريقة الدفع</th>
+                    <th>الحالة</th>
+                    <th>تاريخ الطلب</th>
+                    <th>الإجراءات</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for request in requests %}
+                <tr>
+                    <td>#{{ request.id }}</td>
+                    <td>
+                        <div class="user-info">
+                            <strong>{{ request.user.full_name or request.user.email }}</strong>
+                            <br>
+                            <small class="text-muted">{{ request.user.email }}</small>
+                            <br>
+                            <span class="badge badge-info">{{ request.user.customer_type }}</span>
+                        </div>
+                    </td>
+                    <td class="amount-display">{{ request.amount }}</td>
+                    <td>
+                        <span class="currency-badge">{{ request.currency_code }}</span>
+                    </td>
+                    <td>{{ request.payment_method }}</td>
+                    <td>
+                        <span class="status-badge status-{{ request.status }}">
+                            {% if request.status == 'pending' %}
+                                معلق
+                            {% elif request.status == 'approved' %}
+                                مقبول
+                            {% elif request.status == 'rejected' %}
+                                مرفوض
+                            {% endif %}
+                        </span>
+                    </td>
+                    <td>{{ request.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <a href="{{ url_for('admin_wallet.deposit_request_details', request_id=request.id) }}" 
+                               class="btn btn-sm btn-primary" title="عرض التفاصيل">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            {% if request.status == 'pending' %}
+                            <button class="btn btn-sm btn-success" onclick="approveRequest({{ request.id }})" title="موافقة">
+                                <i class="fas fa-check"></i>
+                            </button>
+                            <button class="btn btn-sm btn-danger" onclick="rejectRequest({{ request.id }})" title="رفض">
+                                <i class="fas fa-times"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" class="text-center">
+                        <div class="empty-state">
+                            <i class="fas fa-inbox"></i>
+                            <p>لا توجد طلبات محفظة حالياً</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- مودال الموافقة السريعة -->
+<div id="approveModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>موافقة على طلب الإيداع</h3>
+            <span class="close" onclick="closeModal('approveModal')">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form id="approveForm">
+                <div class="form-group">
+                    <label>مبلغ الشحن</label>
+                    <input type="number" class="form-control" id="approveAmount" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label>العملة</label>
+                    <select class="form-control" id="approveCurrency" required>
+                        {% for currency in currencies %}
+                        <option value="{{ currency.code }}">{{ currency.name }} ({{ currency.symbol }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>ملاحظات</label>
+                    <textarea class="form-control" id="approveNotes" rows="3"></textarea>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('approveModal')">إلغاء</button>
+            <button class="btn btn-success" onclick="submitApproval()">شحن المحفظة</button>
+        </div>
+    </div>
+</div>
+
+<!-- مودال الرفض -->
+<div id="rejectModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>رفض طلب الإيداع</h3>
+            <span class="close" onclick="closeModal('rejectModal')">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form id="rejectForm">
+                <div class="form-group">
+                    <label>سبب الرفض</label>
+                    <textarea class="form-control" id="rejectReason" rows="4" placeholder="اذكر سبب رفض الطلب..." required></textarea>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('rejectModal')">إلغاء</button>
+            <button class="btn btn-danger" onclick="submitRejection()">رفض الطلب</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentRequestId = null;
+
+// البحث والفلترة
+document.getElementById('searchInput').addEventListener('input', filterRequests);
+document.getElementById('statusFilter').addEventListener('change', filterRequests);
+document.getElementById('userTypeFilter').addEventListener('change', filterRequests);
+document.getElementById('currencyFilter').addEventListener('change', filterRequests);
+
+function filterRequests() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const statusFilter = document.getElementById('statusFilter').value;
+    const userTypeFilter = document.getElementById('userTypeFilter').value;
+    const currencyFilter = document.getElementById('currencyFilter').value;
+    
+    const rows = document.querySelectorAll('.data-table tbody tr');
+    
+    rows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        if (cells.length < 8) return;
+        
+        const userInfo = cells[1].textContent.toLowerCase();
+        const currency = cells[3].textContent.trim();
+        const statusCell = cells[5].querySelector('.status-badge');
+        const userTypeCell = cells[1].querySelector('.badge');
+        
+        const matchesSearch = userInfo.includes(searchTerm) || 
+                            cells[0].textContent.toLowerCase().includes(searchTerm);
+        
+        const matchesStatus = !statusFilter || 
+                            (statusCell && statusCell.classList.contains(`status-${statusFilter}`));
+        
+        const matchesUserType = !userTypeFilter || 
+                              (userTypeCell && userTypeCell.textContent.trim() === userTypeFilter);
+        
+        const matchesCurrency = !currencyFilter || currency === currencyFilter;
+        
+        if (matchesSearch && matchesStatus && matchesUserType && matchesCurrency) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
+function clearFilters() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('statusFilter').value = '';
+    document.getElementById('userTypeFilter').value = '';
+    document.getElementById('currencyFilter').value = '';
+    filterRequests();
+}
+
+// موافقة على الطلب
+function approveRequest(requestId) {
+    currentRequestId = requestId;
+    
+    // جلب بيانات الطلب وملء النموذج
+    fetch(`/admin/wallet/deposit-request/${requestId}`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('approveAmount').value = data.request.amount;
+            document.getElementById('approveCurrency').value = data.request.currency_code;
+            document.getElementById('approveModal').style.display = 'flex';
+        } else {
+            showNotification(data.message || 'حدث خطأ في جلب بيانات الطلب', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('حدث خطأ في الاتصال', 'error');
+    });
+}
+
+function submitApproval() {
+    const amount = document.getElementById('approveAmount').value;
+    const currency = document.getElementById('approveCurrency').value;
+    const notes = document.getElementById('approveNotes').value;
+    
+    if (!amount || !currency) {
+        showNotification('يرجى ملء جميع البيانات المطلوبة', 'error');
+        return;
+    }
+    
+    fetch(`/admin/wallet/approve-deposit/${currentRequestId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            amount: parseFloat(amount),
+            currency: currency,
+            notes: notes
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message, 'success');
+            closeModal('approveModal');
+            setTimeout(() => location.reload(), 2000);
+        } else {
+            showNotification(data.message || 'حدث خطأ في الموافقة على الطلب', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('حدث خطأ في الاتصال', 'error');
+    });
+}
+
+// رفض الطلب
+function rejectRequest(requestId) {
+    currentRequestId = requestId;
+    document.getElementById('rejectModal').style.display = 'flex';
+}
+
+function submitRejection() {
+    const reason = document.getElementById('rejectReason').value;
+    
+    if (!reason.trim()) {
+        showNotification('يرجى كتابة سبب الرفض', 'error');
+        return;
+    }
+    
+    fetch(`/admin/wallet/reject-deposit/${currentRequestId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            reason: reason
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message, 'success');
+            closeModal('rejectModal');
+            setTimeout(() => location.reload(), 2000);
+        } else {
+            showNotification(data.message || 'حدث خطأ في رفض الطلب', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('حدث خطأ في الاتصال', 'error');
+    });
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).style.display = 'none';
+    if (modalId === 'approveModal') {
+        document.getElementById('approveForm').reset();
+    } else if (modalId === 'rejectModal') {
+        document.getElementById('rejectForm').reset();
+    }
+}
+
+// إغلاق المودال عند النقر خارجه
+window.onclick = function(event) {
+    const modals = ['approveModal', 'rejectModal'];
+    modals.forEach(modalId => {
+        const modal = document.getElementById(modalId);
+        if (event.target === modal) {
+            closeModal(modalId);
+        }
+    });
+}
+
+// دالة الإشعارات
+function showNotification(message, type) {
+    // إنشاء عنصر الإشعار
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type === 'error' ? 'danger' : type}`;
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        min-width: 300px;
+        animation: slideIn 0.3s ease;
+    `;
+    notification.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'times-circle' : 'info-circle'}"></i>
+        ${message}
+        <button type="button" class="close" onclick="this.parentElement.remove()">
+            <span>&times;</span>
+        </button>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // إزالة الإشعار تلقائياً بعد 5 ثوان
+    setTimeout(() => {
+        if (notification.parentElement) {
+            notification.remove();
+        }
+    }, 5000);
+}
+</script>
+
+<style>
+/* تحسينات إضافية */
+.user-info {
+    line-height: 1.4;
+}
+
+.amount-display {
+    font-weight: bold;
+    color: #28a745;
+}
+
+.currency-badge {
+    background: #007bff;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.8em;
+}
+
+.status-badge {
+    padding: 4px 12px;
+    border-radius: 15px;
+    font-size: 0.85em;
+    font-weight: bold;
+}
+
+.status-pending {
+    background: #ffc107;
+    color: #212529;
+}
+
+.status-approved {
+    background: #28a745;
+    color: white;
+}
+
+.status-rejected {
+    background: #dc3545;
+    color: white;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 5px;
+    justify-content: center;
+}
+
+.btn-sm {
+    padding: 5px 8px;
+    font-size: 0.8em;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #6c757d;
+}
+
+.empty-state i {
+    font-size: 3em;
+    margin-bottom: 15px;
+    opacity: 0.5;
+}
+
+/* مودالات */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-header {
+    padding: 20px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: #333;
+}
+
+.close {
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    color: #999;
+}
+
+.close:hover {
+    color: #333;
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+.modal-footer {
+    padding: 15px 20px;
+    border-top: 1px solid #eee;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+    color: #333;
+}
+
+.form-control {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.form-control:focus {
+    border-color: #ff0033;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(255, 0, 51, 0.2);
+}
+
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+</style>
+{% endblock %}

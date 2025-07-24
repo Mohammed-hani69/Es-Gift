@@ -163,12 +163,42 @@ def search_users_with_limits():
 def add_global_limit():
     """إضافة نوع عميل جديد مع حدوده الافتراضية"""
     try:
+        # التحقق من Content-Type
+        if request.content_type != 'application/json':
+            return jsonify({
+                'success': False,
+                'message': 'يجب أن يكون Content-Type هو application/json'
+            }), 400
+            
         data = request.get_json()
+        print(f"Received data: {data}")  # Debug log
+        
+        if not data:
+            return jsonify({
+                'success': False,
+                'message': 'لم يتم إرسال بيانات'
+            }), 400
         
         user_type = data.get('user_type', '').strip().lower()
         display_name = data.get('display_name', '').strip()
-        daily_limit = float(data['daily_limit'])
-        monthly_limit = float(data['monthly_limit'])
+        
+        # التحقق من وجود البيانات المطلوبة قبل التحويل
+        if 'daily_limit' not in data or 'monthly_limit' not in data:
+            return jsonify({
+                'success': False,
+                'message': 'الحد اليومي والشهري مطلوبان'
+            }), 400
+            
+        try:
+            daily_limit = float(data['daily_limit'])
+            monthly_limit = float(data['monthly_limit'])
+        except (ValueError, TypeError) as e:
+            print(f"Value conversion error: {e}")
+            return jsonify({
+                'success': False,
+                'message': 'قيم الحدود يجب أن تكون أرقام صحيحة'
+            }), 400
+            
         description = data.get('description', '').strip()
         is_active = data.get('is_active', True)
         
@@ -194,6 +224,7 @@ def add_global_limit():
         # التحقق من عدم وجود النوع مسبقاً
         existing_limit = GlobalLimits.query.filter_by(user_type=user_type).first()
         if existing_limit:
+            print(f"Existing limit found for user_type: {user_type}")
             return jsonify({
                 'success': False,
                 'message': f'نوع العميل "{user_type}" موجود بالفعل'
@@ -227,6 +258,8 @@ def add_global_limit():
         if applied_count > 0:
             message += f' وتم تطبيق الحدود على {applied_count} عميل موجود'
         
+        print(f"Success: {message}")  # Debug log
+        
         return jsonify({
             'success': True,
             'message': message
@@ -234,6 +267,10 @@ def add_global_limit():
         
     except Exception as e:
         db.session.rollback()
+        print(f"Exception in add_global_limit: {str(e)}")  # Debug log
+        print(f"Exception type: {type(e)}")  # Debug log
+        import traceback
+        traceback.print_exc()  # Print full traceback
         return jsonify({
             'success': False,
             'message': f'خطأ في إنشاء النوع الجديد: {str(e)}'

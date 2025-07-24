@@ -1,0 +1,486 @@
+{% extends "base.html" %}
+
+{% block title %}فاتورة {{ invoice.invoice_number }} - Es-Gift{% endblock %}
+
+{% block content %}
+<div class="invoice-detail-container">
+    <div class="invoice-actions-bar">
+        <a href="{{ url_for('main.user_invoices') }}" class="back-btn">
+            <i class="fas fa-arrow-right"></i>
+            العودة للفواتير
+        </a>
+        {% if invoice.pdf_file_path %}
+        <a href="{{ url_for('main.download_invoice', invoice_id=invoice.id) }}" 
+           class="download-btn">
+            <i class="fas fa-download"></i>
+            تحميل PDF
+        </a>
+        {% endif %}
+    </div>
+
+    <div class="invoice-detail-card">
+        <!-- رأس الفاتورة -->
+        <div class="invoice-header">
+            <div class="company-info">
+                <h1>Es-Gift</h1>
+                <p>متجر البطاقات الرقمية</p>
+            </div>
+            <div class="invoice-meta">
+                <h2>فاتورة إلكترونية</h2>
+                <div class="invoice-number">{{ invoice.invoice_number }}</div>
+                <div class="invoice-status">
+                    <span class="status-badge status-{{ invoice.payment_status }}">
+                        {% if invoice.payment_status == 'completed' %}
+                            مدفوعة
+                        {% elif invoice.payment_status == 'pending' %}
+                            معلقة
+                        {% elif invoice.payment_status == 'failed' %}
+                            فاشلة
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- معلومات الفاتورة والعميل -->
+        <div class="invoice-info">
+            <div class="info-section">
+                <h3>معلومات الفاتورة</h3>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="label">رقم الفاتورة:</span>
+                        <span class="value">{{ invoice.invoice_number }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">تاريخ الفاتورة:</span>
+                        <span class="value">{{ invoice.invoice_date.strftime('%Y-%m-%d') }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">رقم الطلب:</span>
+                        <span class="value">{{ invoice.order.order_number }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">طريقة الدفع:</span>
+                        <span class="value">
+                            {% if invoice.payment_method == 'wallet' %}
+                                المحفظة الإلكترونية
+                            {% elif invoice.payment_method and 'card' in invoice.payment_method %}
+                                البطاقة البنكية
+                            {% else %}
+                                {{ invoice.payment_method or 'غير محدد' }}
+                            {% endif %}
+                        </span>
+                    </div>
+                    {% if invoice.paid_date %}
+                    <div class="info-item">
+                        <span class="label">تاريخ الدفع:</span>
+                        <span class="value">{{ invoice.paid_date.strftime('%Y-%m-%d %H:%M') }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="info-section">
+                <h3>معلومات العميل</h3>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="label">الاسم:</span>
+                        <span class="value">{{ invoice.customer_name or 'غير محدد' }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">البريد الإلكتروني:</span>
+                        <span class="value">{{ invoice.customer_email }}</span>
+                    </div>
+                    {% if invoice.customer_phone %}
+                    <div class="info-item">
+                        <span class="label">الهاتف:</span>
+                        <span class="value">{{ invoice.customer_phone }}</span>
+                    </div>
+                    {% endif %}
+                    <div class="info-item">
+                        <span class="label">نوع العميل:</span>
+                        <span class="value">
+                            {% if invoice.customer_type == 'regular' %}
+                                عميل عادي
+                            {% elif invoice.customer_type == 'kyc' %}
+                                عميل موثق
+                            {% elif invoice.customer_type == 'reseller' %}
+                                موزع
+                            {% else %}
+                                {{ invoice.customer_type or 'غير محدد' }}
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- تفاصيل المنتجات -->
+        <div class="products-section">
+            <h3>تفاصيل المنتجات</h3>
+            <div class="products-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>المنتج</th>
+                            <th>الكمية</th>
+                            <th>السعر</th>
+                            <th>الإجمالي</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in invoice.order.items %}
+                        <tr>
+                            <td>
+                                <div class="product-info">
+                                    <span class="product-name">{{ item.product.name }}</span>
+                                    {% if item.product.description %}
+                                    <span class="product-desc">{{ item.product.description[:50] }}...</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td class="quantity">{{ item.quantity }}</td>
+                            <td class="price">{{ item.price }} {{ invoice.currency }}</td>
+                            <td class="total">{{ item.price * item.quantity }} {{ invoice.currency }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ملخص المبالغ -->
+        <div class="amounts-summary">
+            <div class="summary-row">
+                <span class="label">المجموع الفرعي:</span>
+                <span class="value">{{ invoice.subtotal }} {{ invoice.currency }}</span>
+            </div>
+            {% if invoice.tax_amount > 0 %}
+            <div class="summary-row">
+                <span class="label">الضرائب:</span>
+                <span class="value">{{ invoice.tax_amount }} {{ invoice.currency }}</span>
+            </div>
+            {% endif %}
+            {% if invoice.discount_amount > 0 %}
+            <div class="summary-row discount">
+                <span class="label">الخصم:</span>
+                <span class="value">-{{ invoice.discount_amount }} {{ invoice.currency }}</span>
+            </div>
+            {% endif %}
+            <div class="summary-row total">
+                <span class="label">المجموع الكلي:</span>
+                <span class="value">{{ invoice.total_amount }} {{ invoice.currency }}</span>
+            </div>
+            <div class="summary-row paid">
+                <span class="label">المبلغ المدفوع:</span>
+                <span class="value">{{ invoice.paid_amount }} {{ invoice.currency }}</span>
+            </div>
+        </div>
+
+        <!-- ملاحظات -->
+        {% if invoice.notes %}
+        <div class="notes-section">
+            <h3>ملاحظات</h3>
+            <p>{{ invoice.notes }}</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.invoice-detail-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 100px 20px 50px;
+    background-color: #111;
+    color: #fff;
+    min-height: 100vh;
+}
+
+.invoice-actions-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    padding: 15px 20px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+}
+
+.back-btn, .download-btn {
+    padding: 10px 20px;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: bold;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.back-btn {
+    background: rgba(108, 117, 125, 0.2);
+    color: #6c757d;
+    border: 1px solid #6c757d;
+}
+
+.back-btn:hover {
+    background: #6c757d;
+    color: white;
+}
+
+.download-btn {
+    background: linear-gradient(135deg, #ff0033, #ff3366);
+    color: white;
+}
+
+.download-btn:hover {
+    background: linear-gradient(135deg, #e60029, #ff1f4d);
+    transform: translateY(-2px);
+}
+
+.invoice-detail-card {
+    background: #222;
+    border-radius: 15px;
+    padding: 40px;
+    border: 1px solid #333;
+}
+
+.invoice-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 40px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid #333;
+}
+
+.company-info h1 {
+    color: #ff0033;
+    margin: 0 0 5px 0;
+    font-size: 2.5em;
+}
+
+.company-info p {
+    color: #999;
+    margin: 0;
+    font-size: 1.1em;
+}
+
+.invoice-meta {
+    text-align: left;
+}
+
+.invoice-meta h2 {
+    color: #fff;
+    margin: 0 0 10px 0;
+    font-size: 1.5em;
+}
+
+.invoice-number {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: #ff0033;
+    margin-bottom: 10px;
+}
+
+.status-badge {
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.9em;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.status-completed {
+    background: rgba(40, 167, 69, 0.2);
+    color: #28a745;
+    border: 1px solid #28a745;
+}
+
+.status-pending {
+    background: rgba(255, 193, 7, 0.2);
+    color: #ffc107;
+    border: 1px solid #ffc107;
+}
+
+.status-failed {
+    background: rgba(220, 53, 69, 0.2);
+    color: #dc3545;
+    border: 1px solid #dc3545;
+}
+
+.invoice-info {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    margin-bottom: 40px;
+}
+
+.info-section h3 {
+    color: #ff0033;
+    margin-bottom: 20px;
+    font-size: 1.3em;
+    border-bottom: 1px solid #333;
+    padding-bottom: 10px;
+}
+
+.info-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+}
+
+.info-item .label {
+    color: #999;
+    font-size: 0.9em;
+    flex: 1;
+}
+
+.info-item .value {
+    color: #fff;
+    font-weight: 500;
+    text-align: left;
+    flex: 1;
+}
+
+.products-section h3 {
+    color: #ff0033;
+    margin-bottom: 20px;
+    font-size: 1.3em;
+    border-bottom: 1px solid #333;
+    padding-bottom: 10px;
+}
+
+.products-table table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+.products-table th,
+.products-table td {
+    padding: 15px;
+    text-align: right;
+    border-bottom: 1px solid #333;
+}
+
+.products-table th {
+    background: rgba(255, 0, 51, 0.1);
+    color: #ff0033;
+    font-weight: bold;
+}
+
+.product-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.product-name {
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.product-desc {
+    font-size: 0.85em;
+    color: #999;
+}
+
+.quantity,
+.price,
+.total {
+    text-align: center;
+    font-weight: bold;
+}
+
+.amounts-summary {
+    background: rgba(255, 255, 255, 0.03);
+    padding: 25px;
+    border-radius: 10px;
+    margin-bottom: 30px;
+}
+
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.summary-row.total {
+    border-top: 2px solid #ff0033;
+    border-bottom: none;
+    font-size: 1.2em;
+    font-weight: bold;
+    color: #ff0033;
+    margin-top: 10px;
+    padding-top: 15px;
+}
+
+.summary-row.paid {
+    border-bottom: none;
+    font-weight: bold;
+    color: #28a745;
+}
+
+.summary-row.discount .value {
+    color: #28a745;
+}
+
+.notes-section {
+    background: rgba(255, 255, 255, 0.03);
+    padding: 20px;
+    border-radius: 10px;
+    border-left: 4px solid #ff0033;
+}
+
+.notes-section h3 {
+    color: #ff0033;
+    margin-bottom: 15px;
+}
+
+.notes-section p {
+    color: #ccc;
+    line-height: 1.6;
+    margin: 0;
+}
+
+@media (max-width: 768px) {
+    .invoice-header {
+        flex-direction: column;
+        gap: 20px;
+        text-align: center;
+    }
+    
+    .invoice-meta {
+        text-align: center;
+    }
+    
+    .invoice-info {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .invoice-actions-bar {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .products-table {
+        overflow-x: auto;
+    }
+    
+    .products-table table {
+        min-width: 500px;
+    }
+}
+</style>
+{% endblock %}

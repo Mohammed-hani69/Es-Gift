@@ -827,28 +827,62 @@ function updateDisplayName() {
 }
 
 function saveNewGlobalLimit() {
-    const formData = new FormData(document.getElementById('addGlobalLimitForm'));
-    const data = Object.fromEntries(formData.entries());
-    data.is_active = document.getElementById('newIsActive').checked;
+    // الحصول على البيانات مباشرة من الحقول
+    const userType = document.getElementById('newUserType').value.trim();
+    const displayName = document.getElementById('newDisplayName').value.trim();
+    const dailyLimit = document.getElementById('newDailyLimit').value;
+    const monthlyLimit = document.getElementById('newMonthlyLimit').value;
+    const description = document.getElementById('newLimitDescription').value.trim();
+    const isActive = document.getElementById('newIsActive').checked;
+    
+    console.log('Form Data:', {
+        userType, displayName, dailyLimit, monthlyLimit, description, isActive
+    });
     
     // التحقق من البيانات
-    if (!data.user_type || !data.display_name || !data.daily_limit || !data.monthly_limit) {
+    if (!userType || !displayName || !dailyLimit || !monthlyLimit) {
         showNotification('يرجى ملء جميع الحقول المطلوبة', 'error');
         return;
     }
     
+    // التحقق من أن القيم أرقام صحيحة
+    const dailyLimitNum = parseFloat(dailyLimit);
+    const monthlyLimitNum = parseFloat(monthlyLimit);
+    
+    if (isNaN(dailyLimitNum) || isNaN(monthlyLimitNum)) {
+        showNotification('يرجى إدخال قيم صحيحة للحدود', 'error');
+        return;
+    }
+    
+    if (dailyLimitNum <= 0 || monthlyLimitNum <= 0) {
+        showNotification('الحدود يجب أن تكون أكبر من الصفر', 'error');
+        return;
+    }
+    
     // التحقق من أن الحد الشهري أكبر من اليومي
-    if (parseFloat(data.monthly_limit) < parseFloat(data.daily_limit)) {
+    if (monthlyLimitNum < dailyLimitNum) {
         showNotification('الحد الشهري يجب أن يكون أكبر من أو يساوي الحد اليومي', 'error');
         return;
     }
     
     // التحقق من أن النوع المختار صحيح
     const allowedTypes = ['regular', 'kyc', 'reseller'];
-    if (!allowedTypes.includes(data.user_type)) {
+    if (!allowedTypes.includes(userType)) {
         showNotification('يرجى اختيار نوع عميل صحيح من القائمة', 'error');
         return;
     }
+    
+    // تحضير البيانات للإرسال
+    const data = {
+        user_type: userType,
+        display_name: displayName,
+        daily_limit: dailyLimitNum,
+        monthly_limit: monthlyLimitNum,
+        description: description,
+        is_active: isActive
+    };
+    
+    console.log('Sending data:', data);
     
     fetch('/admin/financial/limits/global/add', {
         method: 'POST',
@@ -857,8 +891,12 @@ function saveNewGlobalLimit() {
         },
         body: JSON.stringify(data)
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log('Response status:', response.status);
+        return response.json();
+    })
     .then(data => {
+        console.log('Response data:', data);
         if (data.success) {
             showNotification(data.message, 'success');
             closeAddGlobalLimitModal();
@@ -869,7 +907,7 @@ function saveNewGlobalLimit() {
     })
     .catch(error => {
         console.error('Error:', error);
-        showNotification('حدث خطأ أثناء إضافة النوع الجديد', 'error');
+        showNotification('حدث خطأ أثناء إضافة النوع الجديد: ' + error.message, 'error');
     });
 }
 

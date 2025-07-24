@@ -396,6 +396,150 @@ def update_order_status(order_id):
         db.session.rollback()
         return jsonify({'success': False, 'message': f'حدث خطأ: {str(e)}'})
 
+@admin.route('/invoices')
+@login_required
+@requires_page_access('admin.invoices')
+def invoices():
+    """عرض جميع الفواتير في النظام"""
+    if not current_user.is_admin:
+        employee = Employee.query.filter_by(user_id=current_user.id).first()
+        if not employee:
+            return redirect(url_for('main.index'))
+    
+    page = request.args.get('page', 1, type=int)
+    status_filter = request.args.get('status', '')
+    search_query = request.args.get('search', '')
+    
+    query = Invoice.query
+    
+    # تطبيق الفلاتر
+    if status_filter:
+        query = query.filter(Invoice.payment_status == status_filter)
+    
+    if search_query:
+        query = query.filter(
+            db.or_(
+                Invoice.invoice_number.contains(search_query),
+                Invoice.customer_name.contains(search_query),
+                Invoice.customer_email.contains(search_query)
+            )
+        )
+    
+    invoices = query.order_by(Invoice.created_at.desc())\
+                   .paginate(page=page, per_page=20, error_out=False)
+    
+    # إحصائيات الفواتير
+    stats = {
+        'total_invoices': Invoice.query.count(),
+        'completed_invoices': Invoice.query.filter_by(payment_status='completed').count(),
+        'pending_invoices': Invoice.query.filter_by(payment_status='pending').count(),
+        'failed_invoices': Invoice.query.filter_by(payment_status='failed').count(),
+        'total_revenue': db.session.query(func.sum(Invoice.total_amount))\
+                                  .filter(Invoice.payment_status == 'completed').scalar() or 0
+    }
+    
+    return render_template('admin/invoices.html', 
+                         invoices=invoices, 
+                         stats=stats,
+                         status_filter=status_filter,
+                         search_query=search_query)
+
+@admin.route('/invoice/<int:invoice_id>')
+@login_required
+@requires_page_access('admin.invoices')
+def invoice_detail(invoice_id):
+    """عرض تفاصيل فاتورة محددة"""
+    if not current_user.is_admin:
+        employee = Employee.query.filter_by(user_id=current_user.id).first()
+        if not employee:
+            return redirect(url_for('main.index'))
+    
+    invoice = Invoice.query.get_or_404(invoice_id)
+    return render_template('admin/invoice_detail.html', invoice=invoice)
+
+@admin.route('/invoice/<int:invoice_id>/regenerate-pdf', methods=['POST'])
+@login_required
+@requires_page_access('admin.invoices')
+def regenerate_invoice_pdf(invoice_id):
+    """إعادة توليد ملف PDF للفاتورة"""
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'غير مصرح'})
+    
+    try:
+        from invoice_service import InvoiceService
+        
+        invoice = Invoice.query.get_or_404(invoice_id)
+        
+        # إعادة توليد ملف PDF
+        pdf_path = InvoiceService.generate_invoice_pdf(invoice)
+        if pdf_path:
+            invoice.pdf_file_path = pdf_path
+            db.session.commit()
+            
+            return jsonify({
+                'success': True, 
+                'message': 'تم إعادة توليد ملف PDF للفاتورة بنجاح'
+            })
+        else:
+            return jsonify({
+                'success': False, 
+                'message': 'فشل في إعادة توليد ملف PDF'
+            })
+            
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'حدث خطأ: {str(e)}'})
+
+@admin.route('/invoice/<int:invoice_id>/send-email', methods=['POST'])
+@login_required
+@requires_page_access('admin.invoices')
+def send_invoice_email(invoice_id):
+    """إرسال الفاتورة عبر البريد الإلكتروني"""
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'غير مصرح'})
+    
+    try:
+        from invoice_service import ExcelReportService
+        
+        invoice = Invoice.query.get_or_404(invoice_id)
+        order = invoice.order
+        
+        # إنشاء بيانات الأكواد للطلب
+        purchased_codes = []
+        for item in order.items:
+            for code in item.product.codes.filter_by(order_id=order.id):
+                purchased_codes.append({
+                    'اسم المنتج': item.product.name,
+                    'الكود': code.code,
+                    'الرقم التسلسلي': code.serial_number or '',
+                    'التعليمات': item.product.instructions or '',
+                    'السعر': float(item.price),
+                    'العملة': order.currency
+                })
+        
+        # إنشاء ملف Excel وإرساله
+        excel_path = ExcelReportService.create_order_excel(order, purchased_codes)
+        if excel_path:
+            success = ExcelReportService.send_order_email_with_excel(order, purchased_codes, excel_path)
+            if success:
+                return jsonify({
+                    'success': True, 
+                    'message': 'تم إرسال الفاتورة عبر البريد الإلكتروني بنجاح'
+                })
+            else:
+                return jsonify({
+                    'success': False, 
+                    'message': 'فشل في إرسال البريد الإلكتروني'
+                })
+        else:
+            return jsonify({
+                'success': False, 
+                'message': 'فشل في إنشاء ملف Excel'
+            })
+            
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'حدث خطأ: {str(e)}'})
+
 @admin.route('/articles')
 @login_required
 def articles():

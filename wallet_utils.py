@@ -4,9 +4,49 @@
 مساعدات إدارة المحفظة والحدود المالية
 """
 
-from models import UserLimits, GlobalLimits, WalletTransaction, UserBalance, User, Currency, db
+from models import UserLimits, GlobalLimits, WalletTransaction, UserBalance, User, Currency, UserWallet, db
 from datetime import datetime, date
 from decimal import Decimal
+
+def get_or_create_wallet(user):
+    """الحصول على محفظة المستخدم أو إنشاؤها"""
+    wallet = UserWallet.query.filter_by(user_id=user.id).first()
+    if not wallet:
+        # تحديد نوع المستخدم للحصول على الحدود الافتراضية
+        if hasattr(user, 'user_type') and user.user_type == 'distributor':
+            user_type = 'distributor'
+        elif hasattr(user, 'user_type') and user.user_type == 'reseller':
+            user_type = 'reseller'
+        elif hasattr(user, 'customer_type') and user.customer_type == 'reseller':
+            user_type = 'reseller'
+        elif hasattr(user, 'kyc_status') and user.kyc_status == 'approved':
+            user_type = 'kyc'
+        elif hasattr(user, 'customer_type') and user.customer_type == 'regular':
+            user_type = 'regular'
+        else:
+            user_type = 'regular'
+        
+        # الحصول على الحدود الافتراضية من GlobalLimits
+        global_limit = GlobalLimits.query.filter_by(user_type=user_type, is_active=True).first()
+        
+        if global_limit:
+            wallet = UserWallet(
+                user_id=user.id,
+                daily_limit=global_limit.daily_limit_usd,
+                monthly_limit=global_limit.monthly_limit_usd
+            )
+        else:
+            # إنشاء محفظة بحدود افتراضية
+            wallet = UserWallet(
+                user_id=user.id,
+                daily_limit=Decimal('100.00'),
+                monthly_limit=Decimal('2000.00')
+            )
+        
+        db.session.add(wallet)
+        db.session.commit()
+    
+    return wallet
 
 def get_currency_rate(from_currency, to_currency='USD'):
     """الحصول على سعر صرف العملة"""
@@ -20,16 +60,16 @@ def get_currency_rate(from_currency, to_currency='USD'):
         if not from_currency_obj or not to_currency_obj:
             return 1.0
         
-        # حساب معدل التحويل
+        # حساب معدل التحويل - تحويل جميع القيم إلى float
         if from_currency == 'SAR':
             return float(to_currency_obj.exchange_rate)
         elif to_currency == 'SAR':
-            return float(1.0 / from_currency_obj.exchange_rate)
+            return 1.0 / float(from_currency_obj.exchange_rate)
         else:
             # تحويل عبر الريال السعودي
-            sar_to_from = float(1.0 / from_currency_obj.exchange_rate)
-            sar_to_to = float(to_currency_obj.exchange_rate)
-            return sar_to_to / sar_to_from
+            from_rate = float(from_currency_obj.exchange_rate)
+            to_rate = float(to_currency_obj.exchange_rate)
+            return to_rate / from_rate
             
     except Exception as e:
         print(f"خطأ في جلب سعر الصرف: {e}")
@@ -47,8 +87,71 @@ def get_user_limits(user_id):
     
     return user_limits
 
+def ensure_default_limits_exist():
+    """التأكد من وجود الحدود الافتراضية في قاعدة البيانات"""
+    default_limits = [
+        {
+            'user_type': 'normal',
+            'display_name': 'عميل عادي',
+            'daily_limit_usd': 1000.00,
+            'monthly_limit_usd': 10000.00,
+            'description': 'الحدود الافتراضية للعملاء العاديين'
+        },
+        {
+            'user_type': 'regular',
+            'display_name': 'عميل عادي',
+            'daily_limit_usd': 2000.00,
+            'monthly_limit_usd': 20000.00,
+            'description': 'الحدود الافتراضية للعملاء العاديين المسجلين'
+        },
+        {
+            'user_type': 'kyc',
+            'display_name': 'عميل موثق (KYC)',
+            'daily_limit_usd': 5000.00,
+            'monthly_limit_usd': 50000.00,
+            'description': 'الحدود الافتراضية للعملاء الموثقين'
+        },
+        {
+            'user_type': 'distributor',
+            'display_name': 'موزع',
+            'daily_limit_usd': 20000.00,
+            'monthly_limit_usd': 200000.00,
+            'description': 'الحدود الافتراضية للموزعين'
+        },
+        {
+            'user_type': 'reseller',
+            'display_name': 'موزع',
+            'daily_limit_usd': 15000.00,
+            'monthly_limit_usd': 150000.00,
+            'description': 'الحدود الافتراضية لبائعي التجزئة'
+        }
+    ]
+    
+    for limit_data in default_limits:
+        existing_limit = GlobalLimits.query.filter_by(user_type=limit_data['user_type']).first()
+        if not existing_limit:
+            new_limit = GlobalLimits(
+                user_type=limit_data['user_type'],
+                display_name=limit_data['display_name'],
+                daily_limit_usd=limit_data['daily_limit_usd'],
+                monthly_limit_usd=limit_data['monthly_limit_usd'],
+                description=limit_data['description'],
+                is_active=True
+            )
+            db.session.add(new_limit)
+    
+    db.session.commit()
+
 def create_user_limits(user):
     """إنشاء حدود جديدة للمستخدم بناءً على نوعه"""
+    # التأكد من وجود الحدود الافتراضية
+    ensure_default_limits_exist()
+    
+    # التحقق من عدم وجود حدود مسبقة للمستخدم
+    existing_limits = UserLimits.query.filter_by(user_id=user.id).first()
+    if existing_limits:
+        return existing_limits
+    
     # تحديد نوع المستخدم
     if hasattr(user, 'user_type') and user.user_type == 'distributor':
         user_type = 'distributor'
@@ -61,25 +164,41 @@ def create_user_limits(user):
     elif hasattr(user, 'user_type') and user.user_type == 'regular':
         user_type = 'regular'
     else:
+        # للمستخدمين الجدد، استخدم النوع 'normal' كافتراضي
         user_type = 'normal'
     
     # الحصول على الحدود الافتراضية
     global_limit = GlobalLimits.query.filter_by(user_type=user_type, is_active=True).first()
     
-    if global_limit:
-        user_limits = UserLimits(
-            user_id=user.id,
-            daily_limit_usd=global_limit.daily_limit_usd,
-            monthly_limit_usd=global_limit.monthly_limit_usd,
-            daily_spent_usd=0.00,
-            monthly_spent_usd=0.00,
-            is_custom=False
-        )
-        db.session.add(user_limits)
-        db.session.commit()
-        return user_limits
+    # إذا لم توجد حدود افتراضية لهذا النوع، استخدم الحدود العادية
+    if not global_limit:
+        global_limit = GlobalLimits.query.filter_by(user_type='normal', is_active=True).first()
     
-    return None
+    # إذا لم توجد حدود 'normal'، إنشاء حدود افتراضية
+    if not global_limit:
+        global_limit = GlobalLimits(
+            user_type='normal',
+            display_name='عميل عادي',
+            daily_limit_usd=1000.00,
+            monthly_limit_usd=10000.00,
+            description='الحدود الافتراضية للعملاء العاديين',
+            is_active=True
+        )
+        db.session.add(global_limit)
+        db.session.flush()
+    
+    # إنشاء حدود المستخدم
+    user_limits = UserLimits(
+        user_id=user.id,
+        daily_limit_usd=global_limit.daily_limit_usd,
+        monthly_limit_usd=global_limit.monthly_limit_usd,
+        daily_spent_usd=0.00,
+        monthly_spent_usd=0.00,
+        is_custom=False
+    )
+    db.session.add(user_limits)
+    
+    return user_limits
 
 def check_spending_limit(user_id, amount_usd):
     """التحقق من إمكانية الشراء ضمن الحدود"""
@@ -228,6 +347,129 @@ def get_user_balance(user_id, currency_code='USD'):
         db.session.commit()
     
     return float(balance.balance)
+
+def get_user_wallet_balance(user_id, currency_code='USD'):
+    """الحصول على رصيد محفظة المستخدم من جدول user_wallet"""
+    try:
+        # البحث عن محفظة المستخدم في جدول user_wallet
+        wallet = UserWallet.query.filter_by(user_id=user_id).first()
+        
+        if wallet:
+            # إذا كانت عملة المحفظة تطابق العملة المطلوبة
+            if wallet.currency == currency_code:
+                return float(wallet.balance)
+            
+            # إذا كانت المحفظة بالدولار والعملة المطلوبة مختلفة، قم بالتحويل
+            elif wallet.currency == 'USD' and currency_code != 'USD':
+                exchange_rate = get_currency_rate('USD', currency_code)
+                converted_balance = float(wallet.balance) * exchange_rate
+                return converted_balance
+            
+            # إذا كانت المحفظة بعملة مختلفة والعملة المطلوبة بالدولار
+            elif wallet.currency != 'USD' and currency_code == 'USD':
+                exchange_rate = get_currency_rate(wallet.currency, 'USD')
+                converted_balance = float(wallet.balance) * exchange_rate
+                return converted_balance
+            
+            # إذا كانت المحفظة والعملة المطلوبة مختلفتان عن الدولار
+            else:
+                # تحويل عبر الدولار
+                usd_rate = get_currency_rate(wallet.currency, 'USD')
+                target_rate = get_currency_rate('USD', currency_code)
+                converted_balance = float(wallet.balance) * usd_rate * target_rate
+                return converted_balance
+        
+        # إذا لم توجد محفظة، إنشاء واحدة جديدة
+        else:
+            user = User.query.get(user_id)
+            if user:
+                new_wallet = get_or_create_wallet(user)
+                return float(new_wallet.balance)
+        
+        # إذا فشل كل شيء، التحقق من النظام القديم UserBalance
+        return get_user_balance(user_id, currency_code)
+        
+    except Exception as e:
+        print(f"خطأ في جلب رصيد المحفظة: {e}")
+        # في حالة الخطأ، التحقق من النظام القديم
+        return get_user_balance(user_id, currency_code)
+
+def deduct_from_wallet(user_id, amount, currency_code='USD', description='Purchase', order_id=None):
+    """خصم مبلغ من محفظة المستخدم مع تحويل العملة إلى عملة المحفظة"""
+    try:
+        # الحصول على محفظة المستخدم
+        wallet = UserWallet.query.filter_by(user_id=user_id).first()
+        
+        if not wallet:
+            # إذا لم توجد محفظة، إنشاء واحدة جديدة
+            user = User.query.get(user_id)
+            if user:
+                wallet = get_or_create_wallet(user)
+            else:
+                return {'success': False, 'message': 'المستخدم غير موجود'}
+        
+        # تحويل المبلغ إلى عملة المحفظة
+        if currency_code != wallet.currency:
+            # حساب سعر التحويل من عملة الطلب إلى عملة المحفظة
+            exchange_rate = get_currency_rate(currency_code, wallet.currency)
+            amount_in_wallet_currency = float(amount) * exchange_rate
+            print(f"تحويل {amount} {currency_code} إلى {amount_in_wallet_currency} {wallet.currency}")
+        else:
+            amount_in_wallet_currency = float(amount)
+            exchange_rate = 1.0
+        
+        # التحقق من كفاية الرصيد
+        if float(wallet.balance) < amount_in_wallet_currency:
+            return {
+                'success': False, 
+                'message': f'رصيد المحفظة غير كافي. الرصيد المتاح: {wallet.balance} {wallet.currency}, المطلوب: {amount_in_wallet_currency:.2f} {wallet.currency}'
+            }
+        
+        # خصم المبلغ من المحفظة
+        balance_before = float(wallet.balance)
+        wallet.balance -= Decimal(str(amount_in_wallet_currency))
+        
+        # تحديث إحصائيات المحفظة
+        # تحويل المبلغ إلى الدولار للإحصائيات
+        amount_usd = float(amount_in_wallet_currency) * get_currency_rate(wallet.currency, 'USD')
+        wallet.total_purchases += Decimal(str(amount_usd))
+        
+        if order_id:
+            wallet.total_orders += 1
+        
+        wallet.updated_at = datetime.utcnow()
+        
+        # تسجيل المعاملة
+        transaction = WalletTransaction(
+            user_id=user_id,
+            transaction_type='purchase',
+            amount_usd=Decimal(str(amount_usd)),
+            amount_original=Decimal(str(amount)),  # المبلغ الأصلي بعملة الطلب
+            currency_code=currency_code,  # عملة الطلب الأصلية
+            exchange_rate=Decimal(str(exchange_rate)),
+            description=description,
+            reference_id=str(order_id) if order_id else None,
+            reference_type='order' if order_id else 'manual',
+            status='completed'
+        )
+        
+        db.session.add(transaction)
+        db.session.commit()
+        
+        print(f"✅ تم خصم {amount_in_wallet_currency} {wallet.currency} من المحفظة. الرصيد الجديد: {wallet.balance} {wallet.currency}")
+        
+        return {
+            'success': True, 
+            'message': f'تم خصم {amount_in_wallet_currency:.2f} {wallet.currency} من المحفظة بنجاح',
+            'new_balance': float(wallet.balance),
+            'deducted_amount': amount_in_wallet_currency,
+            'wallet_currency': wallet.currency
+        }
+                
+    except Exception as e:
+        db.session.rollback()
+        print(f"خطأ في خصم المبلغ من المحفظة: {e}")
+        return {'success': False, 'message': f'خطأ في خصم المبلغ: {str(e)}'}
 
 def update_user_balance(user_id, currency_code, amount, transaction_type='deposit', description=None):
     """تحديث رصيد المستخدم"""

@@ -41,6 +41,7 @@ class User(UserMixin, db.Model):
     is_admin = db.Column(db.Boolean, default=False)
     last_login = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    preferred_currency = db.Column(db.String(3), default='USD')  # العملة المفضلة للمحفظة
     
     orders = db.relationship('Order', backref='user', lazy=True)
 
@@ -144,6 +145,50 @@ class Currency(db.Model):
     symbol = db.Column(db.String(5), nullable=False)
     exchange_rate = db.Column(db.Numeric(10, 4), default=1.0)  # نسبة إلى الريال السعودي
     is_active = db.Column(db.Boolean, default=True)
+
+class Invoice(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    invoice_number = db.Column(db.String(50), unique=True, nullable=False)
+    order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False, unique=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    
+    # بيانات الفاتورة
+    subtotal = db.Column(db.Numeric(10, 2), nullable=False)
+    tax_amount = db.Column(db.Numeric(10, 2), default=0.00)
+    discount_amount = db.Column(db.Numeric(10, 2), default=0.00)
+    total_amount = db.Column(db.Numeric(10, 2), nullable=False)
+    currency = db.Column(db.String(3), default='SAR')
+    
+    # معلومات الدفع
+    payment_method = db.Column(db.String(50))
+    payment_status = db.Column(db.String(20), default='pending')
+    paid_amount = db.Column(db.Numeric(10, 2), default=0.00)
+    
+    # معلومات العميل وقت إنشاء الفاتورة
+    customer_name = db.Column(db.String(100))
+    customer_email = db.Column(db.String(120))
+    customer_phone = db.Column(db.String(20))
+    customer_type = db.Column(db.String(20))
+    
+    # تواريخ
+    invoice_date = db.Column(db.DateTime, default=datetime.utcnow)
+    due_date = db.Column(db.DateTime)
+    paid_date = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # ملاحظات
+    notes = db.Column(db.Text)
+    
+    # ملف الفاتورة PDF
+    pdf_file_path = db.Column(db.String(300))
+    
+    # العلاقات
+    order = db.relationship('Order', backref=db.backref('invoice', uselist=False))
+    user = db.relationship('User', backref='invoices')
+    
+    def __repr__(self):
+        return f'<Invoice {self.invoice_number}>'
 
 class Article(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -582,6 +627,49 @@ class UserWallet(db.Model):
     user = db.relationship('User', backref='wallet', lazy=True)
 
 # نماذج إدارة الموظفين والصلاحيات
+
+class WalletDepositRequest(db.Model):
+    """طلبات إيداع المحفظة"""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    
+    # تفاصيل الطلب
+    amount = db.Column(db.Numeric(12, 2), nullable=False)  # المبلغ المطلوب إيداعه
+    currency_code = db.Column(db.String(3), nullable=False)  # عملة الإيداع
+    amount_usd = db.Column(db.Numeric(12, 2), nullable=False)  # المبلغ بالدولار
+    exchange_rate = db.Column(db.Numeric(10, 6), nullable=False)  # سعر الصرف المستخدم
+    
+    # معلومات الدفع
+    payment_method = db.Column(db.String(50), default='visa')  # طريقة الدفع
+    payment_reference = db.Column(db.String(200))  # مرجع الدفع من البوابة
+    payment_details = db.Column(db.Text)  # تفاصيل إضافية للدفع (JSON)
+    
+    # حالة الطلب
+    status = db.Column(db.String(20), default='pending')  # pending, approved, rejected, cancelled
+    admin_notes = db.Column(db.Text)  # ملاحظات الأدمن
+    rejection_reason = db.Column(db.Text)  # سبب الرفض
+    
+    # معلومات المعالجة
+    processed_by = db.Column(db.Integer, db.ForeignKey('user.id'))  # الأدمن الذي عالج الطلب
+    processed_at = db.Column(db.DateTime)  # تاريخ المعالجة
+    wallet_amount_added = db.Column(db.Numeric(12, 2))  # المبلغ المضاف للمحفظة
+    wallet_currency_added = db.Column(db.String(3))  # العملة المضافة للمحفظة
+    
+    # معلومات إضافية
+    user_type = db.Column(db.String(20))  # نوع المستخدم وقت الطلب
+    user_ip = db.Column(db.String(45))  # IP المستخدم
+    user_agent = db.Column(db.Text)  # معلومات المتصفح
+    
+    # التواريخ
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # علاقات
+    user = db.relationship('User', foreign_keys=[user_id], backref='deposit_requests', lazy=True)
+    processor = db.relationship('User', foreign_keys=[processed_by], backref='processed_deposits', lazy=True)
+    
+    def __repr__(self):
+        return f'<WalletDepositRequest {self.id}: {self.amount} {self.currency_code} - {self.status}>'
 
 class StaticPage(db.Model):
     """نموذج الصفحات الثابتة"""

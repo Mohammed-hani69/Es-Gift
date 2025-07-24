@@ -1,0 +1,314 @@
+{% extends "base.html" %}
+
+{% block title %}طلبات الإيداع - {{ config.SITE_NAME }}{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Cairo Font */
+* {
+    font-family: 'Cairo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.requests-container {
+    min-height: 100vh;
+    background: #111;
+    padding: 100px 0 50px;
+}
+
+.requests-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+.requests-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.requests-title {
+    color: #ff0033;
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+    font-weight: bold;
+}
+
+.requests-subtitle {
+    color: #ccc;
+    font-size: 1.1rem;
+}
+
+.requests-card {
+    background: linear-gradient(135deg, #1a1a1a, #2a2a2a);
+    border-radius: 15px;
+    padding: 30px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.requests-table {
+    width: 100%;
+    border-collapse: collapse;
+    overflow: hidden;
+    border-radius: 10px;
+}
+
+.requests-table th,
+.requests-table td {
+    text-align: right;
+    padding: 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.requests-table th {
+    background: rgba(255, 255, 255, 0.05);
+    color: #ccc;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.requests-table tr:hover {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+.status-pending {
+    background: rgba(255, 193, 7, 0.2);
+    color: #ffc107;
+}
+
+.status-approved {
+    background: rgba(40, 167, 69, 0.2);
+    color: #28a745;
+}
+
+.status-rejected {
+    background: rgba(220, 53, 69, 0.2);
+    color: #dc3545;
+}
+
+.amount-display {
+    font-weight: bold;
+    font-size: 1rem;
+    color: #fff;
+}
+
+.currency-info {
+    color: #ccc;
+    font-size: 0.85rem;
+    margin-top: 2px;
+}
+
+.btn {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #ff0033, #ff3366);
+    color: white;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(255, 0, 51, 0.4);
+}
+
+.btn-secondary {
+    background: linear-gradient(135deg, #6c757d, #5a6268);
+    color: white;
+}
+
+.btn-secondary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(108, 117, 125, 0.4);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #666;
+}
+
+.empty-icon {
+    font-size: 4rem;
+    margin-bottom: 20px;
+    opacity: 0.5;
+}
+
+.empty-text {
+    font-size: 1.1rem;
+    margin: 0;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin: 30px 0;
+}
+
+/* التصميم المتجاوب */
+@media (max-width: 768px) {
+    .requests-title {
+        font-size: 2rem;
+    }
+    
+    .requests-table {
+        font-size: 0.85rem;
+    }
+    
+    .requests-table th,
+    .requests-table td {
+        padding: 10px 8px;
+    }
+    
+    .action-buttons {
+        flex-direction: column;
+        align-items: center;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="requests-container">
+    <div class="requests-content">
+        <!-- Header -->
+        <div class="requests-header">
+            <h1 class="requests-title">
+                <i class="fas fa-list-alt"></i>
+                طلبات الإيداع
+            </h1>
+            <p class="requests-subtitle">متابعة حالة طلبات الإيداع الخاصة بك</p>
+        </div>
+
+        <!-- أزرار الإجراءات -->
+        <div class="action-buttons">
+            <a href="{{ url_for('wallet.deposit') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i>
+                طلب إيداع جديد
+            </a>
+            <a href="{{ url_for('wallet.wallet_dashboard') }}" class="btn btn-secondary">
+                <i class="fas fa-wallet"></i>
+                العودة للمحفظة
+            </a>
+        </div>
+
+        <!-- جدول الطلبات -->
+        <div class="requests-card">
+            {% if requests.items %}
+            <div style="overflow-x: auto;">
+                <table class="requests-table">
+                    <thead>
+                        <tr>
+                            <th>رقم الطلب</th>
+                            <th>المبلغ</th>
+                            <th>طريقة الدفع</th>
+                            <th>الحالة</th>
+                            <th>تاريخ الطلب</th>
+                            <th>ملاحظات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for request in requests.items %}
+                        <tr>
+                            <td style="color: #ff0033; font-weight: bold;">#{{ request.id }}</td>
+                            <td>
+                                <div class="amount-display">{{ request.amount }} {{ request.currency_code }}</div>
+                                <div class="currency-info">≈ {{ request.amount_usd }} USD</div>
+                            </td>
+                            <td>
+                                <i class="fas fa-credit-card"></i>
+                                {{ 'فيزا/ماستركارد' if request.payment_method == 'visa' else request.payment_method }}
+                            </td>
+                            <td>
+                                <span class="status-badge status-{{ request.status }}">
+                                    <i class="fas fa-{{ 'clock' if request.status == 'pending' else 'check' if request.status == 'approved' else 'times' }}"></i>
+                                    {{ 'قيد المراجعة' if request.status == 'pending' else 'موافق' if request.status == 'approved' else 'مرفوض' }}
+                                </span>
+                            </td>
+                            <td style="color: #ccc;">{{ request.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td style="color: #ccc;">
+                                {% if request.status == 'approved' and request.admin_notes %}
+                                    <i class="fas fa-check-circle" style="color: #28a745;"></i>
+                                    {{ request.admin_notes }}
+                                {% elif request.status == 'rejected' and request.rejection_reason %}
+                                    <i class="fas fa-times-circle" style="color: #dc3545;"></i>
+                                    {{ request.rejection_reason }}
+                                {% elif request.payment_details %}
+                                    {{ request.payment_details }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if requests.pages > 1 %}
+            <div style="margin-top: 20px; text-align: center;">
+                <div class="pagination">
+                    {% if requests.has_prev %}
+                        <a href="{{ url_for('wallet.deposit_requests', page=requests.prev_num) }}" class="btn btn-secondary">السابق</a>
+                    {% endif %}
+                    
+                    {% for page_num in requests.iter_pages() %}
+                        {% if page_num %}
+                            {% if page_num != requests.page %}
+                                <a href="{{ url_for('wallet.deposit_requests', page=page_num) }}" class="btn btn-secondary" style="margin: 0 5px;">{{ page_num }}</a>
+                            {% else %}
+                                <span class="btn btn-primary" style="margin: 0 5px;">{{ page_num }}</span>
+                            {% endif %}
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if requests.has_next %}
+                        <a href="{{ url_for('wallet.deposit_requests', page=requests.next_num) }}" class="btn btn-secondary">التالي</a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-icon">
+                    <i class="fas fa-inbox"></i>
+                </div>
+                <p class="empty-text">لا توجد طلبات إيداع بعد</p>
+                <div style="margin-top: 20px;">
+                    <a href="{{ url_for('wallet.deposit') }}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i>
+                        إرسال طلب إيداع جديد
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}

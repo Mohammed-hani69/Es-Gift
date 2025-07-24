@@ -1,0 +1,599 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}تفاصيل الفاتورة {{ invoice.invoice_number }}{% endblock %}
+
+{% block content %}
+<div class="content-card">
+    <div class="header-section">
+        <div class="header-left">
+            <h2>
+                <i class="fas fa-file-invoice"></i>
+                تفاصيل الفاتورة {{ invoice.invoice_number }}
+            </h2>
+            <div class="breadcrumb">
+                <a href="{{ url_for('admin.invoices') }}">الفواتير</a>
+                <span>/</span>
+                <span>{{ invoice.invoice_number }}</span>
+            </div>
+        </div>
+        <div class="header-actions">
+            {% if invoice.pdf_file_path %}
+            <a href="{{ url_for('main.download_invoice', invoice_id=invoice.id) }}" 
+               class="btn btn-success">
+                <i class="fas fa-download"></i>
+                تحميل PDF
+            </a>
+            {% endif %}
+            
+            <button onclick="regenerateInvoicePDF({{ invoice.id }})" 
+                    class="btn btn-warning">
+                <i class="fas fa-redo"></i>
+                إعادة توليد PDF
+            </button>
+            
+            <button onclick="sendInvoiceEmail({{ invoice.id }})" 
+                    class="btn btn-info">
+                <i class="fas fa-envelope"></i>
+                إرسال عبر البريد
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- معلومات الفاتورة الأساسية -->
+<div class="content-card">
+    <h3 class="section-title">
+        <i class="fas fa-info-circle"></i>
+        معلومات الفاتورة
+    </h3>
+    <div class="info-grid">
+        <div class="info-item">
+            <label>رقم الفاتورة:</label>
+            <span class="invoice-number">{{ invoice.invoice_number }}</span>
+        </div>
+        <div class="info-item">
+            <label>تاريخ الإنشاء:</label>
+            <span>{{ invoice.invoice_date.strftime('%Y-%m-%d %H:%M') }}</span>
+        </div>
+        <div class="info-item">
+            <label>تاريخ الاستحقاق:</label>
+            <span>{{ invoice.due_date.strftime('%Y-%m-%d') if invoice.due_date else 'غير محدد' }}</span>
+        </div>
+        <div class="info-item">
+            <label>رقم الطلب:</label>
+            <span>
+                <a href="{{ url_for('admin.order_detail', order_id=invoice.order.id) }}" 
+                   class="order-link">
+                    {{ invoice.order.order_number }}
+                </a>
+            </span>
+        </div>
+        <div class="info-item">
+            <label>حالة الدفع:</label>
+            <span class="badge badge-{{ 'success' if invoice.payment_status == 'completed' else 'warning' if invoice.payment_status == 'pending' else 'danger' }}">
+                {% if invoice.payment_status == 'completed' %}
+                    مدفوعة
+                {% elif invoice.payment_status == 'pending' %}
+                    معلقة
+                {% elif invoice.payment_status == 'failed' %}
+                    فاشلة
+                {% endif %}
+            </span>
+        </div>
+        <div class="info-item">
+            <label>طريقة الدفع:</label>
+            <span>
+                {% if invoice.payment_method == 'wallet' %}
+                    المحفظة الإلكترونية
+                {% elif invoice.payment_method and 'card' in invoice.payment_method %}
+                    البطاقة البنكية
+                {% else %}
+                    {{ invoice.payment_method or 'غير محدد' }}
+                {% endif %}
+            </span>
+        </div>
+        {% if invoice.paid_date %}
+        <div class="info-item">
+            <label>تاريخ الدفع:</label>
+            <span>{{ invoice.paid_date.strftime('%Y-%m-%d %H:%M') }}</span>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- معلومات العميل -->
+<div class="content-card">
+    <h3 class="section-title">
+        <i class="fas fa-user"></i>
+        معلومات العميل
+    </h3>
+    <div class="info-grid">
+        <div class="info-item">
+            <label>الاسم:</label>
+            <span>{{ invoice.customer_name or 'غير محدد' }}</span>
+        </div>
+        <div class="info-item">
+            <label>البريد الإلكتروني:</label>
+            <span>
+                <a href="mailto:{{ invoice.customer_email }}" class="email-link">
+                    {{ invoice.customer_email }}
+                </a>
+            </span>
+        </div>
+        {% if invoice.customer_phone %}
+        <div class="info-item">
+            <label>الهاتف:</label>
+            <span>{{ invoice.customer_phone }}</span>
+        </div>
+        {% endif %}
+        <div class="info-item">
+            <label>نوع العميل:</label>
+            <span class="badge badge-{{ 'info' if invoice.customer_type == 'kyc' else 'warning' if invoice.customer_type == 'reseller' else 'secondary' }}">
+                {% if invoice.customer_type == 'regular' %}
+                    عميل عادي
+                {% elif invoice.customer_type == 'kyc' %}
+                    عميل موثق
+                {% elif invoice.customer_type == 'reseller' %}
+                    موزع
+                {% else %}
+                    {{ invoice.customer_type or 'غير محدد' }}
+                {% endif %}
+            </span>
+        </div>
+        <div class="info-item">
+            <label>تاريخ التسجيل:</label>
+            <span>{{ invoice.user.created_at.strftime('%Y-%m-%d') }}</span>
+        </div>
+    </div>
+</div>
+
+<!-- تفاصيل المنتجات -->
+<div class="content-card">
+    <h3 class="section-title">
+        <i class="fas fa-shopping-cart"></i>
+        تفاصيل المنتجات
+    </h3>
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>المنتج</th>
+                    <th>الوصف</th>
+                    <th>الكمية</th>
+                    <th>السعر الوحدة</th>
+                    <th>الإجمالي</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in invoice.order.items %}
+                <tr>
+                    <td>
+                        <div class="product-info">
+                            <span class="product-name">{{ item.product.name }}</span>
+                            {% if item.product.category %}
+                            <span class="product-category">{{ item.product.category.name }}</span>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td>
+                        <span class="product-description">
+                            {{ item.product.description[:100] if item.product.description else 'لا يوجد وصف' }}
+                            {% if item.product.description and item.product.description|length > 100 %}...{% endif %}
+                        </span>
+                    </td>
+                    <td class="quantity">{{ item.quantity }}</td>
+                    <td class="price">{{ item.price }} {{ invoice.currency }}</td>
+                    <td class="total">{{ item.price * item.quantity }} {{ invoice.currency }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ملخص المبالغ -->
+<div class="content-card">
+    <h3 class="section-title">
+        <i class="fas fa-calculator"></i>
+        ملخص المبالغ
+    </h3>
+    <div class="amounts-grid">
+        <div class="amount-row">
+            <span class="label">المجموع الفرعي:</span>
+            <span class="value">{{ invoice.subtotal }} {{ invoice.currency }}</span>
+        </div>
+        
+        {% if invoice.tax_amount > 0 %}
+        <div class="amount-row">
+            <span class="label">الضرائب:</span>
+            <span class="value">{{ invoice.tax_amount }} {{ invoice.currency }}</span>
+        </div>
+        {% endif %}
+        
+        {% if invoice.discount_amount > 0 %}
+        <div class="amount-row discount">
+            <span class="label">الخصم:</span>
+            <span class="value">-{{ invoice.discount_amount }} {{ invoice.currency }}</span>
+        </div>
+        {% endif %}
+        
+        <div class="amount-row total">
+            <span class="label">المجموع الكلي:</span>
+            <span class="value">{{ invoice.total_amount }} {{ invoice.currency }}</span>
+        </div>
+        
+        <div class="amount-row paid">
+            <span class="label">المبلغ المدفوع:</span>
+            <span class="value">{{ invoice.paid_amount }} {{ invoice.currency }}</span>
+        </div>
+        
+        {% if invoice.total_amount > invoice.paid_amount %}
+        <div class="amount-row remaining">
+            <span class="label">المتبقي:</span>
+            <span class="value">{{ invoice.total_amount - invoice.paid_amount }} {{ invoice.currency }}</span>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- ملاحظات -->
+{% if invoice.notes %}
+<div class="content-card">
+    <h3 class="section-title">
+        <i class="fas fa-sticky-note"></i>
+        ملاحظات
+    </h3>
+    <div class="notes-content">
+        {{ invoice.notes }}
+    </div>
+</div>
+{% endif %}
+</div>
+
+<style>
+.header-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 30px;
+}
+
+.header-left h2 {
+    margin: 0 0 10px 0;
+    color: #fff;
+}
+
+.breadcrumb {
+    color: #ccc;
+    font-size: 0.9rem;
+}
+
+.breadcrumb a {
+    color: #ff0033;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.breadcrumb a:hover {
+    color: #cc0029;
+    text-decoration: underline;
+}
+
+.header-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.section-title {
+    margin: 0 0 20px 0;
+    color: #fff;
+    font-size: 1.3rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 2px solid #ff0033;
+    padding-bottom: 10px;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    border: 1px solid #333;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    transition: background 0.3s ease;
+}
+
+.info-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.info-item label {
+    font-weight: bold;
+    color: #ccc;
+    flex: 1;
+}
+
+.info-item span {
+    flex: 1;
+    text-align: left;
+    color: #fff;
+}
+
+.invoice-number {
+    font-weight: bold;
+    color: #ff0033;
+    font-size: 1.1rem;
+}
+
+.order-link {
+    color: #ff0033;
+    text-decoration: none;
+    font-weight: bold;
+    transition: color 0.3s ease;
+}
+
+.order-link:hover {
+    color: #cc0029;
+    text-decoration: underline;
+}
+
+.email-link {
+    color: #28a745;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.email-link:hover {
+    color: #218838;
+    text-decoration: underline;
+}
+
+.product-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.product-name {
+    font-weight: bold;
+    color: #fff;
+    margin-bottom: 5px;
+}
+
+.product-category {
+    font-size: 0.8rem;
+    color: #ccc;
+    background: rgba(255, 0, 51, 0.2);
+    padding: 2px 8px;
+    border-radius: 10px;
+    width: fit-content;
+    border: 1px solid #ff0033;
+}
+
+.product-description {
+    color: #ccc;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+.quantity, .price, .total {
+    text-align: center;
+    font-weight: bold;
+    color: #fff;
+}
+
+.amounts-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.amount-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
+    border: 1px solid #333;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    transition: background 0.3s ease;
+}
+
+.amount-row:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.amount-row .label {
+    font-weight: bold;
+    color: #ccc;
+}
+
+.amount-row .value {
+    font-weight: bold;
+    color: #fff;
+}
+
+.amount-row.total {
+    border: 2px solid #ff0033;
+    background: rgba(255, 0, 51, 0.1);
+    font-size: 1.2rem;
+}
+
+.amount-row.total .label,
+.amount-row.total .value {
+    color: #ff0033;
+}
+
+.amount-row.paid .value {
+    color: #28a745;
+}
+
+.amount-row.remaining .value {
+    color: #dc3545;
+}
+
+.amount-row.discount .value {
+    color: #28a745;
+}
+
+.notes-content {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid #333;
+    color: #fff;
+    line-height: 1.6;
+}
+
+.btn-info {
+    background: linear-gradient(135deg, #17a2b8, #6f42c1);
+    color: white;
+    border: 2px solid #17a2b8;
+}
+
+.btn-info:hover {
+    background: linear-gradient(135deg, #138496, #5a2d91);
+    border-color: #138496;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(23, 162, 184, 0.4);
+}
+
+@media (max-width: 768px) {
+    .header-section {
+        flex-direction: column;
+        gap: 20px;
+    }
+    
+    .header-actions {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .info-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .info-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .info-item span {
+        text-align: right;
+    }
+    
+    .amount-row {
+        padding: 10px 15px;
+    }
+}
+</style>
+
+<script>
+function regenerateInvoicePDF(invoiceId) {
+    if (!confirm('هل أنت متأكد من إعادة توليد ملف PDF للفاتورة؟')) {
+        return;
+    }
+    
+    const btn = event.target.closest('button');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري المعالجة...';
+    btn.disabled = true;
+    
+    fetch(`/admin/invoice/${invoiceId}/regenerate-pdf`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message, 'success');
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showNotification(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('حدث خطأ في إعادة توليد ملف PDF', 'error');
+    })
+    .finally(() => {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    });
+}
+
+function sendInvoiceEmail(invoiceId) {
+    if (!confirm('هل أنت متأكد من إرسال الفاتورة عبر البريد الإلكتروني؟')) {
+        return;
+    }
+    
+    const btn = event.target.closest('button');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإرسال...';
+    btn.disabled = true;
+    
+    fetch(`/admin/invoice/${invoiceId}/send-email`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message, 'success');
+        } else {
+            showNotification(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('حدث خطأ في إرسال البريد الإلكتروني', 'error');
+    })
+    .finally(() => {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    });
+}
+
+function showNotification(message, type) {
+    // استخدام نظام الإشعارات الموحد من base.html
+    if (typeof showNotification !== 'undefined' && window.showNotification) {
+        window.showNotification(type, message);
+    } else {
+        // Fallback للمتصفحات القديمة
+        const alertClass = type === 'success' ? 'success' : type === 'error' ? 'danger' : type;
+        const alert = `<div class="alert alert-${alertClass}" role="alert">
+            ${message}
+            <button type="button" onclick="this.parentElement.remove()" style="float: left; background: none; border: none; color: inherit; font-size: 18px; cursor: pointer;">×</button>
+        </div>`;
+        
+        // إضافة الإشعار في أعلى الصفحة
+        const container = document.querySelector('.content-card');
+        if (container) {
+            container.insertAdjacentHTML('afterbegin', alert);
+            
+            // إزالة الإشعار بعد 5 ثواني
+            setTimeout(() => {
+                const alertElement = document.querySelector('.alert');
+                if (alertElement) {
+                    alertElement.remove();
+                }
+            }, 5000);
+        }
+    }
+}
+</script>
+{% endblock %}

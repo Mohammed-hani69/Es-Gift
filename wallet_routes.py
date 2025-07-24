@@ -10,7 +10,8 @@ from datetime import datetime, date
 from decimal import Decimal
 import json
 
-from models import db, UserWallet, WalletTransaction, UserBalance, UserLimits, Currency, GlobalLimits, PaymentGateway
+from models import (db, UserWallet, WalletTransaction, UserBalance, UserLimits, 
+                   Currency, GlobalLimits, PaymentGateway, WalletDepositRequest)
 from utils import convert_currency
 
 # إنشاء Blueprint للمحفظة
@@ -150,14 +151,62 @@ def wallet_dashboard():
         reset_daily_limits_if_needed(wallet)
         reset_monthly_limits_if_needed(wallet)
         
+        # الحصول على حدود المستخدم من نظام UserLimits
+        from wallet_utils import get_user_limits, get_user_spending_summary
+        user_limits = get_user_limits(current_user.id)
+        user_spending = get_user_spending_summary(current_user.id)
+        
+        # تحديد نوع المستخدم للعرض
+        if hasattr(current_user, 'user_type') and current_user.user_type == 'distributor':
+            user_type_display = 'موزع'
+        elif hasattr(current_user, 'user_type') and current_user.user_type == 'reseller':
+            user_type_display = 'موزع'
+        elif hasattr(current_user, 'customer_type') and current_user.customer_type == 'reseller':
+            user_type_display = 'موزع'
+        elif hasattr(current_user, 'kyc_status') and current_user.kyc_status == 'approved':
+            user_type_display = 'عميل موثق (KYC)'
+        elif hasattr(current_user, 'customer_type') and current_user.customer_type == 'regular':
+            user_type_display = 'عميل عادي'
+        else:
+            user_type_display = 'عميل عادي'
+        
         # الحصول على العملات المتاحة
         currencies = Currency.query.filter_by(is_active=True).all()
         
         # الحصول على بوابات الدفع
         payment_gateways = PaymentGateway.query.filter_by(is_active=True).all()
         
-        # عملة العرض (افتراضي USD)
-        display_currency = request.args.get('currency', 'USD')
+        # عملة العرض (العملة المفضلة للمستخدم أو USD)
+        display_currency = current_user.preferred_currency or 'USD'
+        if request.args.get('currency'):
+            display_currency = request.args.get('currency')
+        
+        # التحقق من أن العملة متاحة
+        currency_obj = Currency.query.filter_by(code=display_currency, is_active=True).first()
+        if not currency_obj:
+            display_currency = 'USD'
+        
+        # استخدام الحدود من نظام UserLimits إذا كانت متاحة، وإلا المحفظة
+        if user_limits and user_spending:
+            daily_limit_usd = user_spending['daily_limit']
+            monthly_limit_usd = user_spending['monthly_limit']
+            daily_spent_usd = user_spending['daily_spent']
+            monthly_spent_usd = user_spending['monthly_spent']
+            daily_remaining_usd = user_spending['daily_remaining']
+            monthly_remaining_usd = user_spending['monthly_remaining']
+            daily_percentage = user_spending['daily_percentage']
+            monthly_percentage = user_spending['monthly_percentage']
+        else:
+            # استخدام الحدود من المحفظة كنسخة احتياطية
+            daily_limit_usd = float(wallet.daily_limit)
+            monthly_limit_usd = float(wallet.monthly_limit)
+            daily_spent_usd = float(wallet.daily_spent_today)
+            monthly_spent_usd = float(wallet.monthly_spent)
+            daily_remaining_usd = max(0, daily_limit_usd - daily_spent_usd)
+            monthly_remaining_usd = max(0, monthly_limit_usd - monthly_spent_usd)
+            daily_percentage = min(100, (daily_spent_usd / daily_limit_usd) * 100) if daily_limit_usd > 0 else 0
+            monthly_percentage = min(100, (monthly_spent_usd / monthly_limit_usd) * 100) if monthly_limit_usd > 0 else 0
+        
         
         # تحويل المبالغ للعملة المطلوبة
         wallet_balance_display = get_currency_display(
@@ -175,48 +224,61 @@ def wallet_dashboard():
             display_currency
         )
         
+        # تحويل الحدود والمبالغ المنفقة للعملة المطلوبة
         daily_spent_display = get_currency_display(
-            convert_amount_for_display(wallet.daily_spent_today, 'USD', display_currency),
+            convert_amount_for_display(Decimal(str(daily_spent_usd)), 'USD', display_currency),
             display_currency
         )
         
         daily_limit_display = get_currency_display(
-            convert_amount_for_display(wallet.daily_limit, 'USD', display_currency),
+            convert_amount_for_display(Decimal(str(daily_limit_usd)), 'USD', display_currency),
             display_currency
         )
         
         monthly_limit_display = get_currency_display(
-            convert_amount_for_display(wallet.monthly_limit, 'USD', display_currency),
+            convert_amount_for_display(Decimal(str(monthly_limit_usd)), 'USD', display_currency),
             display_currency
         )
         
         monthly_spent_display = get_currency_display(
-            convert_amount_for_display(wallet.monthly_spent, 'USD', display_currency),
+            convert_amount_for_display(Decimal(str(monthly_spent_usd)), 'USD', display_currency),
             display_currency
         )
         
-        # حساب المتبقي
-        daily_remaining = max(Decimal('0'), wallet.daily_limit - wallet.daily_spent_today)
-        monthly_remaining = max(Decimal('0'), wallet.monthly_limit - wallet.monthly_spent)
-        
+        # عرض المتبقي
         daily_remaining_display = get_currency_display(
-            convert_amount_for_display(daily_remaining, 'USD', display_currency),
+            convert_amount_for_display(Decimal(str(daily_remaining_usd)), 'USD', display_currency),
             display_currency
         )
         
         monthly_remaining_display = get_currency_display(
-            convert_amount_for_display(monthly_remaining, 'USD', display_currency),
+            convert_amount_for_display(Decimal(str(monthly_remaining_usd)), 'USD', display_currency),
             display_currency
         )
         
         # حساب النسب المئوية
-        daily_percentage = min(100, (float(wallet.daily_spent_today) / float(wallet.daily_limit)) * 100) if wallet.daily_limit > 0 else 0
-        monthly_percentage = min(100, (float(wallet.monthly_spent) / float(wallet.monthly_limit)) * 100) if wallet.monthly_limit > 0 else 0
+        # (تم حسابها بالفعل في user_spending إذا كانت متاحة)
         
-        # الحصول على آخر المعاملات
-        recent_transactions = WalletTransaction.query.filter_by(
+        # الحصول على آخر المعاملات (مع التحقق من وجودها وبياناتها)
+        recent_transactions_query = WalletTransaction.query.filter_by(
             user_id=current_user.id
-        ).order_by(WalletTransaction.created_at.desc()).limit(5).all()
+        ).order_by(WalletTransaction.created_at.desc()).limit(10).all()
+        
+        # التأكد من صحة بيانات المعاملات وعدم التكرار
+        seen_transactions = set()
+        recent_transactions = []
+        
+        for transaction in recent_transactions_query:
+            # التحقق من صحة البيانات
+            if not transaction.amount_original or not transaction.currency_code or not transaction.transaction_type:
+                continue
+                
+            # إنشاء مفتاح فريد للمعاملة لتجنب التكرار
+            transaction_key = f"{transaction.id}_{transaction.created_at}_{transaction.amount_original}_{transaction.transaction_type}"
+            
+            if transaction_key not in seen_transactions and len(recent_transactions) < 5:
+                seen_transactions.add(transaction_key)
+                recent_transactions.append(transaction)
         
         return render_template('wallet.html',
                              wallet=wallet,
@@ -233,6 +295,8 @@ def wallet_dashboard():
                              monthly_remaining_display=monthly_remaining_display,
                              daily_percentage=daily_percentage,
                              monthly_percentage=monthly_percentage,
+                             user_type_display=user_type_display,
+                             user_limits=user_limits,
                              recent_transactions=recent_transactions)
                              
     except Exception as e:
@@ -292,11 +356,109 @@ def convert_display():
             'message': f'خطأ في التحويل: {str(e)}'
         }), 500
 
-@wallet_bp.route('/deposit', methods=['POST'])
+@wallet_bp.route('/deposit', methods=['GET', 'POST'])
 @login_required
 def deposit():
-    """إيداع في المحفظة"""
+    """صفحة الإيداع في المحفظة"""
+    if request.method == 'GET':
+        # عرض صفحة الإيداع
+        currencies = Currency.query.filter_by(is_active=True).all()
+        payment_gateways = PaymentGateway.query.filter_by(is_active=True).all()
+        
+        return render_template('wallet/deposit.html', 
+                             currencies=currencies,
+                             payment_gateways=payment_gateways)
+    
     try:
+        # التحقق من طريقة الإرسال (JSON أو Form)
+        if request.is_json:
+            data = request.get_json()
+            amount = Decimal(str(data.get('amount', '0')))
+            currency_code = data.get('currency', 'USD')
+            payment_method = data.get('payment_method', 'visa')
+            notes = data.get('notes', '')
+        else:
+            amount = Decimal(request.form.get('amount', '0'))
+            currency_code = request.form.get('currency', 'USD')
+            payment_method = request.form.get('payment_method', 'visa')
+            notes = request.form.get('notes', '')
+        
+        # التحقق من صحة البيانات
+        if amount <= 0:
+            return jsonify({'success': False, 'message': 'يجب أن يكون المبلغ أكبر من صفر'})
+        
+        # التحقق من العملة
+        currency = Currency.query.filter_by(code=currency_code, is_active=True).first()
+        if not currency:
+            return jsonify({'success': False, 'message': 'العملة المحددة غير متاحة'})
+        
+        # تحويل المبلغ إلى الدولار للإحصائيات
+        if currency_code != 'USD':
+            exchange_rate = convert_currency(1, currency_code, 'USD')
+            amount_usd = amount * Decimal(str(exchange_rate))
+        else:
+            exchange_rate = 1.0
+            amount_usd = amount
+        
+        # تحديد نوع المستخدم
+        user_type = 'regular'
+        if hasattr(current_user, 'customer_type') and current_user.customer_type:
+            user_type = current_user.customer_type
+        elif hasattr(current_user, 'kyc_status') and current_user.kyc_status == 'approved':
+            user_type = 'kyc'
+        
+        # إنشاء طلب الإيداع
+        deposit_request = WalletDepositRequest(
+            user_id=current_user.id,
+            amount=amount,
+            currency_code=currency_code,
+            amount_usd=amount_usd,
+            exchange_rate=Decimal(str(exchange_rate)),
+            payment_method=payment_method,
+            user_type=user_type,
+            user_ip=request.remote_addr,
+            user_agent=request.headers.get('User-Agent', ''),
+            payment_details=notes if notes else None
+        )
+        
+        db.session.add(deposit_request)
+        db.session.commit()
+        
+        # هنا يمكن إضافة معالجة الدفع الفعلية مع بوابة الدفع
+        # مؤقتاً سنترك الطلب في حالة pending للأدمن
+        
+        return jsonify({
+            'success': True, 
+            'message': 'تم إرسال طلب الإيداع بنجاح! سيتم مراجعته من قبل الإدارة.',
+            'redirect': url_for('wallet.deposit_requests')
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"خطأ في الإيداع: {e}")
+        return jsonify({'success': False, 'message': 'حدث خطأ في معالجة طلب الإيداع'})
+
+@wallet_bp.route('/deposit-requests')
+@login_required
+def deposit_requests():
+    """عرض طلبات الإيداع للمستخدم"""
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = 10
+        
+        requests = WalletDepositRequest.query.filter_by(
+            user_id=current_user.id
+        ).order_by(WalletDepositRequest.created_at.desc()).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        return render_template('wallet/deposit_requests.html', 
+                             requests=requests)
+        
+    except Exception as e:
+        print(f"خطأ في عرض طلبات الإيداع: {e}")
+        flash('حدث خطأ في عرض طلبات الإيداع', 'error')
+        return redirect(url_for('wallet.wallet_dashboard'))
         data = request.get_json()
         amount = Decimal(str(data.get('amount', 0)))
         currency = data.get('currency', 'USD')
@@ -463,3 +625,32 @@ def record_purchase(user, amount, currency, order_id=None, description=''):
     except Exception as e:
         db.session.rollback()
         return False, f'خطأ في تسجيل الشراء: {str(e)}'
+
+@wallet_bp.route('/update-currency', methods=['POST'])
+@login_required
+def update_currency():
+    """تحديث عملة المحفظة المفضلة للمستخدم"""
+    try:
+        data = request.get_json()
+        new_currency = data.get('currency')
+        
+        if not new_currency:
+            return jsonify({'success': False, 'message': 'لم يتم تحديد العملة'})
+        
+        # التحقق من وجود العملة
+        currency = Currency.query.filter_by(code=new_currency, is_active=True).first()
+        if not currency:
+            return jsonify({'success': False, 'message': 'العملة المحددة غير متوفرة'})
+        
+        # تحديث العملة المفضلة للمستخدم
+        current_user.preferred_currency = new_currency
+        db.session.commit()
+        
+        return jsonify({
+            'success': True, 
+            'message': f'تم تحديث العملة إلى {currency.name} بنجاح'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'حدث خطأ: {str(e)}'})

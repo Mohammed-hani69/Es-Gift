@@ -41,6 +41,11 @@ ADMIN_PAGES = {
         'description': 'عرض ومتابعة طلبات العملاء',
         'category': 'orders'
     },
+    'admin.invoices': {
+        'name': 'إدارة الفواتير',
+        'description': 'عرض وإدارة الفواتير الإلكترونية',
+        'category': 'orders'
+    },
     'admin.transactions': {
         'name': 'إدارة المعاملات',
         'description': 'متابعة المعاملات المالية',

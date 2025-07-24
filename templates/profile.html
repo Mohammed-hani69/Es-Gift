@@ -3,7 +3,14 @@
 {% block title %}الملف الشخصي - Es-Gift{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/profile-enhanced.css') }}">
+{% block extra_css %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/invoices.css') }}">
+    <style>
+        .profile-container {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            color: white;
+        }
 {% endblock %}
 
 {% block content %}
@@ -315,6 +322,59 @@
                             <i class="fa-solid fa-shopping-bag"></i>
                             ابدأ التسوق
                         </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- الفواتير الأخيرة -->
+        <div class="profile-section">
+            <h2><i class="fa-solid fa-file-invoice"></i> الفواتير الأخيرة</h2>
+            <div class="recent-invoices">
+                {% if recent_invoices %}
+                    {% for invoice in recent_invoices %}
+                    <div class="invoice-item">
+                        <div class="invoice-header">
+                            <span class="invoice-number"><i class="fa-solid fa-file-invoice"></i>{{ invoice.invoice_number }}</span>
+                            <span class="invoice-date"><i class="fa-solid fa-calendar"></i>{{ invoice.invoice_date.strftime('%Y-%m-%d') }}</span>
+                        </div>
+                        <div class="invoice-details">
+                            <span class="invoice-total"><i class="fa-solid fa-money-bill"></i>{{ invoice.total_amount }} {{ invoice.currency }}</span>
+                            <span class="invoice-status status-{{ invoice.payment_status }}">
+                                {% if invoice.payment_status == 'completed' %}
+                                    <i class="fa-solid fa-check"></i> مدفوعة
+                                {% elif invoice.payment_status == 'pending' %}
+                                    <i class="fa-solid fa-clock"></i> معلقة
+                                {% elif invoice.payment_status == 'failed' %}
+                                    <i class="fa-solid fa-times"></i> فاشلة
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div class="invoice-actions">
+                            <a href="{{ url_for('main.view_invoice', invoice_id=invoice.id) }}" class="invoice-btn view-btn">
+                                <i class="fa-solid fa-eye"></i>
+                                عرض
+                            </a>
+                            {% if invoice.pdf_file_path %}
+                            <a href="{{ url_for('main.download_invoice', invoice_id=invoice.id) }}" class="invoice-btn download-btn">
+                                <i class="fa-solid fa-download"></i>
+                                تحميل PDF
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                    <div class="invoices-footer">
+                        <a href="{{ url_for('main.user_invoices') }}" class="view-all-invoices">
+                            <i class="fa-solid fa-file-invoice-dollar"></i>
+                            عرض جميع الفواتير
+                        </a>
+                    </div>
+                {% else %}
+                    <div class="no-invoices">
+                        <i class="fa-solid fa-file-invoice"></i>
+                        <h3>لا توجد فواتير</h3>
+                        <p>الفواتير ستظهر هنا بعد إتمام عمليات الشراء</p>
                     </div>
                 {% endif %}
             </div>

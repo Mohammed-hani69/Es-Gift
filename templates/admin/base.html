@@ -837,6 +837,12 @@
                     </a>
                 </div>
                 <div class="nav-item">
+                    <a href="{{ url_for('admin_wallet.deposit_requests') }}" class="nav-link">
+                        <i class="fas fa-money-check-alt"></i>
+                        طلبات المحفظة
+                    </a>
+                </div>
+                <div class="nav-item">
                     <a href="{{ url_for('admin.kyc_requests') }}" class="nav-link">
                         <i class="fas fa-user-check"></i>
                         طلبات التحقق
@@ -846,6 +852,12 @@
                     <a href="{{ url_for('admin.orders')}}" class="nav-link">
                         <i class="fas fa-shopping-cart"></i>
                         الطلبات
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a href="{{ url_for('admin.invoices')}}" class="nav-link">
+                        <i class="fas fa-file-invoice"></i>
+                        الفواتير
                     </a>
                 </div>
                 <div class="nav-item">
