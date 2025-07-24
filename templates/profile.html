@@ -3,38 +3,817 @@
 {% block title %}الملف الشخصي - Es-Gift{% endblock %}
 
 {% block extra_css %}
-{% block extra_css %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/invoices.css') }}">
     <style>
+        /* Cairo Font Application - متناسق مع باقي الموقع */
+        .profile-container, .profile-container * {
+            font-family: 'Cairo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
         .profile-container {
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
             min-height: 100vh;
             color: white;
+            padding: 120px 20px 50px;
+            position: relative;
         }
+
+        /* خلفية تشبه باقي الصفحات */
+        .profile-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(ellipse at top center, rgba(255, 0, 51, 0.05) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
+        .profile-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 2;
+        }
+
+        .profile-header {
+            background: linear-gradient(135deg, #ff0033, #ff3366);
+            padding: 30px;
+            border-radius: 20px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid rgba(255, 0, 51, 0.3);
+            box-shadow: 0 15px 35px rgba(255, 0, 51, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .profile-header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -10%;
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.1), transparent);
+            border-radius: 50%;
+        }
+
+        .header-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .header-content h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .welcome-text {
+            margin: 10px 0 0 0;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 1.1rem;
+        }
+
+        .customer-level {
+            display: flex;
+            align-items: center;
+            position: relative;
+            z-index: 2;
+        }
+
+        .level-badge {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 15px 25px;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            border: 2px solid;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        .level-badge:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .level-badge.level-regular {
+            background: linear-gradient(135deg, #6c757d, #495057);
+            border-color: #6c757d;
+            color: white;
+        }
+
+        .level-badge.level-kyc {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            border-color: #28a745;
+            color: white;
+        }
+
+        .level-badge.level-reseller {
+            background: linear-gradient(135deg, #ffc107, #fd7e14);
+            border-color: #ffc107;
+            color: #212529;
+        }
+
+        .profile-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .profile-section {
+            background: linear-gradient(135deg, #1a1a1a, #2a2a2a);
+            border-radius: 20px;
+            padding: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .profile-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #ff0033, #ff3366);
+        }
+
+        .profile-section:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(255, 0, 51, 0.2);
+            border-color: rgba(255, 0, 51, 0.4);
+        }
+
+        .profile-section h2 {
+            margin: 0 0 25px 0;
+            color: #ff0033;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            border-bottom: 2px solid rgba(255, 0, 51, 0.3);
+            padding-bottom: 15px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .info-group {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .info-item:hover {
+            background: rgba(255, 0, 51, 0.1);
+            border-color: rgba(255, 0, 51, 0.3);
+        }
+
+        .info-item label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: bold;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 1rem;
+        }
+
+        .info-item span {
+            color: white;
+            font-weight: 500;
+        }
+
+        .membership-info {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        .current-level h3 {
+            margin: 0 0 20px 0;
+            color: #ff0033;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .level-benefits, .upgrade-benefits, .upgrade-requirements {
+            margin-bottom: 20px;
+        }
+
+        .level-benefits h4, .upgrade-benefits h5, .upgrade-requirements h5 {
+            margin: 0 0 15px 0;
+            color: #ff0033;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .level-benefits ul, .upgrade-benefits ul, .upgrade-requirements ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .level-benefits li, .upgrade-benefits li, .upgrade-requirements li {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 15px;
+            background: rgba(255, 0, 51, 0.1);
+            border-radius: 8px;
+            border-left: 4px solid #ff0033;
+            color: white;
+        }
+
+        .upgrade-section {
+            margin-top: 25px;
+        }
+
+        .upgrade-btn, .whatsapp-btn, .start-shopping-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 15px 25px;
+            background: linear-gradient(135deg, #ff0033, #ff3366);
+            color: white;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            border: 2px solid #ff0033;
+            text-align: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(255, 0, 51, 0.3);
+        }
+
+        .upgrade-btn:hover, .whatsapp-btn:hover, .start-shopping-btn:hover {
+            background: linear-gradient(135deg, #cc0028, #ff2958);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 0, 51, 0.4);
+            color: white;
+            text-decoration: none;
+        }
+
+        .whatsapp-btn {
+            background: linear-gradient(135deg, #25d366, #128c7e);
+            border-color: #25d366;
+        }
+
+        .whatsapp-btn:hover {
+            background: linear-gradient(135deg, #20c956, #0d6b5c);
+            box-shadow: 0 8px 25px rgba(37, 211, 102, 0.4);
+        }
+
+        .upgrade-status {
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-direction: column;
+            text-align: center;
+        }
+
+        .upgrade-status:not(.rejected) {
+            background: rgba(255, 193, 7, 0.2);
+            border: 2px solid #ffc107;
+        }
+
+        .upgrade-status.rejected {
+            background: rgba(220, 53, 69, 0.2);
+            border: 2px solid #dc3545;
+        }
+
+        .upgrade-status span {
+            font-weight: bold;
+            font-size: 1.2rem;
+            color: white;
+        }
+
+        .upgrade-status p {
+            margin: 10px 0 0 0;
+            color: #ccc;
+        }
+
+        .upgrade-preview {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .upgrade-preview h4 {
+            margin: 0 0 20px 0;
+            color: white;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .upgrade-steps {
+            margin-top: 25px;
+        }
+
+        .steps-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 15px;
+        }
+
+        .step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .step:hover {
+            background: rgba(255, 0, 51, 0.1);
+            border-color: rgba(255, 0, 51, 0.3);
+            transform: translateY(-3px);
+        }
+
+        .step-number {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .step-content h6 {
+            margin: 0 0 10px 0;
+            color: white;
+            font-size: 1rem;
+            font-weight: bold;
+        }
+
+        .step-content p {
+            margin: 0;
+            color: #ccc;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        .contact-info {
+            background: rgba(255, 0, 51, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 1px solid rgba(255, 0, 51, 0.3);
+        }
+
+        .contact-info p {
+            margin: 0 0 15px 0;
+            color: rgba(255, 255, 255, 0.8);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .contact-details {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .contact-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: white;
+            font-weight: 500;
+        }
+
+        .kyc-status {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 20px;
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        .status-badge.pending {
+            background: rgba(255, 193, 7, 0.2);
+            border: 2px solid #ffc107;
+            color: #ffc107;
+        }
+
+        .status-badge.approved {
+            background: rgba(40, 167, 69, 0.2);
+            border: 2px solid #28a745;
+            color: #28a745;
+        }
+
+        .status-badge.rejected {
+            background: rgba(220, 53, 69, 0.2);
+            border: 2px solid #dc3545;
+            color: #dc3545;
+        }
+
+        .timeline {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+            position: relative;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: 10%;
+            right: 10%;
+            height: 2px;
+            background: rgba(255, 255, 255, 0.2);
+            z-index: 1;
+        }
+
+        .timeline-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            z-index: 2;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 10px;
+            border-radius: 10px;
+            min-width: 120px;
+        }
+
+        .timeline-item i {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+        }
+
+        .timeline-item.completed i {
+            background: #28a745;
+            color: white;
+        }
+
+        .timeline-item.active i {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .timeline-item:not(.completed):not(.active) i {
+            background: rgba(255, 255, 255, 0.2);
+            color: #ccc;
+        }
+
+        .timeline-item span {
+            color: white;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .recent-orders, .recent-invoices {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .order-item, .invoice-item {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .order-item:hover, .invoice-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .order-header, .invoice-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .order-number, .invoice-number {
+            font-weight: bold;
+            color: #007bff;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .order-date, .invoice-date {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .order-details, .invoice-details {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .order-total, .invoice-total {
+            font-weight: bold;
+            color: #28a745;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .order-status, .invoice-status {
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-pending {
+            background: rgba(255, 193, 7, 0.2);
+            color: #ffc107;
+            border: 1px solid #ffc107;
+        }
+
+        .status-completed {
+            background: rgba(40, 167, 69, 0.2);
+            color: #28a745;
+            border: 1px solid #28a745;
+        }
+
+        .status-cancelled, .status-failed {
+            background: rgba(220, 53, 69, 0.2);
+            color: #dc3545;
+            border: 1px solid #dc3545;
+        }
+
+        .order-actions, .invoice-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .order-btn, .invoice-btn {
+            padding: 8px 15px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .view-btn {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+            border: 1px solid #007bff;
+        }
+
+        .view-btn:hover {
+            background: linear-gradient(135deg, #0056b3, #004085);
+            transform: translateY(-1px);
+            color: white;
+            text-decoration: none;
+        }
+
+        .download-btn {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            border: 1px solid #28a745;
+        }
+
+        .download-btn:hover {
+            background: linear-gradient(135deg, #218838, #1abc9c);
+            transform: translateY(-1px);
+            color: white;
+            text-decoration: none;
+        }
+
+        .orders-footer, .invoices-footer {
+            text-align: center;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .view-all-orders, .view-all-invoices {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 25px;
+            background: linear-gradient(135deg, #6f42c1, #5a2d91);
+            color: white;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            border: 2px solid #6f42c1;
+        }
+
+        .view-all-orders:hover, .view-all-invoices:hover {
+            background: linear-gradient(135deg, #5a2d91, #4e246c);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(111, 66, 193, 0.4);
+            color: white;
+            text-decoration: none;
+        }
+
+        .no-orders, .no-invoices {
+            text-align: center;
+            padding: 40px 20px;
+            color: rgba(255, 255, 255, 0.6);
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 15px;
+            border: 2px dashed rgba(255, 255, 255, 0.1);
+        }
+
+        .no-orders i, .no-invoices i {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            color: rgba(255, 255, 255, 0.3);
+        }
+
+        .no-orders h3, .no-invoices h3 {
+            margin: 0 0 15px 0;
+            color: white;
+            font-size: 1.5rem;
+        }
+
+        .no-orders p, .no-invoices p {
+            margin: 0 0 25px 0;
+            font-size: 1rem;
+            line-height: 1.5;
+        }
+
+        /* الاستجابة للشاشات الصغيرة */
+        @media (max-width: 768px) {
+            .profile-container {
+                padding: 100px 15px 30px;
+            }
+
+            .profile-header {
+                flex-direction: column;
+                gap: 20px;
+                text-align: center;
+                padding: 25px 20px;
+            }
+
+            .header-content h1 {
+                font-size: 2rem;
+            }
+
+            .profile-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .profile-section {
+                padding: 20px;
+            }
+
+            .info-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .steps-container {
+                grid-template-columns: 1fr;
+            }
+
+            .timeline {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .timeline::before {
+                display: none;
+            }
+
+            .order-header, .invoice-header,
+            .order-details, .invoice-details {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .order-actions, .invoice-actions {
+                justify-content: flex-start;
+                flex-wrap: wrap;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .profile-container {
+                padding: 80px 10px 20px;
+            }
+
+            .profile-section {
+                padding: 15px;
+            }
+
+            .order-actions, .invoice-actions {
+                flex-direction: column;
+            }
+
+            .order-btn, .invoice-btn {
+                justify-content: center;
+            }
+        }
+    </style>
 {% endblock %}
 
 {% block content %}
 <div class="profile-container">
-    <div class="profile-header">
-        <div class="header-content">
-            <h1>🎮 الملف الشخصي</h1>
-            <p class="welcome-text">مرحباً بك في لوحة تحكم حسابك</p>
-        </div>
-        <div class="customer-level">
-            <div class="level-badge level-{{ current_user.customer_type }}">
-                {% if current_user.customer_type == 'regular' %}
-                    <i class="fa-solid fa-user"></i>
-                    <span>عميل عادي</span>
-                {% elif current_user.customer_type == 'kyc' %}
-                    <i class="fa-solid fa-user-check"></i>
-                    <span>عميل موثق</span>
-                {% elif current_user.customer_type == 'reseller' %}
-                    <i class="fa-solid fa-crown"></i>
-                    <span>موزع</span>
-                {% endif %}
+    <div class="profile-content">
+        <div class="profile-header">
+            <div class="header-content">
+                <h1>🎮 الملف الشخصي</h1>
+                <p class="welcome-text">مرحباً بك في لوحة تحكم حسابك</p>
+            </div>
+            <div class="customer-level">
+                <div class="level-badge level-{{ current_user.customer_type }}">
+                    {% if current_user.customer_type == 'regular' %}
+                        <i class="fa-solid fa-user"></i>
+                        <span>عميل عادي</span>
+                    {% elif current_user.customer_type == 'kyc' %}
+                        <i class="fa-solid fa-user-check"></i>
+                        <span>عميل موثق</span>
+                    {% elif current_user.customer_type == 'reseller' %}
+                        <i class="fa-solid fa-crown"></i>
+                        <span>موزع</span>
+                    {% endif %}
+                </div>
             </div>
         </div>
-    </div>
 
     <div class="profile-grid">
         <!-- معلومات العميل -->
@@ -379,6 +1158,7 @@
                 {% endif %}
             </div>
         </div>
+    </div>
     </div>
 </div>
 {% endblock %}
