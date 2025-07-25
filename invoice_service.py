@@ -470,6 +470,7 @@ def send_email_with_attachment(to_email, subject, body, attachment_path, attachm
     """إرسال بريد إلكتروني مع مرفق"""
     try:
         from flask_mail import Mail, Message
+        from flask import current_app
         
         mail = current_app.extensions.get('mail')
         if not mail:
@@ -478,15 +479,19 @@ def send_email_with_attachment(to_email, subject, body, attachment_path, attachm
         
         msg = Message(
             subject=subject,
-            sender=current_app.config['MAIL_USERNAME'],
+            sender=current_app.config.get('MAIL_DEFAULT_SENDER'),
             recipients=[to_email]
         )
         msg.html = body
         
         # إضافة المرفق
         if attachment_path and os.path.exists(attachment_path):
-            with current_app.open_resource(attachment_path) as fp:
-                msg.attach(attachment_name, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fp.read())
+            with open(attachment_path, 'rb') as fp:
+                msg.attach(
+                    attachment_name, 
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
+                    fp.read()
+                )
         
         mail.send(msg)
         print(f"تم إرسال البريد بنجاح إلى: {to_email}")

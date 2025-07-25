@@ -104,13 +104,18 @@ def create_app():
     def inject_global_data():
         from models import Category, Currency
         from utils import format_currency, convert_currency
-        from flask import session
+        from flask import session, has_request_context
         
         # جلب الأقسام النشطة مرتبة حسب الترتيب
         main_categories = Category.query.filter_by(is_active=True).order_by(Category.display_order, Category.name).limit(8).all()
         # جلب العملات النشطة
         currencies = Currency.query.filter_by(is_active=True).order_by(Currency.code).all()
-        current_currency = session.get('currency', 'SAR')
+        
+        # التحقق من وجود سياق الطلب قبل الوصول إلى session
+        if has_request_context():
+            current_currency = session.get('currency', 'SAR')
+        else:
+            current_currency = 'SAR'  # القيمة الافتراضية خارج سياق الطلب
         
         return dict(
             main_categories=main_categories, 
@@ -173,6 +178,10 @@ def create_app():
     # تهيئة Google OAuth Service
     from google_auth import google_auth_service
     google_auth_service.init_app(app)
+    
+    # تهيئة خدمة البريد الإلكتروني
+    from email_service import init_email_service
+    init_email_service(app)
     
     return app
 

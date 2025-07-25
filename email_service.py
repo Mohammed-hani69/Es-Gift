@@ -15,6 +15,7 @@
 
 import os
 import json
+import logging
 from datetime import datetime
 from flask import current_app, render_template_string
 from flask_mail import Message, Mail
@@ -23,6 +24,10 @@ from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
 from io import BytesIO
 import tempfile
+
+# تكوين التسجيل
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class ProductCodeEmailService:
     """خدمة إرسال أكواد المنتجات عبر الإيميل"""
@@ -166,13 +171,28 @@ class ProductCodeEmailService:
         try:
             customer_email = order_data.get('customer_email')
             if not customer_email:
+                logger.error("عنوان البريد الإلكتروني غير محدد في بيانات الطلب")
                 return False, "عنوان البريد الإلكتروني غير محدد"
             
+            logger.info(f"بدء إرسال البريد إلى: {customer_email}")
+            
+            # التحقق من إعدادات البريد
+            if not current_app.config.get('MAIL_USERNAME'):
+                logger.error("MAIL_USERNAME غير محدد في إعدادات التطبيق")
+                return False, "إعدادات البريد الإلكتروني غير مكتملة"
+            
+            if not current_app.config.get('MAIL_DEFAULT_SENDER'):
+                logger.error("MAIL_DEFAULT_SENDER غير محدد في إعدادات التطبيق")
+                return False, "مرسل البريد الإلكتروني غير محدد"
+            
             # إنشاء ملف Excel
+            logger.info("إنشاء ملف Excel...")
             excel_file = self.create_excel_file(order_data, product_codes)
+            logger.info(f"تم إنشاء ملف Excel بحجم: {len(excel_file.getvalue())} بايت")
             
             # إنشاء رسالة الإيميل
             subject = f"أكواد منتجاتك - طلب رقم {order_data.get('order_number', 'غير محدد')}"
+            logger.info(f"موضوع البريد: {subject}")
             
             # محتوى الإيميل
             email_template = """
@@ -237,9 +257,11 @@ class ProductCodeEmailService:
             """
             
             # تحضير محتوى الإيميل
+            logger.info("تحضير محتوى البريد...")
             email_content = render_template_string(email_template, **order_data)
             
             # إنشاء رسالة الإيميل
+            logger.info("إنشاء رسالة البريد...")
             msg = Message(
                 subject=subject,
                 recipients=[customer_email],
@@ -249,6 +271,7 @@ class ProductCodeEmailService:
             
             # إرفاق ملف Excel
             filename = f"ES-Gift_Order_{order_data.get('order_number', 'Unknown')}_Codes.xlsx"
+            logger.info(f"إرفاق ملف Excel: {filename}")
             msg.attach(
                 filename=filename,
                 content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -256,12 +279,17 @@ class ProductCodeEmailService:
             )
             
             # إرسال الإيميل
+            logger.info("إرسال البريد...")
             self.mail.send(msg)
+            logger.info(f"تم إرسال البريد بنجاح إلى: {customer_email}")
             
             return True, f"تم إرسال أكواد المنتجات إلى {customer_email} بنجاح"
             
         except Exception as e:
-            current_app.logger.error(f"Error sending product codes email: {str(e)}")
+            logger.error(f"خطأ في إرسال البريد الإلكتروني: {str(e)}")
+            logger.error(f"تفاصيل الخطأ: {type(e).__name__}")
+            import traceback
+            logger.error(f"Stack trace: {traceback.format_exc()}")
             return False, f"فشل في إرسال الإيميل: {str(e)}"
     
     def process_order_codes(self, order_id, api_transaction_id):
