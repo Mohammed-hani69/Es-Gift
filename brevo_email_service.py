@@ -385,6 +385,123 @@ def send_order_confirmation_email(user_email: str, user_name: str, order_data: D
     
     return send_template_email(user_email, template_id, params)
 
+def send_order_confirmation_pending_codes(user_email: str, user_name: str, order_data: Dict, status_message: str = None) -> Tuple[bool, str]:
+    """إرسال إيميل تأكيد الطلب (بدون أكواد - في انتظار المعالجة)"""
+    try:
+        if not status_message:
+            status_message = "طلبك قيد المراجعة وسيتم إرسال الأكواد فور توفرها"
+        
+        # إنشاء محتوى HTML للبريد
+        html_content = f"""
+        <!DOCTYPE html>
+        <html dir="rtl" lang="ar">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>تأكيد طلبك - ES-GIFT</title>
+        </head>
+        <body style="margin: 0; padding: 20px; background-color: #f5f5f5; font-family: Arial, sans-serif; direction: rtl;">
+            <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 15px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+                
+                <!-- Header -->
+                <div style="background: linear-gradient(135deg, #FF0033 0%, #CC0029 100%); color: white; padding: 40px 30px; text-align: center;">
+                    <h1 style="margin: 0; font-size: 2.5em;">🎁 ES-GIFT</h1>
+                    <h2 style="margin: 15px 0 0 0; font-weight: normal; opacity: 0.9;">تأكيد استلام طلبك</h2>
+                </div>
+                
+                <!-- Main Content -->
+                <div style="padding: 40px 30px;">
+                    <div style="background: #e8f5e8; border: 2px solid #28a745; border-radius: 10px; padding: 20px; margin-bottom: 30px; text-align: center;">
+                        <h3 style="color: #28a745; margin: 0 0 10px 0;">
+                            ✅ تم استلام طلبك بنجاح!
+                        </h3>
+                        <p style="margin: 0; font-size: 1.1em; color: #333;">
+                            رقم الطلب: <strong>#{order_data.get('order_number', 'N/A')}</strong>
+                        </p>
+                    </div>
+                    
+                    <!-- Order Details -->
+                    <div style="background: #f8f9fa; border-radius: 10px; padding: 25px; margin-bottom: 25px;">
+                        <h3 style="color: #333; margin: 0 0 20px 0; border-bottom: 2px solid #FF0033; padding-bottom: 10px;">
+                            تفاصيل الطلب
+                        </h3>
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <tr>
+                                <td style="padding: 12px 0; border-bottom: 1px solid #eee; font-weight: bold; color: #666;">العميل:</td>
+                                <td style="padding: 12px 0; border-bottom: 1px solid #eee; text-align: left;">{user_name}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 12px 0; border-bottom: 1px solid #eee; font-weight: bold; color: #666;">المنتج:</td>
+                                <td style="padding: 12px 0; border-bottom: 1px solid #eee; text-align: left;">{order_data.get('product_name', 'منتجات رقمية')}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 12px 0; border-bottom: 1px solid #eee; font-weight: bold; color: #666;">المبلغ الإجمالي:</td>
+                                <td style="padding: 12px 0; border-bottom: 1px solid #eee; text-align: left; font-weight: bold; color: #FF0033;">
+                                    {order_data.get('total_amount', 0)} {order_data.get('currency', 'SAR')}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 12px 0; font-weight: bold; color: #666;">تاريخ الطلب:</td>
+                                <td style="padding: 12px 0; text-align: left;">{order_data.get('order_date', 'غير محدد')}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <!-- Status Message -->
+                    <div style="background: #fff3cd; border: 2px solid #ffc107; border-radius: 10px; padding: 20px; margin-bottom: 30px; text-align: center;">
+                        <h4 style="color: #856404; margin: 0 0 10px 0;">⏳ حالة الطلب</h4>
+                        <p style="margin: 0; color: #856404; font-size: 1.1em;">{status_message}</p>
+                    </div>
+                    
+                    <!-- Next Steps -->
+                    <div style="background: #d4edda; border-radius: 10px; padding: 25px; margin-bottom: 25px;">
+                        <h4 style="color: #155724; margin: 0 0 15px 0;">📋 الخطوات التالية:</h4>
+                        <ul style="margin: 0; padding-right: 20px; color: #155724;">
+                            <li style="margin-bottom: 8px;">سيتم مراجعة طلبك من قبل فريقنا</li>
+                            <li style="margin-bottom: 8px;">سنقوم بتجهيز الأكواد المطلوبة</li>
+                            <li style="margin-bottom: 8px;">ستصلك رسالة إلكترونية تحتوي على الأكواد فور جاهزيتها</li>
+                            <li>يمكنك متابعة حالة طلبك من حسابك على الموقع</li>
+                        </ul>
+                    </div>
+                    
+                    <!-- Support Info -->
+                    <div style="text-align: center; padding: 20px; background: #f8f9fa; border-radius: 10px;">
+                        <p style="margin: 0 0 10px 0; color: #666;">هل تحتاج مساعدة؟</p>
+                        <p style="margin: 0; color: #FF0033; font-weight: bold;">
+                            📧 support@es-gift.com | 📱 +966XXXXXXXXX
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Footer -->
+                <div style="background: #f8f9fa; padding: 30px; text-align: center; color: #666; font-size: 0.9em;">
+                    <p style="margin: 0 0 10px 0;">شكراً لثقتك في ES-GIFT - وجهتك الأولى للبطاقات الرقمية</p>
+                    <p style="margin: 0; font-size: 0.8em; color: #999;">
+                        هذا البريد تم إرساله تلقائياً، يرجى عدم الرد عليه مباشرة
+                    </p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        subject = f"✅ تأكيد استلام طلبك #{order_data.get('order_number', 'N/A')} - ES-GIFT"
+        
+        # إرسال البريد باستخدام Brevo
+        success, result = brevo_service.send_email(
+            to=user_email,
+            subject=subject,
+            html_content=html_content
+        )
+        
+        if success:
+            return True, "تم إرسال إيميل التأكيد بنجاح"
+        else:
+            return False, f"فشل إرسال الإيميل: {result}"
+            
+    except Exception as e:
+        return False, f"خطأ في إرسال إيميل التأكيد: {str(e)}"
+
 def test_brevo_connection() -> Tuple[bool, str]:
     """اختبار الاتصال مع Brevo"""
     return brevo_service.test_connection()

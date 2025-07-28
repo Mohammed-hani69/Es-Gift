@@ -385,6 +385,54 @@ def order_detail(order_id):
     
     return render_template('admin/order_detail.html', order=order)
 
+@admin.route('/order/<int:order_id>/json')
+@login_required
+def get_order_json(order_id):
+    """جلب بيانات الطلب بصيغة JSON"""
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'غير مصرح'})
+    
+    try:
+        order = Order.query.get_or_404(order_id)
+        
+        order_data = {
+            'id': order.id,
+            'order_number': order.order_number,
+            'total_amount': float(order.total_amount),
+            'currency': order.currency,
+            'order_status': order.order_status,
+            'created_at': order.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'user': {
+                'id': order.user.id,
+                'full_name': order.user.full_name,
+                'email': order.user.email
+            },
+            'items': []
+        }
+        
+        for item in order.items:
+            # جلب الأكواد المرتبطة بالطلب لهذا المنتج
+            product_codes = ProductCode.query.filter_by(
+                product_id=item.product.id,
+                order_id=order.id
+            ).all()
+            
+            order_data['items'].append({
+                'id': item.id,
+                'quantity': item.quantity,
+                'price': float(item.price),
+                'product': {
+                    'id': item.product.id,
+                    'name': item.product.name,
+                    'codes': [{'id': code.id, 'code': code.code, 'order_id': code.order_id} for code in product_codes]
+                }
+            })
+        
+        return jsonify({'success': True, 'order': order_data})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'حدث خطأ: {str(e)}'})
+
 @admin.route('/update-order-status/<int:order_id>', methods=['POST'])
 @login_required
 def update_order_status(order_id):
@@ -406,6 +454,193 @@ def update_order_status(order_id):
             
     except Exception as e:
         db.session.rollback()
+        return jsonify({'success': False, 'message': f'حدث خطأ: {str(e)}'})
+
+@admin.route('/pending-orders')
+@login_required
+@requires_page_access('admin.orders')
+def pending_orders():
+    """عرض الطلبات المعلقة التي تحتاج أكواد"""
+    if not current_user.is_admin:
+        employee = Employee.query.filter_by(user_id=current_user.id).first()
+        if not employee:
+            return redirect(url_for('main.index'))
+    
+    # جلب الطلبات المعلقة
+    pending_orders = Order.query.filter(
+        Order.order_status.in_(['pending_codes', 'partial_codes'])
+    ).order_by(Order.created_at.desc()).all()
+    
+    return render_template('admin/pending_orders.html', pending_orders=pending_orders)
+
+@admin.route('/order/<int:order_id>/add-codes', methods=['POST'])
+@login_required
+def add_codes_to_order(order_id):
+    """إضافة أكواد لطلب معلق"""
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'غير مصرح'})
+    
+    try:
+        order = Order.query.get_or_404(order_id)
+        data = request.get_json()
+        codes_data = data.get('codes', [])  # قائمة بالأكواد مع معرف المنتج
+        
+        if not codes_data:
+            return jsonify({'success': False, 'message': 'لم يتم إرسال أكواد'})
+        
+        added_codes = []
+        
+        # إضافة الأكواد للمنتجات
+        for code_info in codes_data:
+            product_id = code_info.get('product_id')
+            codes_list = code_info.get('codes', [])
+            
+            if not product_id or not codes_list:
+                continue
+                
+            # التحقق من وجود المنتج في الطلب
+            order_item = OrderItem.query.filter_by(order_id=order_id, product_id=product_id).first()
+            if not order_item:
+                continue
+            
+            # إضافة الأكواد
+            for code_text in codes_list[:order_item.quantity]:  # فقط بعدد المطلوب
+                # التحقق من عدم وجود الكود مسبقاً
+                existing_code = ProductCode.query.filter_by(code=code_text.strip()).first()
+                if existing_code:
+                    continue
+                
+                # إنشاء كود جديد
+                new_code = ProductCode(
+                    product_id=product_id,
+                    code=code_text.strip(),
+                    order_id=order_id,
+                    is_used=True,
+                    used_at=datetime.utcnow()
+                )
+                db.session.add(new_code)
+                added_codes.append(new_code)
+        
+        if added_codes:
+            db.session.commit()
+            
+            # التحقق من اكتمال جميع الأكواد المطلوبة
+            all_codes_complete = True
+            for item in order.items:
+                required_codes = item.quantity
+                available_codes = ProductCode.query.filter_by(
+                    product_id=item.product_id,
+                    order_id=order_id
+                ).count()
+                
+                if available_codes < required_codes:
+                    all_codes_complete = False
+                    break
+            
+            if all_codes_complete:
+                # إرسال الإيميل مع الأكواد
+                try:
+                    from email_service import ProductCodeEmailService
+                    email_service = ProductCodeEmailService()
+                    
+                    order_data = {
+                        'order_number': order.order_number,
+                        'customer_name': order.user.full_name or order.user.email,
+                        'customer_email': order.user.email,
+                        'order_date': order.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                        'product_name': 'منتجات رقمية متنوعة',
+                        'quantity': sum(item.quantity for item in order.items),
+                        'total_amount': float(order.total_amount),
+                        'currency': order.currency
+                    }
+                    
+                    # جلب جميع أكواد الطلب
+                    product_codes = [code.code for code in ProductCode.query.filter_by(order_id=order.id)]
+                    
+                    success, message, excel_file_path = email_service.send_product_codes_email(order_data, product_codes)
+                    
+                    if success and excel_file_path:
+                        order.excel_file_path = excel_file_path
+                        order.order_status = 'completed'
+                        db.session.commit()
+                        
+                        return jsonify({
+                            'success': True, 
+                            'message': f'تم إضافة {len(added_codes)} كود وإرسال البريد الإلكتروني بنجاح',
+                            'codes_sent': True
+                        })
+                    else:
+                        order.order_status = 'partial_codes'
+                        db.session.commit()
+                        return jsonify({
+                            'success': True, 
+                            'message': f'تم إضافة {len(added_codes)} كود ولكن فشل إرسال البريد: {message}',
+                            'codes_sent': False
+                        })
+                except Exception as e:
+                    return jsonify({
+                        'success': True, 
+                        'message': f'تم إضافة {len(added_codes)} كود ولكن فشل إرسال البريد: {str(e)}',
+                        'codes_sent': False
+                    })
+            else:
+                order.order_status = 'partial_codes'
+                db.session.commit()
+                return jsonify({
+                    'success': True, 
+                    'message': f'تم إضافة {len(added_codes)} كود. الطلب يحتاج المزيد من الأكواد',
+                    'codes_sent': False
+                })
+        else:
+            return jsonify({'success': False, 'message': 'لم يتم إضافة أي أكواد صالحة'})
+            
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'حدث خطأ: {str(e)}'})
+
+@admin.route('/order/<int:order_id>/resend-email', methods=['POST'])
+@login_required
+def resend_order_email(order_id):
+    """إعادة إرسال البريد الإلكتروني للطلب"""
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'غير مصرح'})
+    
+    try:
+        order = Order.query.get_or_404(order_id)
+        
+        # التحقق من وجود أكواد للطلب
+        product_codes = ProductCode.query.filter_by(order_id=order_id).all()
+        if not product_codes:
+            return jsonify({'success': False, 'message': 'لا توجد أكواد لهذا الطلب'})
+        
+        from email_service import ProductCodeEmailService
+        email_service = ProductCodeEmailService()
+        
+        order_data = {
+            'order_number': order.order_number,
+            'customer_name': order.user.full_name or order.user.email,
+            'customer_email': order.user.email,
+            'order_date': order.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'product_name': 'منتجات رقمية متنوعة',
+            'quantity': sum(item.quantity for item in order.items),
+            'total_amount': float(order.total_amount),
+            'currency': order.currency
+        }
+        
+        codes_list = [code.code for code in product_codes]
+        success, message, excel_file_path = email_service.send_product_codes_email(order_data, codes_list)
+        
+        if success and excel_file_path:
+            order.excel_file_path = excel_file_path
+            if order.order_status in ['pending_codes', 'partial_codes']:
+                order.order_status = 'completed'
+            db.session.commit()
+            
+            return jsonify({'success': True, 'message': 'تم إعادة إرسال البريد الإلكتروني بنجاح'})
+        else:
+            return jsonify({'success': False, 'message': f'فشل في إرسال البريد: {message}'})
+            
+    except Exception as e:
         return jsonify({'success': False, 'message': f'حدث خطأ: {str(e)}'})
 
 @admin.route('/invoices')

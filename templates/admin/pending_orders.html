@@ -1,0 +1,504 @@
+{% extends "admin/base.html" %}
+
+{% block title %}الطلبات المعلقة{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>الطلبات المعلقة - تحتاج أكواد</h1>
+    <p class="text-muted">إدارة الطلبات التي تحتاج إضافة أكواد المنتجات</p>
+</div>
+
+<!-- إحصائيات سريعة -->
+<div class="stats-grid">
+    <div class="stat-card warning">
+        <div class="stat-icon">
+            <i class="fas fa-clock"></i>
+        </div>
+        <div class="stat-number">{{ pending_orders|length }}</div>
+        <div class="stat-label">طلب معلق</div>
+    </div>
+    
+    <div class="stat-card info">
+        <div class="stat-icon">
+            <i class="fas fa-code"></i>
+        </div>
+        <div class="stat-number">
+            {% set partial_count = pending_orders|selectattr('order_status', 'equalto', 'partial_codes')|list|length %}
+            {{ partial_count }}
+        </div>
+        <div class="stat-label">طلب بأكواد جزئية</div>
+    </div>
+    
+    <div class="stat-card danger">
+        <div class="stat-icon">
+            <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <div class="stat-number">
+            {% set no_codes_count = pending_orders|selectattr('order_status', 'equalto', 'pending_codes')|list|length %}
+            {{ no_codes_count }}
+        </div>
+        <div class="stat-label">طلب بدون أكواد</div>
+    </div>
+</div>
+
+<!-- قائمة الطلبات المعلقة -->
+<div class="content-card">
+    <h3>الطلبات المعلقة</h3>
+    
+    {% if pending_orders %}
+    <div class="table-container">
+        <table class="data-table" id="pendingOrdersTable">
+            <thead>
+                <tr>
+                    <th>رقم الطلب</th>
+                    <th>العميل</th>
+                    <th>المنتجات</th>
+                    <th>المبلغ</th>
+                    <th>الحالة</th>
+                    <th>تاريخ الطلب</th>
+                    <th>الإجراءات</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in pending_orders %}
+                <tr>
+                    <td>
+                        <strong>{{ order.order_number }}</strong>
+                    </td>
+                    <td>
+                        <div class="customer-info">
+                            <strong>{{ order.user.full_name or order.user.email }}</strong>
+                            <br>
+                            <small class="text-muted">{{ order.user.email }}</small>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="products-list">
+                            {% for item in order.items %}
+                            <div class="product-item">
+                                <strong>{{ item.product.name }}</strong>
+                                <span class="quantity">x{{ item.quantity }}</span>
+                                <div class="codes-status">
+                                    {% set existing_codes = item.product.codes|selectattr('order_id', 'equalto', order.id)|list|length %}
+                                    <span class="badge {{ 'badge-success' if existing_codes >= item.quantity else 'badge-warning' if existing_codes > 0 else 'badge-danger' }}">
+                                        {{ existing_codes }}/{{ item.quantity }} أكواد
+                                    </span>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </td>
+                    <td>
+                        <strong>{{ order.total_amount }} {{ order.currency }}</strong>
+                    </td>
+                    <td>
+                        <span class="status-badge status-{{ 'warning' if order.order_status == 'partial_codes' else 'danger' }}">
+                            {% if order.order_status == 'pending_codes' %}
+                                بحاجة لأكواد
+                            {% elif order.order_status == 'partial_codes' %}
+                                أكواد جزئية
+                            {% endif %}
+                        </span>
+                    </td>
+                    <td>{{ order.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn btn-primary btn-sm" 
+                                    onclick="manageOrderCodes({{ order.id }})" 
+                                    title="إدارة الأكواد">
+                                <i class="fas fa-key"></i>
+                                إدارة الأكواد
+                            </button>
+                            
+                            {% if order.codes|length > 0 %}
+                            <button class="btn btn-success btn-sm" 
+                                    onclick="resendOrderEmail({{ order.id }})" 
+                                    title="إعادة إرسال البريد">
+                                <i class="fas fa-envelope"></i>
+                                إرسال البريد
+                            </button>
+                            {% endif %}
+                            
+                            <a href="{{ url_for('admin.order_detail', order_id=order.id) }}" 
+                               class="btn btn-info btn-sm" 
+                               title="عرض التفاصيل">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-check-circle"></i>
+        <h3>لا توجد طلبات معلقة</h3>
+        <p>جميع الطلبات تحتوي على أكواد أو تم إكمالها</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- نافذة إدارة الأكواد -->
+<div id="codesModal" class="modal" style="display: none;">
+    <div class="modal-content large">
+        <div class="modal-header">
+            <h3>إدارة أكواد الطلب</h3>
+            <span class="close" onclick="closeCodesModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div id="codesModalContent">
+                <!-- سيتم تحديد المحتوى بواسطة JavaScript -->
+            </div>
+            
+            <div class="codes-form">
+                <h4>إضافة أكواد جديدة</h4>
+                <div id="productsCodesForm">
+                    <!-- سيتم إنشاء النماذج بواسطة JavaScript -->
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn btn-success" onclick="addCodesToOrder()">
+                        <i class="fas fa-plus"></i>
+                        إضافة الأكواد
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="closeCodesModal()">
+                        إلغاء
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- نافذة التأكيد -->
+<div id="confirmModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="confirmTitle">تأكيد العملية</h3>
+            <span class="close" onclick="closeConfirmModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <p id="confirmMessage"></p>
+            <div class="form-actions">
+                <button type="button" class="btn btn-success" id="confirmYes">تأكيد</button>
+                <button type="button" class="btn btn-secondary" onclick="closeConfirmModal()">إلغاء</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.products-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.product-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 5px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+.quantity {
+    background: #e9ecef;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.8em;
+}
+
+.codes-status {
+    margin-left: auto;
+}
+
+.customer-info {
+    min-width: 150px;
+}
+
+.modal.large .modal-content {
+    max-width: 800px;
+    width: 90%;
+}
+
+.codes-form {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+}
+
+.product-codes-section {
+    margin-bottom: 20px;
+    padding: 15px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    background: #f9f9f9;
+}
+
+.codes-input {
+    width: 100%;
+    min-height: 100px;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-family: monospace;
+    resize: vertical;
+}
+
+.existing-codes {
+    margin-bottom: 15px;
+}
+
+.code-item {
+    display: inline-block;
+    background: #e8f5e8;
+    padding: 4px 8px;
+    margin: 2px;
+    border-radius: 3px;
+    font-family: monospace;
+    font-size: 0.9em;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+}
+
+.empty-state i {
+    font-size: 3em;
+    color: #28a745;
+    margin-bottom: 15px;
+}
+</style>
+
+<script>
+let currentOrderId = null;
+
+function manageOrderCodes(orderId) {
+    currentOrderId = orderId;
+    
+    // جلب تفاصيل الطلب والأكواد الحالية
+    fetch(`/admin/order/${orderId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayOrderCodesModal(data.order);
+                document.getElementById('codesModal').style.display = 'flex';
+            } else {
+                showNotification('فشل في جلب بيانات الطلب', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('حدث خطأ في الاتصال', 'error');
+        });
+}
+
+function displayOrderCodesModal(order) {
+    const modalContent = document.getElementById('codesModalContent');
+    const productsForm = document.getElementById('productsCodesForm');
+    
+    // عرض معلومات الطلب
+    modalContent.innerHTML = `
+        <div class="order-info">
+            <h4>طلب رقم: ${order.order_number}</h4>
+            <p><strong>العميل:</strong> ${order.user.full_name || order.user.email}</p>
+            <p><strong>البريد:</strong> ${order.user.email}</p>
+            <p><strong>المبلغ:</strong> ${order.total_amount} ${order.currency}</p>
+        </div>
+    `;
+    
+    // إنشاء نماذج لكل منتج
+    productsForm.innerHTML = '';
+    order.items.forEach(item => {
+        const existingCodes = item.product.codes.filter(code => code.order_id === order.id);
+        const neededCodes = item.quantity - existingCodes.length;
+        
+        const productSection = document.createElement('div');
+        productSection.className = 'product-codes-section';
+        productSection.innerHTML = `
+            <h5>${item.product.name} - الكمية: ${item.quantity}</h5>
+            
+            ${existingCodes.length > 0 ? `
+                <div class="existing-codes">
+                    <strong>الأكواد الحالية (${existingCodes.length}):</strong>
+                    <div>
+                        ${existingCodes.map(code => `<span class="code-item">${code.code}</span>`).join('')}
+                    </div>
+                </div>
+            ` : ''}
+            
+            ${neededCodes > 0 ? `
+                <div>
+                    <label><strong>إضافة ${neededCodes} كود جديد:</strong></label>
+                    <textarea class="codes-input" 
+                              data-product-id="${item.product.id}"
+                              placeholder="ضع كل كود في سطر منفصل&#10;مثال:&#10;ABC123DEF&#10;XYZ789GHI&#10;..."></textarea>
+                    <small class="text-muted">ضع كل كود في سطر منفصل. المطلوب: ${neededCodes} كود</small>
+                </div>
+            ` : `
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle"></i>
+                    جميع الأكواد المطلوبة متوفرة لهذا المنتج
+                </div>
+            `}
+        `;
+        
+        productsForm.appendChild(productSection);
+    });
+}
+
+function addCodesToOrder() {
+    if (!currentOrderId) return;
+    
+    const codesInputs = document.querySelectorAll('.codes-input');
+    const codesData = [];
+    
+    codesInputs.forEach(input => {
+        const productId = input.dataset.productId;
+        const codesText = input.value.trim();
+        
+        if (codesText) {
+            const codes = codesText.split('\n')
+                                  .map(code => code.trim())
+                                  .filter(code => code.length > 0);
+            
+            if (codes.length > 0) {
+                codesData.push({
+                    product_id: parseInt(productId),
+                    codes: codes
+                });
+            }
+        }
+    });
+    
+    if (codesData.length === 0) {
+        showNotification('يرجى إدخال أكواد صالحة', 'warning');
+        return;
+    }
+    
+    // إرسال الأكواد
+    const addButton = document.querySelector('.btn-success');
+    const originalText = addButton.innerHTML;
+    addButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإضافة...';
+    addButton.disabled = true;
+    
+    fetch(`/admin/order/${currentOrderId}/add-codes`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            codes: codesData
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        addButton.innerHTML = originalText;
+        addButton.disabled = false;
+        
+        if (data.success) {
+            showNotification(data.message, 'success');
+            closeCodesModal();
+            
+            // إعادة تحديث الصفحة
+            setTimeout(() => {
+                location.reload();
+            }, 2000);
+        } else {
+            showNotification(data.message || 'فشل في إضافة الأكواد', 'error');
+        }
+    })
+    .catch(error => {
+        addButton.innerHTML = originalText;
+        addButton.disabled = false;
+        console.error('Error:', error);
+        showNotification('حدث خطأ في الاتصال', 'error');
+    });
+}
+
+function resendOrderEmail(orderId) {
+    showConfirmModal(
+        'إعادة إرسال البريد',
+        'هل تريد إعادة إرسال البريد الإلكتروني مع أكواد المنتجات للعميل؟',
+        () => {
+            fetch(`/admin/order/${orderId}/resend-email`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification(data.message, 'success');
+                    location.reload();
+                } else {
+                    showNotification(data.message || 'فشل في إرسال البريد', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification('حدث خطأ في الاتصال', 'error');
+            });
+        }
+    );
+}
+
+function closeCodesModal() {
+    document.getElementById('codesModal').style.display = 'none';
+    currentOrderId = null;
+}
+
+function showConfirmModal(title, message, onConfirm) {
+    document.getElementById('confirmTitle').textContent = title;
+    document.getElementById('confirmMessage').textContent = message;
+    document.getElementById('confirmYes').onclick = () => {
+        closeConfirmModal();
+        onConfirm();
+    };
+    document.getElementById('confirmModal').style.display = 'flex';
+}
+
+function closeConfirmModal() {
+    document.getElementById('confirmModal').style.display = 'none';
+}
+
+function showNotification(message, type) {
+    // إنشاء عنصر الإشعار
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-triangle' : 'info-circle'}"></i>
+        <span>${message}</span>
+    `;
+    
+    // إضافة الإشعار للصفحة
+    document.body.appendChild(notification);
+    
+    // إزالة الإشعار بعد 4 ثوان
+    setTimeout(() => {
+        notification.remove();
+    }, 4000);
+}
+
+// إغلاق النوافذ المنبثقة عند النقر خارجها
+window.onclick = function(event) {
+    const codesModal = document.getElementById('codesModal');
+    const confirmModal = document.getElementById('confirmModal');
+    
+    if (event.target === codesModal) {
+        closeCodesModal();
+    }
+    if (event.target === confirmModal) {
+        closeConfirmModal();
+    }
+}
+</script>
+{% endblock %}

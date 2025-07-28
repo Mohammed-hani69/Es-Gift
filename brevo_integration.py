@@ -11,7 +11,7 @@
 import os
 import logging
 from typing import Dict, List, Tuple
-from flask import current_app
+from flask import current_app, request
 from brevo_email_service import (
     send_simple_email, 
     send_template_email, 
@@ -367,6 +367,51 @@ def test_brevo_integration() -> Tuple[bool, str]:
 # ========== متغيرات الإعداد السريع ==========
 from datetime import datetime
 
+def send_admin_notification(order_id: int, order_email: str, status: str = "pending_codes") -> bool:
+    """إرسال إشعار للإدارة عند وجود طلب يحتاج تدخل إداري"""
+    try:
+        subject = f"طلب جديد يحتاج إضافة أكواد - رقم {order_id}"
+        
+        # رابط مباشر لصفحة الطلبات المعلقة
+        admin_link = f"{request.url_root}admin/pending-orders"
+        
+        html_content = f"""
+        <div style="font-family: Arial, sans-serif; direction: rtl; text-align: right;">
+            <h2>طلب جديد يحتاج تدخل إداري</h2>
+            <div style="background: #f5f5f5; padding: 15px; border-radius: 5px; margin: 10px 0;">
+                <p><strong>رقم الطلب:</strong> {order_id}</p>
+                <p><strong>بريد العميل:</strong> {order_email}</p>
+                <p><strong>الحالة:</strong> {status}</p>
+                <p><strong>الوقت:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+            </div>
+            <p>يرجى إضافة الأكواد المطلوبة للطلب من خلال الرابط التالي:</p>
+            <div style="margin: 20px 0;">
+                <a href="{admin_link}" style="background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+                    إدارة الطلبات المعلقة
+                </a>
+            </div>
+        </div>
+        """
+        
+        # إرسال للإدارة (يمكن إضافة قائمة إيميلات الإدارة هنا)
+        admin_emails = ["admin@es-gift.com"]  # استبدل بالإيميلات الفعلية
+        
+        for admin_email in admin_emails:
+            success = brevo_integration.send_email(
+                admin_email, 
+                subject, 
+                html_content, 
+                attachments=None
+            )
+            if not success:
+                print(f"فشل في إرسال إشعار للإدارة: {admin_email}")
+                
+        return True
+        
+    except Exception as e:
+        print(f"خطأ في إرسال إشعار الإدارة: {str(e)}")
+        return False
+
 # تصدير المتغيرات المطلوبة
 __all__ = [
     'brevo_integration',
@@ -375,5 +420,6 @@ __all__ = [
     'send_order_email_brevo',
     'send_invoice_email_brevo',
     'send_product_codes_email_brevo',
+    'send_admin_notification',
     'test_brevo_integration'
 ]

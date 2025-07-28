@@ -456,3 +456,36 @@ def get_customer_type_display_name(customer_type):
         'reseller': 'موزع'
     }
     return types.get(customer_type, customer_type)
+
+def send_order_confirmation_without_codes(order_data, available_codes=None, products_without_codes=None):
+    """إرسال إيميل تأكيد الطلب بدون أكواد (في انتظار الأكواد)"""
+    try:
+        from brevo_email_service import send_order_confirmation_pending_codes
+        
+        # تحديد حالة الطلب
+        if not available_codes and not products_without_codes:
+            status_message = "طلبك قيد المراجعة وسيتم إرسال الأكواد فور توفرها"
+        elif available_codes and products_without_codes:
+            status_message = f"تم توفير {len(available_codes)} كود من أصل {len(available_codes) + len(products_without_codes)} المطلوبة"
+        else:
+            status_message = "طلبك تحت المعالجة وسيتم إرسال الأكواد قريباً"
+        
+        # إرسال البريد الإلكتروني باستخدام Brevo
+        success, result = send_order_confirmation_pending_codes(
+            user_email=order_data.get('customer_email', ''),
+            user_name=order_data.get('customer_name', 'عزيزي العميل'),
+            order_data=order_data,
+            status_message=status_message
+        )
+        
+        if success:
+            print(f"✅ تم إرسال إيميل تأكيد الطلب #{order_data.get('order_number', 'N/A')} بنجاح")
+            return True, "تم إرسال إيميل التأكيد بنجاح"
+        else:
+            print(f"❌ فشل إرسال إيميل التأكيد: {result}")
+            return False, f"فشل إرسال الإيميل: {result}"
+            
+    except Exception as e:
+        error_msg = f"خطأ في إرسال إيميل التأكيد: {str(e)}"
+        print(f"❌ {error_msg}")
+        return False, error_msg

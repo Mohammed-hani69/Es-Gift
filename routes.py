@@ -9,7 +9,7 @@ import re
 import unicodedata
 
 from models import *
-from utils import get_user_price, convert_currency, send_email, send_order_email, get_visible_products
+from utils import get_user_price, convert_currency, send_email, send_order_email, get_visible_products, send_order_confirmation_without_codes
 from email_verification_service import EmailVerificationService
 
 def create_slug(text):
@@ -975,23 +975,79 @@ def process_payment():
                 'currency': order.currency
             }
             
-            # تحضير أكواد المنتجات
-            product_codes = [code.code for code in ProductCode.query.filter_by(order_id=order.id)]
+            # البحث عن أكواد متاحة للمنتجات المشتراة
+            available_codes = []
+            products_without_codes = []
             
-            if product_codes:
-                # إرسال البريد مع حفظ ملف Excel
+            for item in order.items:
+                # البحث عن أكواد متاحة لهذا المنتج
+                available_product_codes = ProductCode.query.filter_by(
+                    product_id=item.product_id,
+                    is_used=False,
+                    order_id=None
+                ).limit(item.quantity).all()
+                
+                if len(available_product_codes) >= item.quantity:
+                    # توجد أكواد كافية، تخصيصها للطلب
+                    for code in available_product_codes:
+                        code.order_id = order.id
+                        code.used_at = datetime.utcnow()
+                        available_codes.append(code)
+                else:
+                    # لا توجد أكواد كافية
+                    products_without_codes.append({
+                        'product': item.product,
+                        'quantity': item.quantity,
+                        'available_codes': len(available_product_codes)
+                    })
+            
+            # حفظ التغييرات
+            db.session.commit()
+            
+            # إرسال إيميل تأكيد الطلب دائماً
+            if available_codes and not products_without_codes:
+                # توجد جميع الأكواد المطلوبة - إرسال مع الأكواد
+                product_codes = [code.code for code in available_codes]
                 success, message, excel_file_path = email_service.send_product_codes_email(order_data, product_codes)
                 
                 if success and excel_file_path:
-                    # حفظ مسار ملف Excel في قاعدة البيانات
                     order.excel_file_path = excel_file_path
+                    order.order_status = 'completed'  # الطلب مكتمل
                     db.session.commit()
                     completed_operations['email_sent'] = True
-                    print(f"✅ تم إنجاز إرسال البريد الإلكتروني وحفظ ملف Excel: {excel_file_path}")
+                    print(f"✅ تم إنجاز إرسال البريد الإلكتروني مع الأكواد وحفظ ملف Excel: {excel_file_path}")
                 else:
                     print(f"❌ خطأ في إرسال البريد: {message}")
             else:
-                print("⚠️ لا توجد أكواد لإرسالها")
+                # إرسال إيميل تأكيد الطلب بدون أكواد
+                success, message = send_order_confirmation_without_codes(order_data, available_codes, products_without_codes)
+                
+                if success:
+                    completed_operations['email_sent'] = True
+                    print(f"✅ تم إرسال إيميل تأكيد الطلب بنجاح")
+                else:
+                    print(f"❌ خطأ في إرسال إيميل التأكيد: {message}")
+                
+                if available_codes and products_without_codes:
+                    # توجد أكواد جزئية
+                    order.order_status = 'partial_codes'  # حالة جديدة للأكواد الجزئية
+                    db.session.commit()
+                    print(f"⚠️ تم تخصيص {len(available_codes)} كود، ولكن يحتاج {len(products_without_codes)} منتج لأكواد إضافية")
+                else:
+                    # لا توجد أكواد متاحة
+                    order.order_status = 'pending_codes'  # الطلب في انتظار الأكواد
+                    db.session.commit()
+                    print("⚠️ الطلب في انتظار إضافة الأكواد من الإدارة")
+                
+                # إرسال إشعار للإدارة (اختياري)
+                try:
+                    from brevo_integration import send_admin_notification
+                    send_admin_notification(
+                        subject=f"طلب جديد يحتاج أكواد - #{order.order_number}",
+                        message=f"الطلب #{order.order_number} للعميل {current_user.email} يحتاج إضافة أكواد للمنتجات"
+                    )
+                except:
+                    pass
                 
         except Exception as e:
             print(f"❌ خطأ في إرسال البريد الإلكتروني: {e}")
