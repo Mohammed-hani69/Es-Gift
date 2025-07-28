@@ -24,7 +24,7 @@
     </div>
 
     {% if products %}
-    <div class="products-grid">
+    <div class="products-grid" data-user-type="{{ current_user.customer_type if current_user.is_authenticated else 'regular' }}">
         {% for product in products %}
         <div class="product-card">
             <a href="{{ url_for('main.product_detail', product_id=product.id, slug=product.name|create_slug) }}">

@@ -1,0 +1,134 @@
+/*
+ * Tawk.io Simple Design - Es-Gift (مثل WhatsApp Float)
+ * تصميم بسيط وفعال مع ضمان الظهور
+ */
+
+/* إخفاء جميع أيقونات الشات الأخرى */
+.floating-support-icon,
+.es-chat-floating-icon,
+.support-icon,
+.chat-icon,
+.floating-chat,
+.whatsapp-icon,
+.support-floating,
+.chat-widget,
+.live-chat,
+.help-icon,
+.customer-support-icon,
+[class*="floating-support"],
+[class*="chat-floating"],
+[class*="support-floating"],
+[class*="whatsapp-icon"],
+[class*="chat-widget"],
+[class*="live-chat"],
+[class*="help-icon"],
+[data-chat]:not([id*="tawk"]),
+[data-support]:not([id*="tawk"]) {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+/* تصميم أيقونة Tawk.io مثل WhatsApp تماماً */
+#tawk-bubble {
+    /* نفس خصائص WhatsApp Float بالضبط */
+    position: fixed !important;
+    bottom: 20px !important;
+    right: 20px !important;
+    z-index: 999 !important;
+    cursor: pointer !important;
+    background-color: #ff0033 !important; /* لون Es-Gift بدلاً من #25d366 */
+    border-radius: 50% !important;
+    padding: 10px !important;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2) !important;
+    transition: transform 0.2s !important;
+    
+    /* إعدادات إضافية لضمان الثبات */
+    width: 60px !important; /* 40px صورة + 20px padding */
+    height: 60px !important;
+    margin: 0 !important;
+    top: auto !important;
+    left: auto !important;
+    
+    /* محاذاة المحتوى */
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    
+    /* ضمان عدم تأثر بالسكرول */
+    transform: translateZ(0) !important;
+    -webkit-transform: translateZ(0) !important;
+    will-change: transform !important;
+    backface-visibility: hidden !important;
+}
+
+/* تأثير الهوفر - نفس WhatsApp */
+#tawk-bubble:hover {
+    transform: scale(1.1) !important;
+}
+
+/* للشاشات الصغيرة */
+@media (max-width: 768px) {
+    #tawk-bubble {
+        width: 55px !important;
+        height: 55px !important;
+        bottom: 15px !important;
+        right: 15px !important;
+        padding: 8px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    #tawk-bubble {
+        width: 50px !important;
+        height: 50px !important;
+        bottom: 12px !important;
+        right: 12px !important;
+        padding: 6px !important;
+    }
+}
+
+/* تصميم نافذة الشات */
+.tawk-chat-panel,
+iframe[id*="tawk"]:not(#tawk-bubble) {
+    border-radius: 15px !important;
+    overflow: hidden !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3) !important;
+    border: 2px solid rgba(255, 0, 51, 0.1) !important;
+}
+
+/* هيدر نافذة الشات */
+.tawk-header {
+    background: linear-gradient(135deg, #ff0033 0%, #cc0027 100%) !important;
+    color: #ffffff !important;
+    font-family: 'Cairo', sans-serif !important;
+}
+
+/* ضمان عدم التداخل مع العناصر الأخرى */
+.modal-open #tawk-bubble,
+.search-overlay.active ~ #tawk-bubble {
+    opacity: 0.9 !important;
+    z-index: 998 !important;
+}
+
+/* إخفاء أي عناصر تحتوي على كلمات الشات (عدا Tawk) */
+*[class*="chat"]:not([id*="tawk"]):not([class*="tawk"]) {
+    display: none !important;
+}
+
+*[class*="support"]:not([id*="tawk"]):not([class*="tawk"]) {
+    display: none !important;
+}
+
+*[class*="floating"]:not([id*="tawk"]):not([class*="tawk"]) {
+    display: none !important;
+}
+
+/* استثناء عناصر Tawk.io فقط */
+*[id*="tawk"],
+*[class*="tawk"] {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}

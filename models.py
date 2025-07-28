@@ -20,6 +20,8 @@ class User(UserMixin, db.Model):
     google_id = db.Column(db.String(100), unique=True, nullable=True)  # Google ID
     profile_picture = db.Column(db.String(300))  # صورة البروفايل من Google
     is_verified = db.Column(db.Boolean, default=False)  # تم التحقق من الإيميل
+    email_verification_token = db.Column(db.String(100), nullable=True)  # رمز التحقق من الإيميل
+    email_verification_sent_at = db.Column(db.DateTime, nullable=True)  # وقت إرسال رمز التحقق
     
     # KYC Document Type
     document_type = db.Column(db.String(50))  # national_id, passport, driver_license
@@ -102,6 +104,7 @@ class Order(db.Model):
     payment_status = db.Column(db.String(20), default='pending')
     order_status = db.Column(db.String(20), default='pending')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    excel_file_path = db.Column(db.String(500))  # مسار ملف Excel المحفوظ
     
     items = db.relationship('OrderItem', backref='order', lazy=True)
     codes = db.relationship('ProductCode', backref='order', lazy=True)

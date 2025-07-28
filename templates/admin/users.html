@@ -176,6 +176,8 @@ document.querySelectorAll('.customer-type-select').forEach(select => {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
+                    // إظهار رسالة نجاح مع معلومات تحديث الأسعار
+                    alert('تم تحديث نوع العميل بنجاح. سيرى المستخدم الأسعار المحدثة وفقاً لنوعه الجديد.');
                     location.reload();
                 } else {
                     alert('حدث خطأ: ' + data.message);

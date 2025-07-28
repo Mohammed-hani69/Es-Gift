@@ -10,6 +10,7 @@ import unicodedata
 
 from models import *
 from utils import get_user_price, convert_currency, send_email, send_order_email, get_visible_products
+from email_verification_service import EmailVerificationService
 
 def create_slug(text):
     """إنشاء slug من النص العربي أو الإنجليزي"""
@@ -63,6 +64,10 @@ def index():
             price = get_user_price(product, current_user.customer_type, current_user)
         else:
             price = product.regular_price
+        
+        # التحقق من صحة السعر
+        if price is None or price == 0:
+            price = product.regular_price if product.regular_price else 0
         
         # حفظ السعر الأصلي بالريال السعودي
         product.original_price_sar = price
@@ -123,6 +128,19 @@ def login():
         user = User.query.filter_by(email=email).first()
 
         if user and check_password_hash(user.password_hash, password):
+            # التحقق من تفعيل البريد الإلكتروني
+            if not user.is_verified:
+                if request.is_json:
+                    return jsonify({
+                        'success': False, 
+                        'message': 'يجب تأكيد البريد الإلكتروني أولاً',
+                        'verification_required': True,
+                        'email': user.email
+                    })
+                else:
+                    flash('يجب تأكيد البريد الإلكتروني قبل تسجيل الدخول', 'warning')
+                    return render_template('verification_sent.html', email=user.email)
+            
             login_user(user)
             user.last_login = datetime.utcnow()
             db.session.commit()
@@ -143,6 +161,77 @@ def login():
                 flash('البريد الإلكتروني أو كلمة المرور غير صحيحة', 'error')
     
     return render_template('login.html')
+
+@main.route('/refresh-prices', methods=['POST'])
+@login_required
+def refresh_prices():
+    """تحديث الأسعار للمستخدم الحالي بناءً على نوع العميل"""
+    try:
+        from utils import refresh_user_data, get_customer_type_display_name
+        
+        # تحديث بيانات المستخدم والأسعار
+        success = refresh_user_data(current_user)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': f'تم تحديث الأسعار وفقاً لنوع العميل: {get_customer_type_display_name(current_user.customer_type)}',
+                'customer_type': current_user.customer_type,
+                'force_reload': True
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'حدث خطأ أثناء تحديث الأسعار'
+            })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'حدث خطأ: {str(e)}'
+        })
+
+@main.route('/clear-price-notification', methods=['POST'])
+@login_required 
+def clear_price_notification():
+    """إزالة إشعار تحديث الأسعار من الجلسة"""
+    session.pop('show_price_update_notification', None)
+    session.pop('price_update_message', None)
+    return jsonify({'success': True})
+
+@main.route('/api/get-product-price/<int:product_id>')
+@login_required
+def get_product_price(product_id):
+    """الحصول على سعر المنتج المحدث حسب نوع العميل"""
+    try:
+        product = Product.query.get_or_404(product_id)
+        
+        # الحصول على السعر المناسب للمستخدم
+        price = get_user_price(product, current_user.customer_type, current_user)
+        
+        # التحقق من صحة السعر
+        if price is None or price == 0:
+            price = product.regular_price if product.regular_price else 0
+        
+        # تحويل السعر للعملة المطلوبة
+        user_currency = session.get('currency', 'SAR')
+        converted_price = convert_currency(price, 'SAR', user_currency)
+        
+        from utils import get_customer_type_display_name
+        
+        return jsonify({
+            'success': True,
+            'price': converted_price,
+            'original_price': price,
+            'currency': user_currency,
+            'customer_type': current_user.customer_type,
+            'customer_type_name': get_customer_type_display_name(current_user.customer_type)
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'حدث خطأ: {str(e)}'
+        })
 
 @main.route('/register', methods=['GET', 'POST'])
 def register():
@@ -205,14 +294,30 @@ def register():
         
         db.session.commit()
         
-        login_user(user)
+        # إرسال بريد التحقق بدلاً من تسجيل الدخول المباشر
+        verification_sent = EmailVerificationService.send_verification_email(user)
         
-        success_msg = 'تم إنشاء الحساب بنجاح مع إعداد الحدود المالية'
-        if request.is_json:
-            return jsonify({'success': True, 'message': success_msg})
+        if verification_sent:
+            success_msg = 'تم إنشاء الحساب بنجاح! يرجى التحقق من بريدك الإلكتروني لتفعيل الحساب'
+            if request.is_json:
+                return jsonify({
+                    'success': True, 
+                    'message': success_msg,
+                    'verification_required': True,
+                    'email': user.email
+                })
+            else:
+                flash(success_msg, 'info')
+                return render_template('verification_sent.html', email=user.email)
         else:
-            flash(success_msg, 'success')
-            return redirect(url_for('main.index'))
+            # في حالة فشل إرسال بريد التحقق، نسجل الدخول مباشرة
+            login_user(user)
+            success_msg = 'تم إنشاء الحساب بنجاح! (تعذر إرسال بريد التحقق)'
+            if request.is_json:
+                return jsonify({'success': True, 'message': success_msg})
+            else:
+                flash(success_msg, 'warning')
+                return redirect(url_for('main.index'))
     
     except Exception as e:
         db.session.rollback()
@@ -229,6 +334,75 @@ def logout():
     logout_user()
     return redirect(url_for('main.index'))
 
+@main.route('/verify-email/<token>')
+def verify_email(token):
+    """التحقق من البريد الإلكتروني باستخدام الرمز"""
+    try:
+        success, result = EmailVerificationService.verify_token(token)
+        
+        if success:
+            user = result
+            # تفعيل الحساب
+            user.is_verified = True
+            user.email_verification_token = None
+            user.email_verification_sent_at = None
+            db.session.commit()
+            
+            # تسجيل دخول المستخدم
+            login_user(user)
+            
+            flash('تم التحقق من بريدك الإلكتروني بنجاح! مرحباً بك في ES-GIFT', 'success')
+            return redirect(url_for('main.index'))
+        else:
+            error_message = result
+            flash(error_message, 'error')
+            return render_template('verification_error.html', error=error_message)
+            
+    except Exception as e:
+        flash('حدث خطأ أثناء التحقق من البريد الإلكتروني', 'error')
+        return render_template('verification_error.html', error='حدث خطأ غير متوقع')
+
+@main.route('/resend-verification', methods=['POST'])
+def resend_verification():
+    """إعادة إرسال بريد التحقق"""
+    try:
+        data = request.get_json()
+        email = data.get('email')
+        
+        if not email:
+            return jsonify({'success': False, 'message': 'البريد الإلكتروني مطلوب'})
+        
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            return jsonify({'success': False, 'message': 'البريد الإلكتروني غير مسجل'})
+        
+        if user.is_verified:
+            return jsonify({'success': False, 'message': 'تم التحقق من هذا الحساب مسبقاً'})
+        
+        success, message = EmailVerificationService.resend_verification_email(user)
+        
+        return jsonify({'success': success, 'message': message})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': 'حدث خطأ أثناء إعادة الإرسال'})
+
+@main.route('/verification-status/<email>')
+def verification_status(email):
+    """التحقق من حالة التحقق من البريد"""
+    try:
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            return jsonify({'verified': False, 'exists': False})
+        
+        return jsonify({
+            'verified': user.is_verified,
+            'exists': True,
+            'email': user.email
+        })
+        
+    except Exception as e:
+        return jsonify({'verified': False, 'exists': False, 'error': str(e)})
+
 @main.route('/profile')
 @login_required
 def profile():
@@ -242,6 +416,17 @@ def profile():
                          user=current_user, 
                          recent_orders=recent_orders,
                          recent_invoices=recent_invoices)
+
+@main.route('/my-orders')
+@login_required
+def my_orders():
+    """عرض جميع طلبات المستخدم"""
+    page = request.args.get('page', 1, type=int)
+    orders = Order.query.filter_by(user_id=current_user.id)\
+                       .order_by(Order.created_at.desc())\
+                       .paginate(page=page, per_page=10, error_out=False)
+    
+    return render_template('my_orders.html', orders=orders)
 
 @main.route('/invoices')
 @login_required
@@ -267,16 +452,33 @@ def view_invoice(invoice_id):
     
     return render_template('invoice_detail.html', invoice=invoice)
 
-@main.route('/invoice/<int:invoice_id>/download')
+@main.route('/order/<int:order_id>/download-excel')
 @login_required
-def download_invoice(invoice_id):
-    """تحميل الفاتورة بصيغة PDF"""
-    invoice = Invoice.query.get_or_404(invoice_id)
+def download_order_excel(order_id):
+    """تحميل ملف Excel الخاص بالطلب"""
+    order = Order.query.get_or_404(order_id)
     
-    # التأكد من أن الفاتورة تخص المستخدم الحالي
-    if invoice.user_id != current_user.id:
-        flash('غير مسموح لك بتحميل هذه الفاتورة', 'error')
-        return redirect(url_for('main.user_invoices'))
+    # التأكد من أن الطلب يخص المستخدم الحالي
+    if order.user_id != current_user.id:
+        flash('غير مسموح لك بتحميل هذا الملف', 'error')
+        return redirect(url_for('main.my_orders'))
+    
+    # التأكد من وجود ملف Excel
+    if not order.excel_file_path:
+        flash('لا يوجد ملف Excel متاح لهذا الطلب', 'error')
+        return redirect(url_for('main.my_orders'))
+    
+    # التأكد من وجود الملف على القرص
+    file_path = os.path.join(current_app.static_folder, order.excel_file_path)
+    if not os.path.exists(file_path):
+        flash('الملف غير موجود', 'error')
+        return redirect(url_for('main.my_orders'))
+    
+    # إرسال الملف للتحميل
+    return send_file(file_path, 
+                    as_attachment=True, 
+                    download_name=f'order_{order.id}_codes.xlsx',
+                    mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     
     if invoice.pdf_file_path and os.path.exists(invoice.pdf_file_path):
         return send_file(invoice.pdf_file_path, 
@@ -417,6 +619,11 @@ def product_detail(product_id, slug=None):
     else:
         price = product.regular_price
     
+    # التحقق من صحة السعر
+    if price is None or price == 0:
+        price = product.regular_price if product.regular_price else 0
+    
+    product.original_price_sar = price
     product.display_price = convert_currency(price, 'SAR', user_currency)
     
     return render_template('product_detail.html', product=product)
@@ -454,6 +661,11 @@ def cart():
         if product:
             # استخدام الدالة المحدثة التي تدعم الأسعار المخصصة
             price = get_user_price(product, current_user.customer_type, current_user)
+            
+            # التحقق من صحة السعر
+            if price is None or price == 0:
+                price = product.regular_price if product.regular_price else 0
+            
             cart_items.append({
                 'product': product,
                 'quantity': quantity,
@@ -747,13 +959,40 @@ def process_payment():
             print(f"❌ خطأ في إنشاء الفاتورة: {e}")
             invoice = None
         
-        # إنشاء ملف Excel وإرساله
+        # إرسال البريد الإلكتروني مع ملف Excel
         try:
-            excel_path = ExcelReportService.create_order_excel(order, purchased_codes)
-            if excel_path:
-                ExcelReportService.send_order_email_with_excel(order, purchased_codes, excel_path)
-                completed_operations['email_sent'] = True
-                print(f"✅ تم إنجاز إرسال البريد الإلكتروني مع ملف Excel")
+            from email_service import email_service
+            
+            # تحضير بيانات الطلب للبريد الإلكتروني
+            order_data = {
+                'order_number': order.order_number,
+                'customer_name': current_user.full_name or current_user.username,
+                'customer_email': current_user.email,
+                'order_date': order.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                'product_name': 'منتجات رقمية متنوعة',
+                'quantity': sum(item.quantity for item in order.items),
+                'total_amount': float(order.total_amount),
+                'currency': order.currency
+            }
+            
+            # تحضير أكواد المنتجات
+            product_codes = [code.code for code in ProductCode.query.filter_by(order_id=order.id)]
+            
+            if product_codes:
+                # إرسال البريد مع حفظ ملف Excel
+                success, message, excel_file_path = email_service.send_product_codes_email(order_data, product_codes)
+                
+                if success and excel_file_path:
+                    # حفظ مسار ملف Excel في قاعدة البيانات
+                    order.excel_file_path = excel_file_path
+                    db.session.commit()
+                    completed_operations['email_sent'] = True
+                    print(f"✅ تم إنجاز إرسال البريد الإلكتروني وحفظ ملف Excel: {excel_file_path}")
+                else:
+                    print(f"❌ خطأ في إرسال البريد: {message}")
+            else:
+                print("⚠️ لا توجد أكواد لإرسالها")
+                
         except Exception as e:
             print(f"❌ خطأ في إرسال البريد الإلكتروني: {e}")
         
@@ -1033,6 +1272,12 @@ def category_products(category_id, slug=None):
             price = get_user_price(product, current_user.customer_type, current_user)
         else:
             price = product.regular_price
+        
+        # التحقق من صحة السعر
+        if price is None or price == 0:
+            price = product.regular_price if product.regular_price else 0
+        
+        product.original_price_sar = price
         product.display_price = convert_currency(price, 'SAR', user_currency)
     
     return render_template('category_products.html', 
@@ -1143,3 +1388,56 @@ def article_detail(article_id, slug=None):
                                    .limit(3).all()
     
     return render_template('article_detail.html', article=article, related_articles=related_articles)
+
+@main.route('/download/invoice/<int:invoice_id>')
+@login_required
+def download_invoice(invoice_id):
+    """تحميل ملف PDF للفاتورة"""
+    try:
+        # الحصول على الفاتورة
+        invoice = Invoice.query.get_or_404(invoice_id)
+        
+        # التحقق من صلاحية المستخدم
+        if not current_user.is_admin and invoice.user_id != current_user.id:
+            flash('غير مصرح لك بتحميل هذه الفاتورة', 'error')
+            return redirect(url_for('main.index'))
+        
+        # التحقق من وجود ملف PDF
+        if not invoice.pdf_file_path:
+            # إنشاء الفاتورة إذا لم تكن موجودة
+            from modern_invoice_service import ModernInvoiceService
+            pdf_path = ModernInvoiceService.generate_modern_pdf(invoice)
+            if pdf_path:
+                invoice.pdf_file_path = pdf_path
+                db.session.commit()
+            else:
+                flash('فشل في إنشاء ملف الفاتورة', 'error')
+                return redirect(url_for('main.index'))
+        
+        # مسار ملف PDF
+        pdf_full_path = os.path.join(current_app.static_folder, invoice.pdf_file_path)
+        
+        if not os.path.exists(pdf_full_path):
+            # إعادة إنشاء الملف إذا لم يكن موجوداً
+            from modern_invoice_service import ModernInvoiceService
+            pdf_path = ModernInvoiceService.generate_modern_pdf(invoice)
+            if pdf_path:
+                invoice.pdf_file_path = pdf_path
+                db.session.commit()
+                pdf_full_path = os.path.join(current_app.static_folder, invoice.pdf_file_path)
+            else:
+                flash('ملف الفاتورة غير موجود', 'error')
+                return redirect(url_for('main.index'))
+        
+        # تحميل الملف
+        return send_file(
+            pdf_full_path,
+            as_attachment=True,
+            download_name=f"ES-GIFT_Invoice_{invoice.invoice_number}.pdf",
+            mimetype='application/pdf'
+        )
+        
+    except Exception as e:
+        print(f"خطأ في تحميل الفاتورة: {e}")
+        flash('حدث خطأ في تحميل الفاتورة', 'error')
+        return redirect(url_for('main.index'))

@@ -1134,12 +1134,16 @@ $(document).ready(function() {
                     if (data.success) {
                         Swal.fire({
                             title: 'تم التحديث!',
-                            text: 'تم تغيير نوع العميل بنجاح',
+                            text: 'تم تغيير نوع العميل بنجاح. سيرى المستخدم الأسعار المحدثة عند زيارته التالية.',
                             icon: 'success',
                             confirmButtonColor: '#ff0033',
                             background: '#1a1a1a',
                             color: '#fff'
                         }).then(() => {
+                            // إشعار المستخدم في علامات التبويب الأخرى
+                            if (typeof notifyUserTypeChange === 'function') {
+                                notifyUserTypeChange(newType);
+                            }
                             location.reload();
                         });
                     } else {

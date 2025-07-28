@@ -84,7 +84,7 @@
         </div>
 
         <!-- Purchase Card -->
-        <div class="purchase-card">
+        <div class="purchase-card" data-user-type="{{ current_user.customer_type if current_user.is_authenticated else 'regular' }}">
             <div class="price-section">
                 <div class="current-price">
                     <span class="price-amount" data-original-price="{{ product.original_price_sar if product.original_price_sar else product.display_price }}">
@@ -705,6 +705,60 @@ document.addEventListener('DOMContentLoaded', function() {
             mainImage.src = this.src;
         });
     });
+    
+    // مراقبة تحديث نوع العميل وتحديث الأسعار
+    checkForCustomerTypeChange();
 });
+
+// فحص تغيير نوع العميل وتحديث الأسعار
+function checkForCustomerTypeChange() {
+    const currentUserType = document.querySelector('[data-user-type]')?.getAttribute('data-user-type') || 'regular';
+    const lastUserType = localStorage.getItem('lastUserType');
+    
+    if (lastUserType && lastUserType !== currentUserType) {
+        // تم تغيير نوع العميل، قم بتحديث الأسعار
+        refreshProductPrices();
+    }
+    
+    // حفظ نوع العميل الحالي
+    localStorage.setItem('lastUserType', currentUserType);
+}
+
+// تحديث أسعار المنتج الحالي
+function refreshProductPrices() {
+    const productId = {{ product.id }};
+    
+    fetch(`/api/get-product-price/${productId}`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        credentials: 'same-origin'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // تحديث السعر في الصفحة
+            const priceElement = document.querySelector('.price-amount');
+            const totalPriceElement = document.getElementById('totalPrice');
+            
+            if (priceElement && data.price) {
+                priceElement.textContent = data.price;
+                priceElement.setAttribute('data-original-price', data.original_price);
+            }
+            
+            if (totalPriceElement && data.price) {
+                totalPriceElement.setAttribute('data-original-price', data.original_price);
+                updateTotalPrice();
+            }
+            
+            // إظهار إشعار التحديث
+            showNotification(`تم تحديث السعر وفقاً لنوع العميل: ${data.customer_type_name}`, 'success');
+        }
+    })
+    .catch(error => {
+        console.error('خطأ في تحديث أسعار المنتج:', error);
+    });
+}
 </script>
 {% endblock %}

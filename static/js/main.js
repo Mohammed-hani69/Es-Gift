@@ -618,4 +618,138 @@ document.addEventListener('DOMContentLoaded', function() {
             }, 500);
         });
     });
+    
+    // مراقبة تحديث نوع العميل وإعادة تحميل الأسعار
+    checkForPriceUpdates();
 });
+
+// فحص الحاجة لتحديث الأسعار
+function checkForPriceUpdates() {
+    // التحقق من وجود إشارة تحديث الأسعار في localStorage
+    const needsPriceUpdate = localStorage.getItem('needsPriceUpdate');
+    const lastCustomerType = localStorage.getItem('lastCustomerType');
+    
+    if (needsPriceUpdate === 'true' || (lastCustomerType && lastCustomerType !== getCurrentCustomerType())) {
+        refreshUserPrices();
+    }
+    
+    // حفظ نوع العميل الحالي
+    localStorage.setItem('lastCustomerType', getCurrentCustomerType());
+}
+
+// الحصول على نوع العميل الحالي
+function getCurrentCustomerType() {
+    // يمكن الحصول على نوع العميل من عنصر في الصفحة أو من متغير global
+    const userTypeElement = document.querySelector('[data-user-type]');
+    return userTypeElement ? userTypeElement.getAttribute('data-user-type') : 'regular';
+}
+
+// تحديث أسعار المستخدم
+function refreshUserPrices() {
+    fetch('/refresh-prices', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        credentials: 'same-origin'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // إظهار إشعار التحديث
+            showNotification(data.message, 'success');
+            
+            // إزالة إشارة التحديث
+            localStorage.removeItem('needsPriceUpdate');
+            
+            // إعادة تحميل الصفحة إذا لزم الأمر
+            if (data.force_reload) {
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+            } else {
+                // تحديث الأسعار في الصفحة الحالية
+                updatePricesInCurrentPage(data.customer_type);
+            }
+        } else {
+            console.error('فشل في تحديث الأسعار:', data.message);
+        }
+    })
+    .catch(error => {
+        console.error('خطأ في تحديث الأسعار:', error);
+    });
+}
+
+// تحديث الأسعار في الصفحة الحالية
+function updatePricesInCurrentPage(customerType) {
+    // البحث عن جميع عناصر الأسعار وتحديثها
+    const priceElements = document.querySelectorAll('[data-original-price]');
+    
+    priceElements.forEach(element => {
+        const originalPrice = parseFloat(element.dataset.originalPrice);
+        if (originalPrice) {
+            // يمكن إضافة منطق تحديث السعر حسب نوع العميل هنا
+            // أو إعادة تحميل الصفحة للحصول على الأسعار المحدثة
+            element.style.opacity = '0.7';
+            setTimeout(() => {
+                element.style.opacity = '1';
+            }, 1000);
+        }
+    });
+}
+
+// إضافة دالة لتعيين الحاجة لتحديث الأسعار (يتم استدعاؤها عند تغيير نوع العميل)
+function markPricesForUpdate() {
+    localStorage.setItem('needsPriceUpdate', 'true');
+}
+
+// دالة لإظهار الإشعارات
+function showNotification(message, type = 'info') {
+    // البحث عن عنصر الإشعارات الموجود أو إنشاء واحد جديد
+    let notificationContainer = document.getElementById('notification-container');
+    if (!notificationContainer) {
+        notificationContainer = document.createElement('div');
+        notificationContainer.id = 'notification-container';
+        notificationContainer.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10000;
+            max-width: 400px;
+        `;
+        document.body.appendChild(notificationContainer);
+    }
+    
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.style.cssText = `
+        background: ${type === 'success' ? '#28a745' : type === 'error' ? '#dc3545' : '#007bff'};
+        color: white;
+        padding: 15px 20px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+        direction: rtl;
+        text-align: right;
+    `;
+    notification.textContent = message;
+    
+    notificationContainer.appendChild(notification);
+    
+    // إظهار الإشعار
+    setTimeout(() => {
+        notification.style.transform = 'translateX(0)';
+    }, 100);
+    
+    // إخفاء الإشعار بعد 5 ثوان
+    setTimeout(() => {
+        notification.style.transform = 'translateX(100%)';
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 300);
+    }, 5000);
+}

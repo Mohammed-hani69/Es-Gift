@@ -9,16 +9,18 @@
 
 المتطلبات:
 - openpyxl: لإنشاء ملفات Excel
-- flask-mail: لإرسال الإيميلات
+- brevo_email_service: لإرسال الإيميلات باستخدام Brevo
 
 """
 
 import os
 import json
 import logging
+import base64
 from datetime import datetime
 from flask import current_app, render_template_string
-from flask_mail import Message, Mail
+from flask_mail import Mail
+from brevo_email_service import send_simple_email, EmailAttachment
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
@@ -30,11 +32,10 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class ProductCodeEmailService:
-    """خدمة إرسال أكواد المنتجات عبر الإيميل"""
+    """خدمة إرسال أكواد المنتجات عبر الإيميل باستخدام Brevo"""
     
     def __init__(self, app=None):
         self.app = app
-        self.mail = None
         if app:
             self.init_app(app)
     
@@ -43,16 +44,18 @@ class ProductCodeEmailService:
         self.app = app
         self.mail = Mail(app)
     
-    def create_excel_file(self, order_data, product_codes):
+    def create_excel_file(self, order_data, product_codes, save_to_disk=False):
         """
         إنشاء ملف Excel يحتوي على تفاصيل الطلب وأكواد المنتجات
         
         Args:
             order_data (dict): بيانات الطلب
             product_codes (list): قائمة أكواد المنتجات
+            save_to_disk (bool): حفظ الملف على القرص الصلب
             
         Returns:
             BytesIO: ملف Excel في الذاكرة
+            str: مسار الملف المحفوظ (إذا كان save_to_disk=True)
         """
         # إنشاء Workbook جديد
         wb = Workbook()
@@ -155,6 +158,36 @@ class ProductCodeEmailService:
         wb.save(excel_file)
         excel_file.seek(0)
         
+        # حفظ الملف على القرص إذا طُلب ذلك
+        file_path = None
+        if save_to_disk:
+            try:
+                # إنشاء اسم الملف
+                order_number = order_data.get('order_number', 'Unknown')
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                filename = f"ES-Gift_Order_{order_number}_{timestamp}_Codes.xlsx"
+                
+                # التأكد من وجود مجلد الحفظ
+                excel_dir = os.path.join(current_app.static_folder, 'excel_files')
+                if not os.path.exists(excel_dir):
+                    os.makedirs(excel_dir)
+                
+                # مسار الملف الكامل
+                full_path = os.path.join(excel_dir, filename)
+                
+                # حفظ الملف
+                wb.save(full_path)
+                
+                # إرجاع المسار النسبي للحفظ في قاعدة البيانات
+                file_path = f"excel_files/{filename}"
+                
+                logger.info(f"تم حفظ ملف Excel في: {full_path}")
+                
+            except Exception as e:
+                logger.error(f"خطأ في حفظ ملف Excel: {str(e)}")
+        
+        if save_to_disk:
+            return excel_file, file_path
         return excel_file
     
     def send_product_codes_email(self, order_data, product_codes):
@@ -177,18 +210,27 @@ class ProductCodeEmailService:
             logger.info(f"بدء إرسال البريد إلى: {customer_email}")
             
             # التحقق من إعدادات البريد
-            if not current_app.config.get('MAIL_USERNAME'):
+            mail_username = current_app.config.get('MAIL_USERNAME')
+            mail_default_sender = current_app.config.get('MAIL_DEFAULT_SENDER')
+            
+            if not mail_username:
                 logger.error("MAIL_USERNAME غير محدد في إعدادات التطبيق")
                 return False, "إعدادات البريد الإلكتروني غير مكتملة"
             
-            if not current_app.config.get('MAIL_DEFAULT_SENDER'):
-                logger.error("MAIL_DEFAULT_SENDER غير محدد في إعدادات التطبيق")
+            # استخدام MAIL_USERNAME كمرسل افتراضي إذا لم يكن MAIL_DEFAULT_SENDER محدد
+            sender = mail_default_sender or mail_username
+            if not sender:
+                logger.error("لا يوجد مرسل محدد للبريد الإلكتروني")
                 return False, "مرسل البريد الإلكتروني غير محدد"
             
-            # إنشاء ملف Excel
+            logger.info(f"مرسل البريد: {sender}")
+            
+            # إنشاء ملف Excel مع حفظه على القرص
             logger.info("إنشاء ملف Excel...")
-            excel_file = self.create_excel_file(order_data, product_codes)
+            excel_file, saved_file_path = self.create_excel_file(order_data, product_codes, save_to_disk=True)
             logger.info(f"تم إنشاء ملف Excel بحجم: {len(excel_file.getvalue())} بايت")
+            if saved_file_path:
+                logger.info(f"تم حفظ الملف في: {saved_file_path}")
             
             # إنشاء رسالة الإيميل
             subject = f"أكواد منتجاتك - طلب رقم {order_data.get('order_number', 'غير محدد')}"
@@ -260,37 +302,41 @@ class ProductCodeEmailService:
             logger.info("تحضير محتوى البريد...")
             email_content = render_template_string(email_template, **order_data)
             
-            # إنشاء رسالة الإيميل
-            logger.info("إنشاء رسالة البريد...")
-            msg = Message(
-                subject=subject,
-                recipients=[customer_email],
-                html=email_content,
-                sender=current_app.config.get('MAIL_DEFAULT_SENDER')
-            )
-            
-            # إرفاق ملف Excel
+            # تحويل ملف Excel إلى base64 للاستخدام مع Brevo
+            excel_data = excel_file.getvalue()
+            excel_base64 = base64.b64encode(excel_data).decode('utf-8')
             filename = f"ES-Gift_Order_{order_data.get('order_number', 'Unknown')}_Codes.xlsx"
-            logger.info(f"إرفاق ملف Excel: {filename}")
-            msg.attach(
-                filename=filename,
-                content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                data=excel_file.getvalue()
+            
+            # إنشاء مرفق Brevo
+            attachment = EmailAttachment(
+                content=excel_base64,
+                name=filename,
+                type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
             )
             
-            # إرسال الإيميل
-            logger.info("إرسال البريد...")
-            self.mail.send(msg)
-            logger.info(f"تم إرسال البريد بنجاح إلى: {customer_email}")
+            # إرسال الإيميل باستخدام Brevo
+            logger.info("إرسال البريد باستخدام Brevo...")
+            success, result = send_simple_email(
+                to=customer_email,
+                subject=subject,
+                html_content=email_content,
+                text_content=f"تم تحضير طلبك #{order_data.get('order_number')} - أكواد المنتجات مرفقة في ملف Excel"
+            )
             
-            return True, f"تم إرسال أكواد المنتجات إلى {customer_email} بنجاح"
+            if success:
+                logger.info(f"تم إرسال البريد بنجاح إلى: {customer_email} باستخدام Brevo")
+                return True, f"تم إرسال أكواد المنتجات إلى {customer_email} بنجاح", saved_file_path
+            else:
+                logger.error(f"فشل إرسال البريد باستخدام Brevo: {result}")
+                # محاولة الطريقة البديلة
+                return self._send_email_fallback(customer_email, subject, email_content, excel_file, order_data, saved_file_path)
             
         except Exception as e:
             logger.error(f"خطأ في إرسال البريد الإلكتروني: {str(e)}")
             logger.error(f"تفاصيل الخطأ: {type(e).__name__}")
             import traceback
             logger.error(f"Stack trace: {traceback.format_exc()}")
-            return False, f"فشل في إرسال الإيميل: {str(e)}"
+            return False, f"فشل في إرسال الإيميل: {str(e)}", None
     
     def process_order_codes(self, order_id, api_transaction_id):
         """
@@ -353,6 +399,43 @@ class ProductCodeEmailService:
         except Exception as e:
             current_app.logger.error(f"Error processing order codes: {str(e)}")
             return False, f"خطأ في معالجة أكواد الطلب: {str(e)}"
+    
+    def _send_email_fallback(self, customer_email, subject, email_content, excel_file, order_data, saved_file_path):
+        """إرسال الإيميل باستخدام Flask-Mail كبديل"""
+        try:
+            from flask_mail import Message, Mail
+            
+            # إنشاء رسالة الإيميل
+            logger.info("إنشاء رسالة البريد باستخدام Flask-Mail...")
+            
+            mail = Mail(current_app) if not hasattr(self, 'mail') or not self.mail else self.mail
+            
+            msg = Message(
+                subject=subject,
+                recipients=[customer_email],
+                html=email_content,
+                sender=current_app.config.get('MAIL_DEFAULT_SENDER')
+            )
+            
+            # إرفاق ملف Excel
+            filename = f"ES-Gift_Order_{order_data.get('order_number', 'Unknown')}_Codes.xlsx"
+            logger.info(f"إرفاق ملف Excel: {filename}")
+            msg.attach(
+                filename=filename,
+                content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                data=excel_file.getvalue()
+            )
+            
+            # إرسال الإيميل
+            logger.info("إرسال البريد باستخدام Flask-Mail...")
+            mail.send(msg)
+            logger.info(f"تم إرسال البريد بنجاح إلى: {customer_email} باستخدام Flask-Mail")
+            
+            return True, f"تم إرسال أكواد المنتجات إلى {customer_email} بنجاح", saved_file_path
+            
+        except Exception as e:
+            logger.error(f"خطأ في إرسال البريد باستخدام Flask-Mail: {str(e)}")
+            return False, f"فشل في إرسال الإيميل: {str(e)}", None
 
 # إنشاء مثيل الخدمة
 email_service = ProductCodeEmailService()

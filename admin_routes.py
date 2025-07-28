@@ -106,10 +106,14 @@ def approve_kyc(user_id):
         user.customer_type = 'kyc'
         db.session.commit()
         
-        if request.method == 'POST':
-            return jsonify({'success': True, 'message': 'تم الموافقة على طلب التحقق'})
+        # تحديث أسعار المنتجات للمستخدم بعد الترقية
+        from utils import refresh_user_data
+        refresh_user_data(user)
         
-        flash('تم الموافقة على طلب التحقق', 'success')
+        if request.method == 'POST':
+            return jsonify({'success': True, 'message': 'تم الموافقة على طلب التحقق وتحديث الأسعار'})
+        
+        flash('تم الموافقة على طلب التحقق وتحديث الأسعار', 'success')
         return redirect(url_for('admin.kyc_requests'))
         
     except Exception as e:
@@ -289,10 +293,18 @@ def update_customer_type():
     if not user:
         return jsonify({'success': False, 'message': 'المستخدم غير موجود'})
     
+    old_customer_type = user.customer_type
     user.customer_type = customer_type
     db.session.commit()
     
-    return jsonify({'success': True, 'message': 'تم تحديث نوع العميل بنجاح'})
+    # تحديث أسعار المنتجات للمستخدم بعد تغيير النوع
+    from utils import refresh_user_data
+    refresh_user_data(user)
+    
+    return jsonify({
+        'success': True, 
+        'message': f'تم تحديث نوع العميل من {old_customer_type} إلى {customer_type} وتحديث الأسعار بنجاح'
+    })
 
 @admin.route('/delete-user/<int:user_id>', methods=['DELETE'])
 @login_required
@@ -466,12 +478,12 @@ def regenerate_invoice_pdf(invoice_id):
         return jsonify({'success': False, 'message': 'غير مصرح'})
     
     try:
-        from invoice_service import InvoiceService
+        from modern_invoice_service import ModernInvoiceService
         
         invoice = Invoice.query.get_or_404(invoice_id)
         
-        # إعادة توليد ملف PDF
-        pdf_path = InvoiceService.generate_invoice_pdf(invoice)
+        # إعادة توليد ملف PDF بتصميم حديث
+        pdf_path = ModernInvoiceService.generate_modern_pdf(invoice)
         if pdf_path:
             invoice.pdf_file_path = pdf_path
             db.session.commit()
@@ -499,13 +511,26 @@ def send_invoice_email(invoice_id):
         return jsonify({'success': False, 'message': 'غير مصرح'})
     
     try:
-        from invoice_service import ExcelReportService
+        from modern_invoice_service import ModernInvoiceService
         
         invoice = Invoice.query.get_or_404(invoice_id)
-        order = invoice.order
         
-        # إنشاء بيانات الأكواد للطلب
-        purchased_codes = []
+        # إرسال الفاتورة عبر البريد الإلكتروني
+        success = ModernInvoiceService.send_invoice_email(invoice)
+        
+        if success:
+            return jsonify({
+                'success': True, 
+                'message': f'تم إرسال الفاتورة بنجاح إلى {invoice.customer_email}'
+            })
+        else:
+            return jsonify({
+                'success': False, 
+                'message': 'فشل في إرسال الفاتورة. تحقق من إعدادات البريد الإلكتروني'
+            })
+            
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'حدث خطأ: {str(e)}'})
         for item in order.items:
             for code in item.product.codes.filter_by(order_id=order.id):
                 purchased_codes.append({

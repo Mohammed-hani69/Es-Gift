@@ -1,0 +1,276 @@
+{% extends "base.html" %}
+
+{% block title %}تم إرسال بريد التحقق{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow-lg border-0">
+                <div class="card-body text-center p-5">
+                    <!-- أيقونة البريد -->
+                    <div class="mb-4">
+                        <i class="fas fa-envelope-circle-check text-primary" style="font-size: 4rem;"></i>
+                    </div>
+                    
+                    <!-- العنوان الرئيسي -->
+                    <h1 class="h3 text-primary mb-3">
+                        <i class="fas fa-paper-plane me-2"></i>
+                        تم إرسال بريد التحقق!
+                    </h1>
+                    
+                    <!-- الرسالة الأساسية -->
+                    <div class="alert alert-info border-0 mb-4">
+                        <h5 class="alert-heading">
+                            <i class="fas fa-info-circle me-2"></i>
+                            تحقق من بريدك الإلكتروني
+                        </h5>
+                        <p class="mb-0">
+                            لقد أرسلنا رسالة تحقق إلى:
+                            <br>
+                            <strong class="text-primary">{{ email }}</strong>
+                        </p>
+                    </div>
+                    
+                    <!-- التعليمات -->
+                    <div class="mb-4">
+                        <h6 class="text-muted mb-3">لإكمال تسجيل حسابك:</h6>
+                        <ol class="list-unstyled text-start">
+                            <li class="mb-2">
+                                <i class="fas fa-1 text-primary me-2"></i>
+                                تحقق من صندوق الوارد في بريدك الإلكتروني
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-2 text-primary me-2"></i>
+                                ابحث عن رسالة من ES-GIFT
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-3 text-primary me-2"></i>
+                                انقر على زر "تأكيد البريد الإلكتروني"
+                            </li>
+                        </ol>
+                    </div>
+                    
+                    <!-- معلومات إضافية -->
+                    <div class="alert alert-warning border-0 mb-4">
+                        <small>
+                            <i class="fas fa-clock me-1"></i>
+                            صالح لمدة 24 ساعة فقط
+                            <br>
+                            <i class="fas fa-spam me-1"></i>
+                            تحقق من مجلد الرسائل غير المرغوب فيها (Spam)
+                        </small>
+                    </div>
+                    
+                    <!-- أزرار الإجراءات -->
+                    <div class="d-grid gap-2">
+                        <button id="resendBtn" class="btn btn-outline-primary btn-lg">
+                            <i class="fas fa-redo me-2"></i>
+                            إعادة إرسال بريد التحقق
+                        </button>
+                        
+                        <a href="{{ url_for('main.index') }}" class="btn btn-secondary">
+                            <i class="fas fa-home me-2"></i>
+                            العودة للصفحة الرئيسية
+                        </a>
+                    </div>
+                    
+                    <!-- العداد التنازلي لإعادة الإرسال -->
+                    <div id="resendTimer" class="mt-3 text-muted small" style="display: none;">
+                        يمكنك إعادة الإرسال خلال: <span id="countdown">300</span> ثانية
+                    </div>
+                </div>
+            </div>
+            
+            <!-- نصائح إضافية -->
+            <div class="card mt-4 border-0 bg-light">
+                <div class="card-body">
+                    <h6 class="card-title text-center">
+                        <i class="fas fa-lightbulb text-warning me-2"></i>
+                        نصائح مفيدة
+                    </h6>
+                    <div class="row text-center">
+                        <div class="col-md-4 mb-3">
+                            <i class="fas fa-shield-alt text-success mb-2" style="font-size: 1.5rem;"></i>
+                            <br>
+                            <small>حسابك آمن معنا</small>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <i class="fas fa-rocket text-info mb-2" style="font-size: 1.5rem;"></i>
+                            <br>
+                            <small>التفعيل فوري</small>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <i class="fas fa-gift text-danger mb-2" style="font-size: 1.5rem;"></i>
+                            <br>
+                            <small>عروض حصرية تنتظرك</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- نافذة منبثقة لحالة إعادة الإرسال -->
+<div class="modal fade" id="statusModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center p-4">
+                <div id="modalIcon" class="mb-3"></div>
+                <h5 id="modalTitle"></h5>
+                <p id="modalMessage"></p>
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">حسناً</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const resendBtn = document.getElementById('resendBtn');
+    const resendTimer = document.getElementById('resendTimer');
+    const countdown = document.getElementById('countdown');
+    const statusModal = new bootstrap.Modal(document.getElementById('statusModal'));
+    
+    let timeLeft = 0;
+    let timerInterval = null;
+    
+    // وظيفة العداد التنازلي
+    function startCountdown(seconds) {
+        timeLeft = seconds;
+        resendBtn.disabled = true;
+        resendTimer.style.display = 'block';
+        
+        timerInterval = setInterval(function() {
+            countdown.textContent = timeLeft;
+            
+            if (timeLeft <= 0) {
+                clearInterval(timerInterval);
+                resendBtn.disabled = false;
+                resendTimer.style.display = 'none';
+            }
+            timeLeft--;
+        }, 1000);
+    }
+    
+    // وظيفة إظهار النافذة المنبثقة
+    function showModal(type, title, message) {
+        const modalIcon = document.getElementById('modalIcon');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalMessage = document.getElementById('modalMessage');
+        
+        if (type === 'success') {
+            modalIcon.innerHTML = '<i class="fas fa-check-circle text-success" style="font-size: 3rem;"></i>';
+        } else {
+            modalIcon.innerHTML = '<i class="fas fa-exclamation-circle text-danger" style="font-size: 3rem;"></i>';
+        }
+        
+        modalTitle.textContent = title;
+        modalMessage.textContent = message;
+        statusModal.show();
+    }
+    
+    // معالج النقر على زر إعادة الإرسال
+    resendBtn.addEventListener('click', function() {
+        if (resendBtn.disabled) return;
+        
+        resendBtn.disabled = true;
+        resendBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>جاري الإرسال...';
+        
+        fetch('{{ url_for("main.resend_verification") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                email: '{{ email }}'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            resendBtn.innerHTML = '<i class="fas fa-redo me-2"></i>إعادة إرسال بريد التحقق';
+            
+            if (data.success) {
+                showModal('success', 'تم الإرسال بنجاح!', data.message);
+                startCountdown(300); // 5 دقائق
+            } else {
+                resendBtn.disabled = false;
+                showModal('error', 'فشل في الإرسال', data.message);
+            }
+        })
+        .catch(error => {
+            resendBtn.disabled = false;
+            resendBtn.innerHTML = '<i class="fas fa-redo me-2"></i>إعادة إرسال بريد التحقق';
+            showModal('error', 'خطأ في الشبكة', 'تعذر الاتصال بالخادم. يرجى المحاولة لاحقاً.');
+        });
+    });
+    
+    // التحقق الدوري من حالة التحقق
+    function checkVerificationStatus() {
+        fetch('{{ url_for("main.verification_status", email=email) }}')
+        .then(response => response.json())
+        .then(data => {
+            if (data.verified) {
+                // إذا تم التحقق، إعادة توجيه المستخدم
+                window.location.href = '{{ url_for("main.index") }}';
+            }
+        })
+        .catch(error => {
+            // تجاهل الأخطاء في التحقق الدوري
+        });
+    }
+    
+    // التحقق كل 30 ثانية
+    setInterval(checkVerificationStatus, 30000);
+});
+</script>
+
+<style>
+.card {
+    border-radius: 15px;
+}
+
+.btn-lg {
+    border-radius: 25px;
+}
+
+.alert {
+    border-radius: 10px;
+}
+
+.list-unstyled li {
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.list-unstyled li:last-child {
+    border-bottom: none;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.fas.fa-envelope-circle-check {
+    animation: pulse 2s infinite;
+}
+
+/* تحسين المظهر للشاشات الصغيرة */
+@media (max-width: 576px) {
+    .container {
+        padding: 0 15px;
+    }
+    
+    .card-body {
+        padding: 2rem 1.5rem !important;
+    }
+    
+    .fas.fa-envelope-circle-check {
+        font-size: 3rem !important;
+    }
+}
+</style>
+{% endblock %}

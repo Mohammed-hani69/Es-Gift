@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+
+{% block title %}خطأ في التحقق{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow-lg border-0">
+                <div class="card-body text-center p-5">
+                    <!-- أيقونة الخطأ -->
+                    <div class="mb-4">
+                        <i class="fas fa-exclamation-triangle text-warning" style="font-size: 4rem;"></i>
+                    </div>
+                    
+                    <!-- العنوان الرئيسي -->
+                    <h1 class="h3 text-warning mb-3">
+                        <i class="fas fa-times-circle me-2"></i>
+                        فشل في التحقق من البريد الإلكتروني
+                    </h1>
+                    
+                    <!-- رسالة الخطأ -->
+                    <div class="alert alert-warning border-0 mb-4">
+                        <h5 class="alert-heading">
+                            <i class="fas fa-info-circle me-2"></i>
+                            تفاصيل المشكلة
+                        </h5>
+                        <p class="mb-0">{{ error }}</p>
+                    </div>
+                    
+                    <!-- الأسباب المحتملة -->
+                    <div class="mb-4">
+                        <h6 class="text-muted mb-3">الأسباب المحتملة:</h6>
+                        <div class="text-start">
+                            <div class="mb-2">
+                                <i class="fas fa-clock text-danger me-2"></i>
+                                انتهت صلاحية رابط التحقق (أكثر من 24 ساعة)
+                            </div>
+                            <div class="mb-2">
+                                <i class="fas fa-link text-danger me-2"></i>
+                                رابط التحقق غير صحيح أو تالف
+                            </div>
+                            <div class="mb-2">
+                                <i class="fas fa-check-circle text-danger me-2"></i>
+                                تم استخدام رابط التحقق مسبقاً
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- أزرار الإجراءات -->
+                    <div class="d-grid gap-2">
+                        <button id="requestNewVerification" class="btn btn-primary btn-lg">
+                            <i class="fas fa-paper-plane me-2"></i>
+                            طلب رابط تحقق جديد
+                        </button>
+                        
+                        <a href="{{ url_for('auth.login') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-sign-in-alt me-2"></i>
+                            تسجيل الدخول
+                        </a>
+                        
+                        <a href="{{ url_for('main.index') }}" class="btn btn-secondary">
+                            <i class="fas fa-home me-2"></i>
+                            العودة للصفحة الرئيسية
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- نصائح لحل المشكلة -->
+            <div class="card mt-4 border-0 bg-light">
+                <div class="card-body">
+                    <h6 class="card-title text-center">
+                        <i class="fas fa-question-circle text-info me-2"></i>
+                        حلول مقترحة
+                    </h6>
+                    <div class="row text-center">
+                        <div class="col-md-4 mb-3">
+                            <i class="fas fa-redo text-primary mb-2" style="font-size: 1.5rem;"></i>
+                            <br>
+                            <small>اطلب رابط جديد</small>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <i class="fas fa-envelope text-success mb-2" style="font-size: 1.5rem;"></i>
+                            <br>
+                            <small>تحقق من بريدك مرة أخرى</small>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <i class="fas fa-headset text-warning mb-2" style="font-size: 1.5rem;"></i>
+                            <br>
+                            <small>تواصل مع الدعم</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- نافذة منبثقة لطلب رابط جديد -->
+<div class="modal fade" id="newVerificationModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-paper-plane me-2"></i>
+                    طلب رابط تحقق جديد
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="newVerificationForm">
+                    <div class="mb-3">
+                        <label for="email" class="form-label">البريد الإلكتروني:</label>
+                        <input type="email" class="form-control" id="email" required>
+                        <div class="form-text">أدخل البريد الإلكتروني المرتبط بحسابك</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                <button type="button" id="sendNewVerification" class="btn btn-primary">
+                    <i class="fas fa-paper-plane me-2"></i>
+                    إرسال
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- نافذة منبثقة لحالة الطلب -->
+<div class="modal fade" id="statusModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center p-4">
+                <div id="modalIcon" class="mb-3"></div>
+                <h5 id="modalTitle"></h5>
+                <p id="modalMessage"></p>
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">حسناً</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const requestBtn = document.getElementById('requestNewVerification');
+    const newVerificationModal = new bootstrap.Modal(document.getElementById('newVerificationModal'));
+    const statusModal = new bootstrap.Modal(document.getElementById('statusModal'));
+    const sendBtn = document.getElementById('sendNewVerification');
+    const emailInput = document.getElementById('email');
+    
+    // وظيفة إظهار النافذة المنبثقة
+    function showModal(type, title, message) {
+        const modalIcon = document.getElementById('modalIcon');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalMessage = document.getElementById('modalMessage');
+        
+        if (type === 'success') {
+            modalIcon.innerHTML = '<i class="fas fa-check-circle text-success" style="font-size: 3rem;"></i>';
+        } else {
+            modalIcon.innerHTML = '<i class="fas fa-exclamation-circle text-danger" style="font-size: 3rem;"></i>';
+        }
+        
+        modalTitle.textContent = title;
+        modalMessage.textContent = message;
+        statusModal.show();
+    }
+    
+    // معالج النقر على زر طلب رابط جديد
+    requestBtn.addEventListener('click', function() {
+        newVerificationModal.show();
+    });
+    
+    // معالج النقر على زر الإرسال
+    sendBtn.addEventListener('click', function() {
+        const email = emailInput.value.trim();
+        
+        if (!email) {
+            showModal('error', 'خطأ في البيانات', 'يرجى إدخال البريد الإلكتروني');
+            return;
+        }
+        
+        if (!email.includes('@')) {
+            showModal('error', 'خطأ في البيانات', 'يرجى إدخال بريد إلكتروني صحيح');
+            return;
+        }
+        
+        sendBtn.disabled = true;
+        sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>جاري الإرسال...';
+        
+        fetch('{{ url_for("main.resend_verification") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                email: email
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            sendBtn.disabled = false;
+            sendBtn.innerHTML = '<i class="fas fa-paper-plane me-2"></i>إرسال';
+            
+            newVerificationModal.hide();
+            
+            if (data.success) {
+                showModal('success', 'تم الإرسال بنجاح!', data.message);
+                emailInput.value = '';
+            } else {
+                showModal('error', 'فشل في الإرسال', data.message);
+            }
+        })
+        .catch(error => {
+            sendBtn.disabled = false;
+            sendBtn.innerHTML = '<i class="fas fa-paper-plane me-2"></i>إرسال';
+            newVerificationModal.hide();
+            showModal('error', 'خطأ في الشبكة', 'تعذر الاتصال بالخادم. يرجى المحاولة لاحقاً.');
+        });
+    });
+    
+    // معالج الضغط على Enter في حقل البريد الإلكتروني
+    emailInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            sendBtn.click();
+        }
+    });
+});
+</script>
+
+<style>
+.card {
+    border-radius: 15px;
+}
+
+.btn-lg {
+    border-radius: 25px;
+}
+
+.alert {
+    border-radius: 10px;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+.fas.fa-exclamation-triangle {
+    animation: shake 3s infinite;
+}
+
+/* تحسين المظهر للشاشات الصغيرة */
+@media (max-width: 576px) {
+    .container {
+        padding: 0 15px;
+    }
+    
+    .card-body {
+        padding: 2rem 1.5rem !important;
+    }
+    
+    .fas.fa-exclamation-triangle {
+        font-size: 3rem !important;
+    }
+}
+</style>
+{% endblock %}

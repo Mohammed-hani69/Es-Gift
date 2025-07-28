@@ -1,0 +1,266 @@
+/* ملف التحسينات المتقدمة للقائمة الجانبية */
+/* Modern Sidebar Enhancements */
+
+/* تأثيرات إضافية للقائمة الجانبية */
+.sidebar-advanced-effects {
+    position: relative;
+    overflow: hidden;
+}
+
+/* تأثير الموجات في الخلفية */
+.sidebar-waves::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 320'%3E%3Cpath fill='%23ffffff08' fill-opacity='1' d='M0,128L48,138.7C96,149,192,171,288,165.3C384,160,480,128,576,122.7C672,117,768,139,864,154.7C960,171,1056,181,1152,165.3C1248,149,1344,107,1392,85.3L1440,64L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z'%3E%3C/path%3E%3C/svg%3E") repeat;
+    animation: wavesMove 20s linear infinite;
+    opacity: 0.3;
+    z-index: 0;
+}
+
+@keyframes wavesMove {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-1440px); }
+}
+
+/* تأثير الضباب */
+.sidebar-fog::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+        radial-gradient(ellipse at top, rgba(255, 255, 255, 0.1) 0%, transparent 70%),
+        radial-gradient(ellipse at bottom, rgba(255, 0, 51, 0.1) 0%, transparent 70%);
+    animation: fogFlow 12s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 1;
+}
+
+@keyframes fogFlow {
+    0%, 100% { opacity: 0.3; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(1.2); }
+}
+
+/* تأثير البريق */
+.sidebar-sparkle {
+    position: relative;
+}
+
+.sidebar-sparkle::before {
+    content: '';
+    position: absolute;
+    top: 20%;
+    right: 10%;
+    width: 4px;
+    height: 4px;
+    background: white;
+    border-radius: 50%;
+    box-shadow: 
+        10px -20px 0 1px rgba(255, 255, 255, 0.8),
+        -15px 15px 0 1px rgba(255, 255, 255, 0.6),
+        25px 5px 0 1px rgba(255, 255, 255, 0.9),
+        -10px -15px 0 1px rgba(255, 255, 255, 0.7);
+    animation: sparkleShine 3s ease-in-out infinite;
+    z-index: 10;
+}
+
+@keyframes sparkleShine {
+    0%, 100% { opacity: 0; transform: scale(0.5); }
+    50% { opacity: 1; transform: scale(1.2); }
+}
+
+/* تحسينات للأزرار */
+.sidebar-btn-enhanced {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, 
+        rgba(255, 255, 255, 0.1) 0%, 
+        rgba(255, 255, 255, 0.05) 50%, 
+        rgba(255, 255, 255, 0.1) 100%);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.sidebar-btn-enhanced::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, 
+        transparent 0%, 
+        rgba(255, 255, 255, 0.3) 50%, 
+        transparent 100%);
+    transition: left 0.6s ease;
+}
+
+.sidebar-btn-enhanced:hover::before {
+    left: 100%;
+}
+
+/* تأثير النبضات */
+.sidebar-pulse-effect {
+    position: relative;
+}
+
+.sidebar-pulse-effect::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.4) 0%, transparent 70%);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    animation: pulseRipple 2s ease-out infinite;
+    pointer-events: none;
+}
+
+@keyframes pulseRipple {
+    0% {
+        transform: translate(-50%, -50%) scale(0);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(4);
+        opacity: 0;
+    }
+}
+
+/* تأثير الذبذبة للنص */
+.sidebar-text-vibrate {
+    animation: textVibrate 0.3s ease-in-out;
+}
+
+@keyframes textVibrate {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-1px); }
+    75% { transform: translateX(1px); }
+}
+
+/* تأثير التدرج المتحرك */
+.sidebar-gradient-animation {
+    background: linear-gradient(-45deg, 
+        #ff0033, #ff3366, #ff6699, #ff0033);
+    background-size: 400% 400%;
+    animation: gradientShift 8s ease infinite;
+}
+
+@keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* تأثير الظلال المتحركة */
+.sidebar-shadow-dance {
+    position: relative;
+}
+
+.sidebar-shadow-dance::before {
+    content: '';
+    position: absolute;
+    top: -5px;
+    left: -5px;
+    right: -5px;
+    bottom: -5px;
+    background: linear-gradient(45deg, 
+        rgba(255, 0, 51, 0.3) 0%, 
+        rgba(255, 51, 102, 0.3) 25%,
+        rgba(255, 102, 153, 0.3) 50%,
+        rgba(255, 51, 102, 0.3) 75%,
+        rgba(255, 0, 51, 0.3) 100%);
+    border-radius: inherit;
+    z-index: -1;
+    filter: blur(10px);
+    animation: shadowDance 4s ease-in-out infinite;
+}
+
+@keyframes shadowDance {
+    0%, 100% { 
+        transform: scale(1) rotate(0deg);
+        opacity: 0.5;
+    }
+    50% { 
+        transform: scale(1.1) rotate(180deg);
+        opacity: 0.8;
+    }
+}
+
+/* تحسينات الاستجابة */
+@media (max-width: 768px) {
+    .sidebar-waves::before,
+    .sidebar-fog::after,
+    .sidebar-sparkle::before {
+        display: none;
+    }
+    
+    .sidebar-shadow-dance::before {
+        filter: blur(5px);
+        animation-duration: 2s;
+    }
+}
+
+/* تحسينات الأداء */
+.sidebar-performance-optimized * {
+    will-change: transform, opacity;
+    backface-visibility: hidden;
+    perspective: 1000px;
+    transform-style: preserve-3d;
+}
+
+/* تأثير الكريستال */
+.sidebar-crystal-effect {
+    background: 
+        linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+        linear-gradient(225deg, rgba(255, 255, 255, 0.05) 0%, transparent 50%),
+        linear-gradient(315deg, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
+    position: relative;
+}
+
+.sidebar-crystal-effect::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+        repeating-linear-gradient(
+            45deg,
+            transparent,
+            transparent 2px,
+            rgba(255, 255, 255, 0.03) 2px,
+            rgba(255, 255, 255, 0.03) 4px
+        );
+    pointer-events: none;
+}
+
+/* تأثير الانعكاس ثلاثي الأبعاد */
+.sidebar-3d-reflection {
+    position: relative;
+    transform-style: preserve-3d;
+}
+
+.sidebar-3d-reflection::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    height: 50%;
+    background: inherit;
+    transform: rotateX(180deg) scaleY(-1);
+    opacity: 0.3;
+    filter: blur(2px);
+    mask: linear-gradient(to bottom, black 0%, transparent 100%);
+    -webkit-mask: linear-gradient(to bottom, black 0%, transparent 100%);
+}

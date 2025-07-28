@@ -254,18 +254,30 @@
 .header-section {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
+    align-items: center;
     margin-bottom: 30px;
+    padding: 25px;
+    background: linear-gradient(135deg, #333, #444);
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    border-left: 5px solid #ff0033;
 }
 
 .header-left h2 {
-    margin: 0 0 10px 0;
     color: #fff;
+    margin: 0 0 10px 0;
+    font-size: 24px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.header-left h2 i {
+    color: #ff0033;
+    margin-left: 10px;
 }
 
 .breadcrumb {
     color: #ccc;
-    font-size: 0.9rem;
+    font-size: 14px;
 }
 
 .breadcrumb a {
@@ -275,8 +287,187 @@
 }
 
 .breadcrumb a:hover {
-    color: #cc0029;
+    color: #ff6666;
+}
+
+.header-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.header-actions .btn {
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    border-radius: 8px;
+    font-weight: 600;
+    padding: 12px 20px;
+    text-transform: none;
+}
+
+.header-actions .btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
+}
+
+.header-actions .btn:hover::before {
+    left: 100%;
+}
+
+.header-actions .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+.section-title {
+    color: #fff;
+    font-size: 18px;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #ff0033;
+    display: flex;
+    align-items: center;
+}
+
+.section-title i {
+    color: #ff0033;
+    margin-left: 10px;
+    font-size: 20px;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    padding: 20px 0;
+}
+
+.info-item {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 15px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+}
+
+.info-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-2px);
+}
+
+.info-item label {
+    font-weight: bold;
+    color: #ff0033;
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.info-item span {
+    color: #fff;
+    font-size: 16px;
+}
+
+.invoice-number {
+    font-family: 'Courier New', monospace;
+    background: linear-gradient(135deg, #ff0033, #cc0029);
+    color: white;
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-weight: bold;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    display: inline-block;
+}
+
+.order-link {
+    color: #ff0033;
+    text-decoration: none;
+    font-weight: bold;
+    transition: all 0.3s ease;
+    padding: 6px 12px;
+    border-radius: 6px;
+    background: rgba(255, 0, 51, 0.1);
+    border: 1px solid rgba(255, 0, 51, 0.3);
+    display: inline-block;
+}
+
+.order-link:hover {
+    color: #fff;
+    background: #ff0033;
+    text-decoration: none;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(255, 0, 51, 0.3);
+}
+
+.email-link {
+    color: #17a2b8;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.email-link:hover {
+    color: #138496;
     text-decoration: underline;
+}
+
+.badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.badge-success {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+}
+
+.badge-warning {
+    background: linear-gradient(135deg, #ffc107, #fd7e14);
+    color: #333;
+}
+
+.badge-danger {
+    background: linear-gradient(135deg, #dc3545, #e83e8c);
+    color: white;
+}
+
+.badge-info {
+    background: linear-gradient(135deg, #17a2b8, #6f42c1);
+    color: white;
+}
+
+/* تحسينات للشاشات الصغيرة */
+@media (max-width: 768px) {
+    .header-section {
+        flex-direction: column;
+        gap: 20px;
+        text-align: center;
+    }
+    
+    .header-actions {
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    
+    .info-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 480px) {
+    .header-actions .btn {
+        font-size: 14px;
+        padding: 10px 15px;
+    }
 }
 
 .header-actions {
@@ -570,28 +761,73 @@ function sendInvoiceEmail(invoiceId) {
 
 function showNotification(message, type) {
     // استخدام نظام الإشعارات الموحد من base.html
-    if (typeof showNotification !== 'undefined' && window.showNotification) {
+    if (window.showNotification && typeof window.showNotification === 'function') {
         window.showNotification(type, message);
     } else {
-        // Fallback للمتصفحات القديمة
+        // Fallback محسن للمتصفحات القديمة
         const alertClass = type === 'success' ? 'success' : type === 'error' ? 'danger' : type;
-        const alert = `<div class="alert alert-${alertClass}" role="alert">
-            ${message}
-            <button type="button" onclick="this.parentElement.remove()" style="float: left; background: none; border: none; color: inherit; font-size: 18px; cursor: pointer;">×</button>
-        </div>`;
+        const iconClass = type === 'success' ? 'fas fa-check-circle' : type === 'error' ? 'fas fa-exclamation-triangle' : 'fas fa-info-circle';
         
-        // إضافة الإشعار في أعلى الصفحة
-        const container = document.querySelector('.content-card');
-        if (container) {
-            container.insertAdjacentHTML('afterbegin', alert);
-            
-            // إزالة الإشعار بعد 5 ثواني
-            setTimeout(() => {
-                const alertElement = document.querySelector('.alert');
-                if (alertElement) {
-                    alertElement.remove();
+        const alert = `
+        <div class="alert alert-${alertClass}" role="alert" style="
+            position: fixed; 
+            top: 20px; 
+            right: 20px; 
+            z-index: 9999; 
+            max-width: 400px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            border-radius: 10px;
+            border: none;
+            animation: slideInRight 0.5s ease;
+        ">
+            <i class="${iconClass}" style="margin-left: 10px;"></i>
+            ${message}
+            <button type="button" onclick="this.parentElement.remove()" style="
+                float: left; 
+                background: none; 
+                border: none; 
+                color: inherit; 
+                font-size: 20px; 
+                cursor: pointer;
+                margin-right: 10px;
+                opacity: 0.7;
+                transition: opacity 0.3s;
+            " onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">×</button>
+        </div>
+        <style>
+            @keyframes slideInRight {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            .alert-success { background: linear-gradient(135deg, #28a745, #20c997); color: white; }
+            .alert-danger { background: linear-gradient(135deg, #dc3545, #e74c3c); color: white; }
+            .alert-info { background: linear-gradient(135deg, #17a2b8, #3498db); color: white; }
+        </style>
+        `;
+        
+        // إضافة الإشعار للصفحة
+        document.body.insertAdjacentHTML('beforeend', alert);
+        
+        // إزالة الإشعار بعد 5 ثواني مع تأثير
+        setTimeout(() => {
+            const alertElement = document.querySelector('.alert');
+            if (alertElement) {
+                alertElement.style.animation = 'slideOutRight 0.5s ease';
+                setTimeout(() => alertElement.remove(), 500);
+            }
+        }, 5000);
+        
+        // إضافة CSS للتأثيرات
+        if (!document.getElementById('notification-styles')) {
+            const style = document.createElement('style');
+            style.id = 'notification-styles';
+            style.textContent = `
+                @keyframes slideOutRight {
+                    from { transform: translateX(0); opacity: 1; }
+                    to { transform: translateX(100%); opacity: 0; }
                 }
-            }, 5000);
+            `;
+            document.head.appendChild(style);
         }
     }
 }

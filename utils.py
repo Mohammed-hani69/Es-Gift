@@ -1,6 +1,6 @@
 import json
 from flask import current_app
-from flask_mail import Message
+from brevo_email_service import send_simple_email as brevo_send_email, send_order_confirmation_email as brevo_send_order_email
 from models import Currency, db
 from datetime import datetime
 
@@ -10,6 +10,19 @@ def to_json_filter(obj):
 
 def get_user_price(product, user_type='regular', user=None):
     """احصل على السعر المناسب للمستخدم مع دعم الأسعار المخصصة"""
+    
+    # التحقق من صحة المعاملات
+    if not product:
+        return None
+    
+    # تحديد نوع المستخدم بدقة
+    if user and user.is_authenticated:
+        # استخدام customer_type من المستخدم مباشرة إذا كان متوفراً
+        if hasattr(user, 'customer_type') and user.customer_type:
+            user_type = user.customer_type
+        # التحقق من حالة KYC
+        elif hasattr(user, 'kyc_status') and user.kyc_status == 'approved':
+            user_type = 'kyc'
     
     # إذا كان المنتج يحتوي على أسعار مخصصة والمستخدم مسجل
     if product.has_custom_pricing and user and user.is_authenticated:
@@ -21,18 +34,31 @@ def get_user_price(product, user_type='regular', user=None):
         ).first()
         
         if custom_price:
-            return custom_price.custom_price
+            # اختيار السعر المناسب حسب نوع المستخدم
+            if user_type == 'kyc' and custom_price.kyc_price:
+                return custom_price.kyc_price
+            elif custom_price.regular_price:
+                return custom_price.regular_price
+            elif custom_price.custom_price:
+                return custom_price.custom_price
     
-    # الأسعار العادية
-    if user_type == 'reseller':
+    # الأسعار العادية مع التحقق من وجود السعر
+    if user_type == 'reseller' and product.reseller_price is not None:
         return product.reseller_price
-    elif user_type == 'kyc':
+    elif user_type == 'kyc' and product.kyc_price is not None:
         return product.kyc_price
-    else:
+    elif product.regular_price is not None:
         return product.regular_price
+    
+    # في حالة عدم وجود أي سعر، إرجاع 0 كقيمة افتراضية آمنة
+    return 0
 
 def convert_currency(amount, from_currency='SAR', to_currency='SAR'):
     """تحويل العملة مع معالجة شاملة للأخطاء"""
+    # التحقق من صحة المبلغ
+    if amount is None:
+        return 0
+    
     # إذا كانت العملة الأصلية والمطلوبة نفسها
     if from_currency == to_currency:
         return amount
@@ -84,9 +110,31 @@ def convert_currency(amount, from_currency='SAR', to_currency='SAR'):
         return amount
 
 def send_email(to_email, subject, body):
-    """إرسال بريد إلكتروني"""
+    """إرسال بريد إلكتروني باستخدام Brevo"""
     try:
-        from flask_mail import Mail
+        # استخدام خدمة Brevo المتكاملة
+        from brevo_integration import send_email_brevo
+        
+        success = send_email_brevo(to_email, subject, body)
+        
+        if success:
+            print(f"✅ تم إرسال الإيميل بنجاح إلى: {to_email} باستخدام Brevo")
+            return True
+        else:
+            print(f"❌ فشل في إرسال الإيميل باستخدام Brevo")
+            
+            # كبديل، محاولة استخدام Flask-Mail التقليدي
+            return _send_email_fallback(to_email, subject, body)
+            
+    except Exception as e:
+        print(f"خطأ في إرسال الإيميل: {e}")
+        # محاولة استخدام الطريقة التقليدية كبديل
+        return _send_email_fallback(to_email, subject, body)
+
+def _send_email_fallback(to_email, subject, body):
+    """إرسال بريد إلكتروني باستخدام Flask-Mail (كبديل)"""
+    try:
+        from flask_mail import Mail, Message
         mail = current_app.extensions.get('mail')
         
         # التحقق من إعدادات الإيميل
@@ -105,45 +153,92 @@ def send_email(to_email, subject, body):
         )
         msg.html = body
         mail.send(msg)
-        print(f"تم إرسال الإيميل بنجاح إلى: {to_email}")
+        print(f"تم إرسال الإيميل بنجاح إلى: {to_email} باستخدام Flask-Mail")
         return True
     except Exception as e:
-        print(f"خطأ في إرسال الإيميل: {e}")
+        print(f"خطأ في إرسال الإيميل باستخدام Flask-Mail: {e}")
         print("نصائح لحل المشكلة:")
-        print("1. تأكد من تفعيل التحقق بخطوتين في حساب Google")
-        print("2. استخدم App Password بدلاً من كلمة المرور العادية")
-        print("3. تأكد من صحة بيانات البريد في ملف .env")
+        print("1. تأكد من تكوين إعدادات Brevo بشكل صحيح")
+        print("2. تحقق من صحة API Key في brevo_config.py")
+        print("3. تأكد من الاتصال بالإنترنت")
         return False
 
 def send_order_email(order):
-    """إرسال بريد إلكتروني بتفاصيل الطلب والأكواد"""
+    """إرسال بريد إلكتروني بتفاصيل الطلب والأكواد باستخدام Brevo"""
     from models import ProductCode
     
     codes = ProductCode.query.filter_by(order_id=order.id).all()
     
-    email_body = f"""
-    <h2>تفاصيل طلبك #{order.order_number}</h2>
-    <p>عزيزي العميل،</p>
-    <p>تم إتمام طلبك بنجاح. إليك تفاصيل المنتجات والأكواد:</p>
+    # تحضير بيانات الطلب لـ Brevo
+    order_data = {
+        'order_number': order.order_number,
+        'product_name': order.product.name if order.product else 'منتجات متعددة',
+        'total_amount': float(order.total_amount),
+        'currency': order.currency or 'SAR'
+    }
     
-    <div style="background-color: #f5f5f5; padding: 20px; border-radius: 10px;">
+    # محاولة استخدام قالب Brevo للطلبات
+    success, message = brevo_send_order_email(
+        user_email=order.user.email,
+        user_name=order.user.full_name or order.user.username or 'عزيزي العميل',
+        order_data=order_data
+    )
+    
+    if success:
+        print(f"تم إرسال إيميل تأكيد الطلب #{order.order_number} باستخدام Brevo")
+        return True
+    
+    # إذا فشل Brevo، استخدام الطريقة التقليدية
+    print(f"فشل إرسال إيميل الطلب باستخدام Brevo: {message}")
+    
+    email_body = f"""
+    <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif; direction: rtl;">
+        <div style="background: linear-gradient(135deg, #FF0033 0%, #CC0029 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+            <h1 style="margin: 0; font-size: 1.8em;">🎁 ES-GIFT</h1>
+            <h2 style="margin: 10px 0 0 0; font-weight: normal;">تأكيد طلبك #{order.order_number}</h2>
+        </div>
+        
+        <div style="background: white; padding: 30px; border-radius: 0 0 10px 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+            <p style="font-size: 1.2em; color: #333; margin-bottom: 20px;">عزيزي العميل،</p>
+            <p style="color: #666; line-height: 1.6;">تم إتمام طلبك بنجاح. إليك تفاصيل المنتجات والأكواد:</p>
+            
+            <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin: 20px 0;">
     """
     
     for code in codes:
         email_body += f"""
-        <div style="margin-bottom: 20px; padding: 15px; background-color: white; border-radius: 5px;">
-            <h3>{code.product.name}</h3>
-            <p><strong>الكود:</strong> {code.code}</p>
-            <p><strong>التعليمات:</strong> {code.product.instructions}</p>
+        <div style="margin-bottom: 20px; padding: 20px; background-color: white; border-radius: 8px; border-right: 4px solid #FF0033;">
+            <h3 style="color: #FF0033; margin: 0 0 10px 0;">{code.product.name}</h3>
+            <div style="background: #f1f1f1; padding: 15px; border-radius: 5px; font-family: monospace; font-size: 1.1em; margin: 10px 0;">
+                <strong style="color: #333;">الكود:</strong> <span style="color: #FF0033; font-weight: bold;">{code.code}</span>
+            </div>
+            {f'<p style="color: #666; margin: 10px 0;"><strong>التعليمات:</strong> {code.product.instructions}</p>' if code.product.instructions else ''}
         </div>
         """
     
-    email_body += """
+    email_body += f"""
+            </div>
+            
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px; text-align: center; margin: 30px 0;">
+                <h3 style="margin: 0 0 10px 0;">💰 ملخص الطلب</h3>
+                <p style="margin: 5px 0; font-size: 1.1em;">المجموع: <strong>{order.total_amount} {order.currency or 'SAR'}</strong></p>
+                <p style="margin: 5px 0; opacity: 0.9;">تاريخ الطلب: {order.created_at.strftime('%Y/%m/%d %H:%M') if order.created_at else 'غير محدد'}</p>
+            </div>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <p style="color: #FF0033; font-size: 1.1em; font-weight: bold;">🎉 شكراً لك على الشراء من ES-GIFT</p>
+                <p style="color: #666;">نتمنى لك تجربة ممتعة مع منتجاتنا</p>
+            </div>
+            
+            <div style="border-top: 1px solid #eee; padding-top: 20px; text-align: center; color: #999; font-size: 0.9em;">
+                <p>إذا كان لديك أي استفسار، لا تتردد في التواصل معنا</p>
+                <p>© 2024 ES-GIFT. جميع الحقوق محفوظة</p>
+            </div>
+        </div>
     </div>
-    <p>شكراً لك على الشراء من Es-Gift</p>
     """
     
-    send_email(order.user.email, f"تفاصيل طلبك #{order.order_number}", email_body)
+    return send_email(order.user.email, f"🎁 تأكيد طلبك #{order.order_number} - ES-GIFT", email_body)
 
 def update_currency_rates():
     """تحديث أسعار الصرف من مصدر خارجي (يمكن تطويرها لاحقاً)"""
@@ -304,3 +399,60 @@ def get_visible_products(user=None, **filters):
     query = filter_products_by_visibility(query, user)
     
     return query
+
+def update_user_prices_in_session(user):
+    """تحديث أسعار المنتجات في الجلسة بعد ترقية المستخدم"""
+    from flask import session
+    
+    try:
+        cart = session.get('cart', {})
+        if cart:
+            # تحديث أسعار المنتجات في السلة
+            from models import Product
+            for product_id in cart.keys():
+                product = Product.query.get(int(product_id))
+                if product:
+                    # تحديث السعر في الجلسة إذا لزم الأمر
+                    new_price = get_user_price(product, user.customer_type, user)
+                    # يمكن حفظ السعر الجديد في الجلسة أو قاعدة البيانات حسب الحاجة
+        
+        # إجبار تحديث الصفحة أو إشعار المستخدم
+        session['price_update_needed'] = True
+        return True
+        
+    except Exception as e:
+        print(f"خطأ في تحديث أسعار المستخدم: {e}")
+        return False
+
+def refresh_user_data(user):
+    """تحديث بيانات المستخدم وإعادة تحميل الجلسة"""
+    from flask import session
+    try:
+        # إعادة تحميل بيانات المستخدم من قاعدة البيانات
+        db.session.refresh(user)
+        
+        # تحديث أسعار المنتجات
+        update_user_prices_in_session(user)
+        
+        # تسجيل تحديث الأسعار
+        session['user_type_updated'] = True
+        session['last_price_update'] = datetime.utcnow().isoformat()
+        session['force_price_refresh'] = True  # إجبار تحديث الأسعار
+        
+        # إضافة إشارة لتحديث الأسعار في الواجهة الأمامية
+        session['show_price_update_notification'] = True
+        session['price_update_message'] = f'تم تحديث الأسعار وفقاً لنوع العميل الجديد: {get_customer_type_display_name(user.customer_type)}'
+        
+        return True
+    except Exception as e:
+        print(f"خطأ في تحديث بيانات المستخدم: {e}")
+        return False
+
+def get_customer_type_display_name(customer_type):
+    """الحصول على اسم نوع العميل للعرض"""
+    types = {
+        'regular': 'عميل عادي',
+        'kyc': 'عميل موثق',
+        'reseller': 'موزع'
+    }
+    return types.get(customer_type, customer_type)
