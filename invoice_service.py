@@ -16,12 +16,57 @@ from reportlab.lib.units import inch
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
 from reportlab.pdfgen import canvas
 from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 
 from flask import current_app, url_for
 from flask_mail import Message
 
 from models import db, Invoice, Order, User
 from utils import convert_currency, send_email
+
+# تسجيل خط آمن للنص العربي
+def register_safe_fonts():
+    """تسجيل خطوط آمنة للاستخدام مع النص العربي"""
+    try:
+        # محاولة تسجيل خط Arial إذا كان متوفراً
+        from reportlab.pdfbase.pdfmetrics import registerFont
+        from reportlab.pdfbase.ttfonts import TTFont
+        
+        # البحث عن خط Arial في النظام
+        possible_arial_paths = [
+            # Windows
+            'C:/Windows/Fonts/arial.ttf',
+            'C:/Windows/Fonts/Arial.ttf',
+            # معاً أخرى محتملة
+            '/System/Library/Fonts/Arial.ttf',
+            '/usr/share/fonts/truetype/dejavu/arial.ttf'
+        ]
+        
+        arial_found = False
+        for path in possible_arial_paths:
+            if os.path.exists(path):
+                try:
+                    registerFont(TTFont('Arial', path))
+                    arial_found = True
+                    print(f"✅ تم تسجيل خط Arial من: {path}")
+                    break
+                except Exception as e:
+                    print(f"❌ فشل تسجيل Arial من {path}: {e}")
+                    continue
+        
+        if not arial_found:
+            print("⚠️ لم يتم العثور على خط Arial، سيتم استخدام Helvetica")
+            return 'Helvetica'
+        
+        return 'Arial'
+        
+    except Exception as e:
+        print(f"❌ خطأ في تسجيل الخطوط: {e}")
+        return 'Helvetica'
+
+# تسجيل الخطوط عند تحميل الوحدة
+SAFE_FONT = register_safe_fonts()
 
 
 class InvoiceService:
@@ -107,7 +152,7 @@ class InvoiceService:
             arabic_style = ParagraphStyle(
                 'Arabic',
                 parent=styles['Normal'],
-                fontName='Arial',
+                fontName=SAFE_FONT,
                 fontSize=12,
                 alignment=TA_RIGHT,
                 spaceBefore=6,
@@ -117,7 +162,7 @@ class InvoiceService:
             title_style = ParagraphStyle(
                 'ArabicTitle',
                 parent=styles['Heading1'],
-                fontName='Arial',
+                fontName=SAFE_FONT,
                 fontSize=18,
                 alignment=TA_CENTER,
                 textColor=colors.HexColor('#ff0033'),
@@ -140,7 +185,7 @@ class InvoiceService:
             
             invoice_table = Table(invoice_data, colWidths=[2*inch, 3*inch])
             invoice_table.setStyle(TableStyle([
-                ('FONTNAME', (0, 0), (-1, -1), 'Arial'),
+                ('FONTNAME', (0, 0), (-1, -1), SAFE_FONT),
                 ('FONTSIZE', (0, 0), (-1, -1), 10),
                 ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),
                 ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),

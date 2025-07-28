@@ -13,13 +13,16 @@
 import os
 from datetime import datetime
 
+# تعطيل Brevo مؤقتاً لحل مشاكل API Key
+DISABLE_BREVO = False
+
 class BrevoConfig:
     """إعدادات Brevo API"""
     
     # ========== معلومات API الأساسية ==========
     # احصل على API Key من: https://app.brevo.com/settings/keys/api
     # ضع المفتاح الحقيقي هنا أو في متغير البيئة BREVO_API_KEY
-    API_KEY = os.getenv('BREVO_API_KEY', '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')
+    API_KEY = os.getenv('BREVO_API_KEY', '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')
     
     # Base URL لـ Brevo API
     BASE_URL = 'https://api.brevo.com/v3'
@@ -87,6 +90,9 @@ class BrevoConfig:
     
     # بريد إلكتروني للاختبار (سيتم إرسال جميع الرسائل إليه في وضع الاختبار)
     TEST_EMAIL = os.getenv('BREVO_TEST_EMAIL', 'test@es-gift.com')
+    
+    # تعطيل Brevo مؤقتاً عند وجود مشاكل في API
+    DISABLE_BREVO = os.getenv('DISABLE_BREVO', 'False').lower() == 'true'
     
     # ========== إعدادات SMTP ==========
     SMTP_CONFIG = {

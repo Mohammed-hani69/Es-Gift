@@ -17,9 +17,9 @@ class EmailVerificationService:
     
     @staticmethod
     def send_verification_email(user):
-        """إرسال بريد التحقق من الحساب باستخدام Brevo"""
+        """إرسال بريد التحقق من الحساب باستخدام Brevo مع بديل Flask-Mail"""
         try:
-            # استخدام خدمة Brevo المتكاملة
+            # المحاولة الأولى: استخدام خدمة Brevo المتكاملة
             from brevo_integration import send_verification_email_brevo
             
             success = send_verification_email_brevo(user)
@@ -29,11 +29,12 @@ class EmailVerificationService:
                 return True
             else:
                 print(f"❌ فشل إرسال بريد التحقق باستخدام Brevo")
-                # العودة للطريقة التقليدية
+                # العودة للطريقة البديلة
                 return EmailVerificationService._send_verification_email_fallback(user)
             
         except Exception as e:
-            print(f"خطأ في إرسال بريد التحقق: {str(e)}")
+            print(f"خطأ في إرسال بريد التحقق عبر Brevo: {str(e)}")
+            # العودة للطريقة البديلة
             return EmailVerificationService._send_verification_email_fallback(user)
     
     @staticmethod
@@ -264,14 +265,70 @@ class EmailVerificationService:
                 )
                 
                 if fallback_success:
-                    print(f"تم إرسال بريد التحقق إلى: {user.email} باستخدام الطريقة البديلة")
+                    print(f"✅ تم إرسال بريد التحقق إلى: {user.email} باستخدام الطريقة البديلة")
                     return True
                 else:
-                    print(f"فشل في إرسال بريد التحقق إلى: {user.email}")
-                    return False
+                    print(f"⚠️ فشل الطريقة البديلة أيضاً، جاري المحاولة باستخدام Flask-Mail...")
+                    # المحاولة الأخيرة باستخدام Flask-Mail
+                    return EmailVerificationService._send_with_flask_mail(user, verification_url, subject, email_html)
             
         except Exception as e:
             print(f"خطأ في إرسال بريد التحقق: {str(e)}")
+            # المحاولة الأخيرة باستخدام Flask-Mail
+            try:
+                verification_url = url_for('main.verify_email', 
+                                         token=user.email_verification_token, 
+                                         _external=True)
+                subject = "✉️ تأكيد حسابك في ES-GIFT - مرحباً بك!"
+                return EmailVerificationService._send_with_flask_mail(user, verification_url, subject, "")
+            except:
+                return False
+    
+    @staticmethod
+    def _send_with_flask_mail(user, verification_url, subject, html_content):
+        """إرسال بريد التحقق باستخدام Flask-Mail كبديل أخير"""
+        try:
+            from flask_mail import Message, Mail
+            from flask import current_app
+            
+            if not hasattr(current_app, 'mail'):
+                print("❌ Flask-Mail غير مُعد")
+                return False
+            
+            # إنشاء رسالة بسيطة
+            simple_html = f"""
+            <div style="direction: rtl; font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #FF0033;">مرحباً بك في ES-GIFT! 🎁</h2>
+                <p>شكراً لانضمامك إلينا!</p>
+                <p>لتأكيد حسابك، يرجى النقر على الرابط أدناه:</p>
+                <p style="text-align: center; margin: 30px 0;">
+                    <a href="{verification_url}" 
+                       style="background: #FF0033; color: white; padding: 15px 30px; 
+                              text-decoration: none; border-radius: 5px; display: inline-block;">
+                        تأكيد البريد الإلكتروني
+                    </a>
+                </p>
+                <p><small>هذا الرابط صالح لمدة 24 ساعة فقط.</small></p>
+                <hr>
+                <p><small>ES-GIFT - وجهتك للبطاقات الرقمية</small></p>
+            </div>
+            """
+            
+            msg = Message(
+                subject=subject,
+                recipients=[user.email],
+                html=simple_html,
+                sender=current_app.config.get('MAIL_DEFAULT_SENDER', 'noreply@es-gift.com')
+            )
+            
+            current_app.mail.send(msg)
+            print(f"✅ تم إرسال بريد التحقق باستخدام Flask-Mail إلى: {user.email}")
+            return True
+            
+        except Exception as e:
+            print(f"❌ فشل إرسال البريد باستخدام Flask-Mail: {str(e)}")
+            print("⚠️ جميع طرق إرسال البريد فشلت!")
+            print("💡 نصيحة: يرجى التحقق من إعدادات Brevo API أو Flask-Mail")
             return False
     
     @staticmethod

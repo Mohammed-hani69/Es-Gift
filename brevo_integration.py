@@ -30,11 +30,29 @@ class BrevoIntegration:
     
     def __init__(self):
         self.initialized = False
+        self.disabled = False
+        self._check_brevo_status()
+    
+    def _check_brevo_status(self):
+        """فحص حالة Brevo وتحديد ما إذا كان معطلاً"""
+        from brevo_config import BrevoConfig
+        
+        # فحص إذا كان Brevo معطلاً في الإعدادات
+        if BrevoConfig.DISABLE_BREVO:
+            logger.warning("⚠️ Brevo معطل في الإعدادات - سيتم استخدام Flask-Mail")
+            self.disabled = True
+            self.initialized = False
+            return
+        
+        # اختبار الاتصال
         self.test_connection()
     
     def test_connection(self):
         """اختبار الاتصال مع Brevo"""
         try:
+            if self.disabled:
+                return False, "Brevo معطل"
+                
             success, message = test_brevo_connection()
             if success:
                 logger.info(f"✅ اتصال Brevo ناجح: {message}")
@@ -43,10 +61,15 @@ class BrevoIntegration:
             else:
                 logger.error(f"❌ فشل اتصال Brevo: {message}")
                 self.initialized = False
+                # تعطيل Brevo تلقائياً بعد فشل الاتصال
+                if "401" in str(message) or "unauthorized" in str(message).lower():
+                    logger.warning("🔄 تعطيل Brevo تلقائياً بسبب مشكلة في API Key")
+                    self.disabled = True
                 return success, message
         except Exception as e:
             logger.error(f"خطأ في اختبار اتصال Brevo: {str(e)}")
             self.initialized = False
+            self.disabled = True  # تعطيل عند حدوث خطأ
             return False, str(e)
     
     # ========== خدمات البريد الأساسية ==========

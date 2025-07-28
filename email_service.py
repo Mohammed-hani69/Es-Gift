@@ -205,7 +205,7 @@ class ProductCodeEmailService:
             customer_email = order_data.get('customer_email')
             if not customer_email:
                 logger.error("عنوان البريد الإلكتروني غير محدد في بيانات الطلب")
-                return False, "عنوان البريد الإلكتروني غير محدد"
+                return False, "عنوان البريد الإلكتروني غير محدد", None
             
             logger.info(f"بدء إرسال البريد إلى: {customer_email}")
             
@@ -215,13 +215,13 @@ class ProductCodeEmailService:
             
             if not mail_username:
                 logger.error("MAIL_USERNAME غير محدد في إعدادات التطبيق")
-                return False, "إعدادات البريد الإلكتروني غير مكتملة"
+                return False, "إعدادات البريد الإلكتروني غير مكتملة", None
             
             # استخدام MAIL_USERNAME كمرسل افتراضي إذا لم يكن MAIL_DEFAULT_SENDER محدد
             sender = mail_default_sender or mail_username
             if not sender:
                 logger.error("لا يوجد مرسل محدد للبريد الإلكتروني")
-                return False, "مرسل البريد الإلكتروني غير محدد"
+                return False, "مرسل البريد الإلكتروني غير محدد", None
             
             logger.info(f"مرسل البريد: {sender}")
             
