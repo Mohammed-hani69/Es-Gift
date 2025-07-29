@@ -22,7 +22,7 @@ class BrevoConfig:
     # ========== معلومات API الأساسية ==========
     # احصل على API Key من: https://app.brevo.com/settings/keys/api
     # ضع المفتاح الحقيقي هنا أو في متغير البيئة BREVO_API_KEY
-    API_KEY = os.getenv('BREVO_API_KEY', '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')
+    API_KEY = os.getenv('BREVO_API_KEY', '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')
     
     # Base URL لـ Brevo API
     BASE_URL = 'https://api.brevo.com/v3'
