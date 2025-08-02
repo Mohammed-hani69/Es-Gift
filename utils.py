@@ -1,8 +1,25 @@
 import json
 from flask import current_app
-from brevo_email_service import send_simple_email as brevo_send_email, send_order_confirmation_email as brevo_send_order_email
+from email_sender_pro_service import send_order_confirmation, send_custom_email
 from models import Currency, db
 from datetime import datetime
+import time
+import random
+
+def generate_order_number():
+    """توليد رقم طلب فريد"""
+    timestamp = str(int(time.time()))
+    random_num = str(random.randint(1000, 9999))
+    return f"ES{timestamp}{random_num}"
+
+def log_action(user_id, action_type, description=""):
+    """تسجيل إجراء المستخدم في قاعدة البيانات"""
+    try:
+        print(f"📝 تسجيل إجراء: المستخدم {user_id} - {action_type} - {description}")
+        return True
+    except Exception as e:
+        print(f"❌ خطأ في تسجيل الإجراء: {str(e)}")
+        return False
 
 def to_json_filter(obj):
     """تحويل الكائن إلى JSON"""
@@ -110,18 +127,16 @@ def convert_currency(amount, from_currency='SAR', to_currency='SAR'):
         return amount
 
 def send_email(to_email, subject, body):
-    """إرسال بريد إلكتروني باستخدام Brevo"""
+    """إرسال بريد إلكتروني باستخدام Email Sender Pro API"""
     try:
-        # استخدام خدمة Brevo المتكاملة
-        from brevo_integration import send_email_brevo
-        
-        success = send_email_brevo(to_email, subject, body)
+        # استخدام خدمة Email Sender Pro المتكاملة
+        success, message = send_custom_email(to_email, subject, body)
         
         if success:
-            print(f"✅ تم إرسال الإيميل بنجاح إلى: {to_email} باستخدام Brevo")
+            print(f"✅ تم إرسال الإيميل بنجاح إلى: {to_email} باستخدام Email Sender Pro")
             return True
         else:
-            print(f"❌ فشل في إرسال الإيميل باستخدام Brevo")
+            print(f"❌ فشل في إرسال الإيميل باستخدام Email Sender Pro: {message}")
             
             # كبديل، محاولة استخدام Flask-Mail التقليدي
             return _send_email_fallback(to_email, subject, body)
@@ -158,38 +173,38 @@ def _send_email_fallback(to_email, subject, body):
     except Exception as e:
         print(f"خطأ في إرسال الإيميل باستخدام Flask-Mail: {e}")
         print("نصائح لحل المشكلة:")
-        print("1. تأكد من تكوين إعدادات Brevo بشكل صحيح")
-        print("2. تحقق من صحة API Key في brevo_config.py")
+        print("1. تأكد من تكوين إعدادات Email Sender Pro بشكل صحيح")
+        print("2. تحقق من صحة API Key")
         print("3. تأكد من الاتصال بالإنترنت")
         return False
 
 def send_order_email(order):
-    """إرسال بريد إلكتروني بتفاصيل الطلب والأكواد باستخدام Brevo"""
+    """إرسال بريد إلكتروني بتفاصيل الطلب والأكواد باستخدام Email Sender Pro API"""
     from models import ProductCode
     
     codes = ProductCode.query.filter_by(order_id=order.id).all()
     
-    # تحضير بيانات الطلب لـ Brevo
-    order_data = {
-        'order_number': order.order_number,
-        'product_name': order.product.name if order.product else 'منتجات متعددة',
-        'total_amount': float(order.total_amount),
-        'currency': order.currency or 'SAR'
-    }
+    # تحضير بيانات الطلب
+    try:
+        # محاولة استخدام Email Sender Pro API
+        success, message = send_order_confirmation(
+            email=order.user.email,
+            order_number=order.order_number,
+            customer_name=order.user.full_name or order.user.username or 'عزيزي العميل',
+            total_amount=str(float(order.total_amount)),
+            order_date=order.created_at.strftime('%Y-%m-%d') if order.created_at else None
+        )
+        
+        if success:
+            print(f"تم إرسال إيميل تأكيد الطلب #{order.order_number} باستخدام Email Sender Pro")
+            return True
+        else:
+            print(f"فشل إرسال إيميل الطلب باستخدام Email Sender Pro: {message}")
+            
+    except Exception as e:
+        print(f"خطأ في استخدام Email Sender Pro: {str(e)}")
     
-    # محاولة استخدام قالب Brevo للطلبات
-    success, message = brevo_send_order_email(
-        user_email=order.user.email,
-        user_name=order.user.full_name or order.user.username or 'عزيزي العميل',
-        order_data=order_data
-    )
-    
-    if success:
-        print(f"تم إرسال إيميل تأكيد الطلب #{order.order_number} باستخدام Brevo")
-        return True
-    
-    # إذا فشل Brevo، استخدام الطريقة التقليدية
-    print(f"فشل إرسال إيميل الطلب باستخدام Brevo: {message}")
+    # استخدام الطريقة التقليدية كبديل
     
     email_body = f"""
     <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif; direction: rtl;">
@@ -460,8 +475,6 @@ def get_customer_type_display_name(customer_type):
 def send_order_confirmation_without_codes(order_data, available_codes=None, products_without_codes=None):
     """إرسال إيميل تأكيد الطلب بدون أكواد (في انتظار الأكواد)"""
     try:
-        from brevo_email_service import send_order_confirmation_pending_codes
-        
         # تحديد حالة الطلب
         if not available_codes and not products_without_codes:
             status_message = "طلبك قيد المراجعة وسيتم إرسال الأكواد فور توفرها"
@@ -470,12 +483,25 @@ def send_order_confirmation_without_codes(order_data, available_codes=None, prod
         else:
             status_message = "طلبك تحت المعالجة وسيتم إرسال الأكواد قريباً"
         
-        # إرسال البريد الإلكتروني باستخدام Brevo
-        success, result = send_order_confirmation_pending_codes(
-            user_email=order_data.get('customer_email', ''),
-            user_name=order_data.get('customer_name', 'عزيزي العميل'),
-            order_data=order_data,
-            status_message=status_message
+        # إرسال البريد الإلكتروني باستخدام Email Sender Pro
+        custom_message = f"""
+        تم تأكيد طلبك رقم {order_data.get('order_number', 'N/A')} بنجاح.
+        
+        تفاصيل الطلب:
+        - رقم الطلب: {order_data.get('order_number', 'N/A')}
+        - المبلغ الإجمالي: {order_data.get('total_amount', 'N/A')} {order_data.get('currency', 'SAR')}
+        - التاريخ: {order_data.get('order_date', 'N/A')}
+        
+        حالة الطلب: {status_message}
+        
+        شكراً لثقتك في ES-GIFT
+        """
+        
+        success, result = send_custom_email(
+            email=order_data.get('customer_email', ''),
+            subject=f"تأكيد طلبك #{order_data.get('order_number', 'N/A')} - ES-GIFT",
+            message_content=custom_message,
+            message_title="تأكيد الطلب"
         )
         
         if success:

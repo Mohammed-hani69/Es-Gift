@@ -152,6 +152,92 @@
     </div>
 </section>
 
+<!-- المنتجات الجديدة من OneCard -->
+{% if api_products %}
+<section class="recently-added-section">
+    <h3 class="section-title">المنتجات الجديدة</h3>
+    <div class="onecard-products-container">
+        <div class="onecard-products-wrapper">
+            {% for product in api_products %}
+            <div class="onecard-product-card">
+                <div class="onecard-product-image">
+                    {% if product.image_url and product.image_url != 'default-product.jpg' %}
+                        <img src="{{ product.image_url }}" 
+                             alt="{{ product.name }}" 
+                             loading="lazy"
+                             onerror="this.src='{{ url_for('static', filename='images/default-product.jpg') }}'; this.onerror=null;">
+                    {% else %}
+                        <img src="{{ url_for('static', filename='images/default-product.jpg') }}" 
+                             alt="{{ product.name }}"
+                             loading="lazy">
+                    {% endif %}
+                    {% if product.is_fresh %}
+                    <div class="fresh-badge">
+                        <i class="fas fa-star"></i> جديد
+                    </div>
+                    {% endif %}
+                    {% if not product.stock_status %}
+                    <div class="out-of-stock-overlay">
+                        <i class="fas fa-times-circle"></i>
+                        غير متوفر
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="onecard-product-info">
+                    <h4 class="onecard-product-title">{{ product.name[:25] }}{% if product.name|length > 25 %}...{% endif %}</h4>
+                    <p class="onecard-product-category">{{ product.category }}</p>
+                    <div class="onecard-price-container">
+                        <span class="onecard-price">{{ "%.0f"|format(product.display_price or product.regular_price) }} {{ current_currency }}</span>
+                        <span class="onecard-provider">{{ product.provider.upper() }}</span>
+                    </div>
+                </div>
+                <div class="onecard-product-actions">
+                    {% if current_user.is_authenticated %}
+                        {% if product.stock_status %}
+                            <button class="onecard-btn onecard-btn-cart" 
+                                    onclick="addOnecardToCart('{{ product.id }}', '{{ product.name }}', {{ product.regular_price or 0 }})" 
+                                    title="أضف إلى السلة">
+                                <i class="fas fa-cart-plus"></i>
+                            </button>
+                            <button class="onecard-btn onecard-btn-buy" 
+                                    onclick="buyOnecardNow('{{ product.id }}', '{{ product.name }}', {{ product.regular_price or 0 }})" 
+                                    title="شراء فوري">
+                                <i class="fas fa-bolt"></i>
+                            </button>
+                            <button class="onecard-btn onecard-btn-view" 
+                                    onclick="viewOnecardProductDetails('{{ product.external_product_id or product.id }}')" 
+                                    title="عرض التفاصيل">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        {% else %}
+                            <button class="onecard-btn onecard-btn-unavailable" disabled title="غير متوفر">
+                                <i class="fas fa-times"></i>
+                                غير متوفر
+                            </button>
+                        {% endif %}
+                    {% else %}
+                        <button class="onecard-btn onecard-btn-login" onclick="window.location.href='/login'" title="تسجيل الدخول مطلوب">
+                            <i class="fas fa-user"></i>
+                            تسجيل الدخول
+                        </button>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        </div>
+        <div class="onecard-scroll-nav">
+            <button class="scroll-btn scroll-left" onclick="scrollOnecardProducts('left')">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <button class="scroll-btn scroll-right" onclick="scrollOnecardProducts('right')">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+    </div>
+</section>
+{% endif %}
+
 <!-- تعرف على المزيد -->
 {% if published_articles %}
 <section class="know-more">
@@ -205,6 +291,449 @@
 
 {% block extra_css %}
 <style>
+/* OneCard Products - تصميم محسن ومناسب للموبايل */
+.recently-added-section {
+    padding: 30px 15px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    margin: 20px 0;
+    position: relative;
+}
+
+.recently-added-section .section-title {
+    text-align: center;
+    color: #2c3e50;
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 30px;
+    position: relative;
+}
+
+.recently-added-section .section-title::after {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80px;
+    height: 4px;
+    background: linear-gradient(45deg, #007bff, #0056b3);
+    border-radius: 2px;
+}
+
+.onecard-products-container {
+    position: relative;
+    max-width: 1400px;
+    margin: 0 auto;
+    overflow: hidden;
+}
+
+.onecard-products-wrapper {
+    display: flex;
+    gap: 15px;
+    overflow-x: auto;
+    scroll-behavior: smooth;
+    padding: 10px 5px 20px 5px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    scroll-snap-type: x mandatory;
+}
+
+.onecard-products-wrapper::-webkit-scrollbar {
+    display: none;
+}
+
+.onecard-product-card {
+    flex: 0 0 260px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+    position: relative;
+    min-height: 380px;
+    display: flex;
+    flex-direction: column;
+    scroll-snap-align: start;
+    border: 2px solid transparent;
+}
+
+.onecard-product-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+    border-color: #007bff;
+}
+
+.onecard-product-image {
+    position: relative;
+    height: 180px;
+    overflow: hidden;
+    background: linear-gradient(135deg, #f1f3f4, #e8eaed);
+    border-radius: 20px 20px 0 0;
+}
+
+.onecard-product-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s ease;
+    filter: brightness(1.05) contrast(1.05);
+}
+
+.onecard-product-image:hover img {
+    transform: scale(1.1);
+}
+.fresh-badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: linear-gradient(45deg, #28a745, #20c997);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: bold;
+    z-index: 3;
+    box-shadow: 0 3px 10px rgba(40, 167, 69, 0.4);
+    animation: pulse 2s infinite;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.fresh-badge i {
+    font-size: 10px;
+}
+
+.out-of-stock-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    z-index: 3;
+    font-size: 14px;
+    text-align: center;
+}
+
+.out-of-stock-overlay i {
+    font-size: 24px;
+    margin-bottom: 8px;
+    color: #dc3545;
+}
+
+.onecard-product-info {
+    padding: 18px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.onecard-product-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #2c3e50;
+    margin: 0 0 10px 0;
+    line-height: 1.4;
+    min-height: 40px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.onecard-product-category {
+    font-size: 12px;
+    color: #6c757d;
+    margin: 0 0 15px 0;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.onecard-price-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid #f1f3f4;
+}
+
+.onecard-price {
+    font-size: 16px;
+    font-weight: 700;
+    color: #e74c3c;
+    text-shadow: 0 1px 2px rgba(231, 76, 60, 0.1);
+}
+
+.onecard-provider {
+    background: linear-gradient(45deg, #007bff, #0056b3);
+    color: white;
+    padding: 4px 10px;
+    border-radius: 15px;
+    font-size: 9px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+    animation: pulse 2s infinite;
+}
+
+.out-of-stock-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    z-index: 2;
+}
+
+.onecard-product-info {
+    padding: 15px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.onecard-product-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #2c3e50;
+    margin: 0 0 8px 0;
+    line-height: 1.4;
+    min-height: 44px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.onecard-product-category {
+    font-size: 13px;
+    color: #6c757d;
+    margin: 0 0 15px 0;
+    font-weight: 500;
+}
+
+.onecard-price-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: auto;
+    padding-top: 10px;
+    border-top: 1px solid #eee;
+}
+
+.onecard-price {
+    font-size: 18px;
+    font-weight: 700;
+    color: #e74c3c;
+    text-shadow: 0 1px 2px rgba(231, 76, 60, 0.1);
+}
+
+.onecard-provider {
+    background: linear-gradient(45deg, #007bff, #0056b3);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+}
+
+.onecard-product-actions {
+    padding: 10px 15px 15px 15px;
+    display: flex;
+    gap: 8px;
+    background: #f8f9fa;
+}
+
+.onecard-btn {
+    flex: 1;
+    border: none;
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    min-height: 38px;
+}
+
+.onecard-btn i {
+    font-size: 14px;
+}
+
+.onecard-btn-cart {
+    background: linear-gradient(45deg, #28a745, #20c997);
+    color: white;
+}
+
+.onecard-btn-cart:hover {
+    background: linear-gradient(45deg, #20c997, #17a2b8);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
+.onecard-btn-buy {
+    background: linear-gradient(45deg, #dc3545, #c82333);
+    color: white;
+}
+
+.onecard-btn-buy:hover {
+    background: linear-gradient(45deg, #c82333, #bd2130);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+}
+
+.onecard-btn-view {
+    background: linear-gradient(45deg, #6f42c1, #5a32a3);
+    color: white;
+}
+
+.onecard-btn-view:hover {
+    background: linear-gradient(45deg, #5a32a3, #4e2a8e);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(111, 66, 193, 0.3);
+}
+
+.onecard-btn-unavailable {
+    background: #6c757d;
+    color: white;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.onecard-btn-login {
+    background: linear-gradient(45deg, #007bff, #0056b3);
+    color: white;
+    flex: 1;
+}
+
+.onecard-btn-login:hover {
+    background: linear-gradient(45deg, #0056b3, #004085);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+}
+
+.onecard-scroll-nav {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.scroll-btn {
+    width: 45px;
+    height: 45px;
+    border: none;
+    border-radius: 50%;
+    background: linear-gradient(45deg, #007bff, #0056b3);
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 3px 10px rgba(0, 123, 255, 0.3);
+}
+
+.scroll-btn:hover {
+    background: linear-gradient(45deg, #0056b3, #004085);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 123, 255, 0.4);
+}
+
+.scroll-btn:active {
+    transform: translateY(0);
+}
+
+/* تأثيرات متحركة */
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+/* تصميم للموبايل */
+@media (max-width: 768px) {
+    .recently-added-section {
+        padding: 30px 15px;
+    }
+    
+    .onecard-product-card {
+        flex: 0 0 250px;
+        min-height: 380px;
+    }
+    
+    .onecard-product-image {
+        height: 160px;
+    }
+    
+    .onecard-product-title {
+        font-size: 15px;
+        min-height: 40px;
+    }
+    
+    .onecard-price {
+        font-size: 16px;
+    }
+    
+    .onecard-btn {
+        padding: 8px;
+        font-size: 11px;
+        min-height: 35px;
+    }
+    
+    .scroll-btn {
+        width: 40px;
+        height: 40px;
+    }
+}
+
+@media (max-width: 480px) {
+    .onecard-product-card {
+        flex: 0 0 220px;
+        min-height: 360px;
+    }
+    
+    .onecard-product-image {
+        height: 140px;
+    }
+    
+    .onecard-product-info {
+        padding: 12px;
+    }
+    
+    .onecard-product-actions {
+        padding: 8px 12px 12px 12px;
+        gap: 6px;
+    }
+    
+    .onecard-products-wrapper {
+        gap: 12px;
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+}
+
 /* الأيقونات المتحركة للصفحة الرئيسية */
 .home-page {
     position: relative;
@@ -300,6 +829,355 @@
         transform: translate(0, 0) rotate(0deg);
         opacity: 0;
     }
+    10% {
+        opacity: 0.7;
+    }
+    50% {
+        transform: translate(50vw, 50vh) rotate(180deg);
+        opacity: 0.9;
+    }
+    90% {
+        opacity: 0.7;
+    }
+    100% {
+        transform: translate(100vw, -50px) rotate(360deg);
+        opacity: 0;
+    }
+}
+
+@keyframes floatHorizontal {
+    0% {
+        transform: translateX(-50px) rotate(0deg);
+        opacity: 0;
+    }
+    10% {
+        opacity: 0.7;
+    }
+    50% {
+        transform: translateX(50vw) rotate(180deg);
+        opacity: 0.9;
+    }
+    90% {
+        opacity: 0.7;
+    }
+    100% {
+        transform: translateX(100vw) rotate(360deg);
+        opacity: 0;
+    }
+}
+
+@keyframes floatRotate {
+    0% {
+        transform: translate(0, 0) rotate(0deg) scale(0.5);
+        opacity: 0;
+    }
+    25% {
+        transform: translate(25vw, 25vh) rotate(90deg) scale(1);
+        opacity: 0.8;
+    }
+    50% {
+        transform: translate(50vw, 50vh) rotate(180deg) scale(1.2);
+        opacity: 1;
+    }
+    75% {
+        transform: translate(75vw, 25vh) rotate(270deg) scale(1);
+        opacity: 0.8;
+    }
+    100% {
+        transform: translate(100vw, 0) rotate(360deg) scale(0.5);
+        opacity: 0;
+    }
+}
+
+/* النافذة المنبثقة لتفاصيل المنتج */
+.product-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.3s ease;
+}
+
+.modal-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(5px);
+}
+
+.modal-content {
+    background: white;
+    border-radius: 15px;
+    max-width: 800px;
+    width: 90%;
+    max-height: 80vh;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+    animation: slideUp 0.3s ease;
+}
+
+.modal-header {
+    padding: 20px 25px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: #2c3e50;
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.close-btn {
+    background: #e74c3c;
+    color: white;
+    border: none;
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.close-btn:hover {
+    background: #c0392b;
+    transform: rotate(90deg);
+}
+
+.modal-body {
+    padding: 25px;
+    overflow-y: auto;
+    max-height: calc(80vh - 80px);
+}
+
+.loading-spinner {
+    text-align: center;
+    padding: 40px 20px;
+    color: #6c757d;
+}
+
+.loading-spinner i {
+    font-size: 30px;
+    margin-bottom: 15px;
+    color: #007bff;
+}
+
+.product-details-grid {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 30px;
+    align-items: start;
+}
+
+.product-image-section img {
+    width: 100%;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.product-info-section h4 {
+    font-size: 24px;
+    color: #2c3e50;
+    margin: 0 0 15px 0;
+    font-weight: 600;
+}
+
+.product-description {
+    color: #6c757d;
+    line-height: 1.6;
+    margin-bottom: 20px;
+    font-size: 15px;
+}
+
+.product-meta {
+    margin-bottom: 25px;
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 12px;
+    font-size: 15px;
+}
+
+.meta-item i {
+    width: 20px;
+    color: #007bff;
+    margin-left: 10px;
+}
+
+.meta-item strong {
+    color: #2c3e50;
+    margin-left: 8px;
+    min-width: 60px;
+}
+
+.status.available {
+    color: #28a745;
+    font-weight: bold;
+}
+
+.status.unavailable {
+    color: #dc3545;
+    font-weight: bold;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.modal-btn {
+    flex: 1;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.modal-btn-cart {
+    background: linear-gradient(45deg, #28a745, #20c997);
+    color: white;
+}
+
+.modal-btn-cart:hover {
+    background: linear-gradient(45deg, #20c997, #17a2b8);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+}
+
+.modal-btn-buy {
+    background: linear-gradient(45deg, #dc3545, #c82333);
+    color: white;
+}
+
+.modal-btn-buy:hover {
+    background: linear-gradient(45deg, #c82333, #bd2130);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
+}
+
+.modal-btn-unavailable {
+    background: #6c757d;
+    color: white;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.error-message {
+    text-align: center;
+    padding: 40px 20px;
+    color: #dc3545;
+}
+
+.error-message i {
+    font-size: 40px;
+    margin-bottom: 15px;
+}
+
+.error-details {
+    color: #6c757d;
+    margin-top: 10px;
+    font-size: 14px;
+}
+
+/* تأثيرات الحركة */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* تصميم للموبايل - النافذة المنبثقة */
+@media (max-width: 768px) {
+    .modal-content {
+        width: 95%;
+        max-height: 85vh;
+    }
+    
+    .product-details-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .modal-header {
+        padding: 15px 20px;
+    }
+    
+    .modal-header h3 {
+        font-size: 18px;
+    }
+    
+    .modal-body {
+        padding: 20px;
+    }
+    
+    .modal-actions {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .modal-btn {
+        padding: 14px 20px;
+    }
+}
+
+@media (max-width: 480px) {
+    .modal-content {
+        width: 98%;
+        max-height: 90vh;
+    }
+    
+    .modal-header {
+        padding: 12px 15px;
+    }
+    
+    .modal-body {
+        padding: 15px;
+    }
+    
+    .product-info-section h4 {
+        font-size: 20px;
+    }
+    
+    .meta-item {
+        font-size: 14px;
+    }
+}
     10% {
         opacity: 0.6;
     }
@@ -464,6 +1342,406 @@
     
     .gift-card-info h4 {
         font-size: 11px;
+    }
+}
+
+/* تصميم بطاقات منتجات API */
+.api-product-card {
+    background: #fff;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+    position: relative;
+    min-height: 350px;
+    display: flex;
+    flex-direction: column;
+}
+
+.api-product-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(255, 0, 51, 0.2);
+}
+
+.api-product-image {
+    height: 180px;
+    overflow: hidden;
+    position: relative;
+}
+
+.api-product-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.api-product-card:hover .api-product-image img {
+    transform: scale(1.05);
+}
+
+.fresh-badge, .new-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: linear-gradient(135deg, #ff0033, #ff3366);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+    z-index: 2;
+}
+
+.fresh-badge {
+    background: linear-gradient(135deg, #00b894, #00cec9);
+}
+
+.out-of-stock-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(0,0,0,0.8);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+    z-index: 2;
+}
+
+.product-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.api-product-card:hover .product-overlay {
+    opacity: 1;
+}
+
+.quick-view-btn {
+    background: #fff;
+    border: none;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    color: #ff0033;
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.quick-view-btn:hover {
+    background: #ff0033;
+    color: #fff;
+    transform: scale(1.1);
+}
+
+.api-product-content {
+    padding: 20px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.api-product-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 10px;
+    line-height: 1.4;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.api-product-category {
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+
+.api-product-category i {
+    margin-left: 5px;
+    color: #ff0033;
+}
+
+.api-product-price {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 15px;
+}
+
+.api-product-price .price {
+    font-size: 18px;
+    font-weight: bold;
+    color: #ff0033;
+}
+
+.api-product-price .provider {
+    background: #f8f9fa;
+    color: #666;
+    padding: 4px 8px;
+    border-radius: 15px;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.api-product-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: auto;
+}
+
+.add-to-cart-btn, .buy-now-btn {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 14px;
+}
+
+.add-to-cart-btn {
+    background: #f8f9fa;
+    color: #333;
+    border: 2px solid #dee2e6;
+}
+
+.add-to-cart-btn:hover {
+    background: #e9ecef;
+    border-color: #adb5bd;
+}
+
+.buy-now-btn {
+    background: linear-gradient(135deg, #ff0033, #ff3366);
+    color: white;
+}
+
+.buy-now-btn:hover {
+    background: linear-gradient(135deg, #e6002e, #e62e5c);
+    transform: translateY(-2px);
+}
+
+.out-of-stock-btn {
+    width: 100%;
+    padding: 10px;
+    background: #6c757d;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: not-allowed;
+}
+
+.login-required-btn {
+    width: 100%;
+    padding: 10px;
+    background: #007bff;
+    color: white;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: bold;
+    text-align: center;
+    display: block;
+    transition: all 0.3s ease;
+}
+
+.login-required-btn:hover {
+    background: #0056b3;
+    text-decoration: none;
+    color: white;
+}
+
+/* تصميم النافذة المنبثقة */
+.product-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(5px);
+}
+
+.modal-content {
+    background: white;
+    border-radius: 15px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 80vh;
+    overflow: hidden;
+    position: relative;
+    z-index: 1;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+}
+
+.modal-header {
+    background: linear-gradient(135deg, #ff0033, #ff3366);
+    color: white;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 50%;
+    transition: background 0.3s ease;
+}
+
+.close-btn:hover {
+    background: rgba(255,255,255,0.2);
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+.product-info p {
+    margin: 10px 0;
+    color: #333;
+}
+
+.product-info strong {
+    color: #ff0033;
+}
+
+.modal-footer {
+    padding: 20px;
+    border-top: 1px solid #eee;
+    display: flex;
+    gap: 10px;
+}
+
+.btn-primary, .btn-secondary, .btn-disabled {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #ff0033, #ff3366);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #e6002e, #e62e5c);
+}
+
+.btn-secondary {
+    background: #f8f9fa;
+    color: #333;
+    border: 2px solid #dee2e6;
+}
+
+.btn-secondary:hover {
+    background: #e9ecef;
+}
+
+.btn-disabled {
+    background: #6c757d;
+    color: white;
+    cursor: not-allowed;
+}
+
+/* تصميم زر التحديث */
+.refresh-products-btn {
+    background: none;
+    border: 2px solid #ff0033;
+    color: #ff0033;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 14px;
+}
+
+.refresh-products-btn:hover {
+    background: #ff0033;
+    color: white;
+}
+
+.refresh-products-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* تصميم responsive */
+@media (max-width: 768px) {
+    .api-product-card {
+        min-height: 320px;
+    }
+    
+    .api-product-image {
+        height: 150px;
+    }
+    
+    .api-product-content {
+        padding: 15px;
+    }
+    
+    .api-product-title {
+        font-size: 14px;
+    }
+    
+    .api-product-price .price {
+        font-size: 16px;
+    }
+    
+    .api-product-actions {
+        flex-direction: column;
+    }
+    
+    .modal-content {
+        width: 95%;
+        margin: 20px;
+    }
+    
+    .modal-footer {
+        flex-direction: column;
     }
 }
 
@@ -768,6 +2046,1079 @@
     .articles-swiper-prev i,
     .articles-swiper-next i {
         font-size: 12px;
+    }
+}
+
+/* تصميم سلايدر المنتجات المضافة حديثاً */
+.recently-added, .recently-added-section {
+    padding: 30px 20px;
+    background: #f8f9fa;
+    margin: 30px 0;
+    border-radius: 10px;
+    border: 1px solid #e9ecef;
+}
+
+.recently-added .section-title, .recently-added-section .section-title {
+    color: #333;
+    text-align: center;
+    margin-bottom: 30px;
+    font-size: 24px;
+    font-weight: 600;
+}
+
+.recently-added-swiper {
+    overflow: hidden;
+    padding: 10px 0;
+}
+
+/* تصميم منتجات OneCard ليتطابق مع باقي الصفحة */
+.onecard-product {
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    border-radius: 15px;
+}
+
+.onecard-product:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+.onecard-product img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.onecard-product:hover img {
+    transform: scale(1.05);
+}
+
+.fresh-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+    z-index: 2;
+    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+}
+
+.out-of-stock-overlay {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(220, 53, 69, 0.9);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+    z-index: 2;
+}
+
+.onecard-bottom-text {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0.7));
+    color: white;
+    padding: 20px;
+    backdrop-filter: blur(5px);
+}
+
+.onecard-bottom-text h4 {
+    color: white;
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0 0 5px 0;
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.onecard-bottom-text p {
+    color: #ccc;
+    font-size: 12px;
+    margin: 0 0 8px 0;
+}
+
+.onecard-price-box {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.onecard-price-box .price {
+    color: #ff0033;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.onecard-price-box .provider {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 500;
+}
+
+.onecard-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.cart-action-btn, .quick-buy-btn {
+    flex: 1;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+.cart-action-btn {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.cart-action-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+}
+
+.quick-buy-btn {
+    background: linear-gradient(135deg, #ff0033, #ff3366);
+    color: white;
+}
+
+.quick-buy-btn:hover {
+    background: linear-gradient(135deg, #e6002e, #e62e5c);
+    transform: translateY(-2px);
+}
+
+.unavailable-btn {
+    width: 100%;
+    background: rgba(108, 117, 125, 0.7);
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: not-allowed;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+.auth-required-btn {
+    width: 100%;
+    background: rgba(0, 123, 255, 0.8);
+    color: white;
+    text-decoration: none;
+    padding: 8px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    transition: all 0.3s ease;
+}
+
+.auth-required-btn:hover {
+    background: rgba(0, 123, 255, 1);
+    color: white;
+    text-decoration: none;
+}
+
+.api-product-card {
+    background: #fff;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #ddd;
+    height: 300px;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.3s ease;
+}
+
+.api-product-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+}
+
+.api-product-image {
+    position: relative;
+    width: 100%;
+    height: 160px;
+    overflow: hidden;
+}
+
+.api-product-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.new-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: #dc3545;
+    color: white;
+    padding: 3px 6px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.out-of-stock-badge {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    background: #6c757d;
+    color: white;
+    padding: 3px 6px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.api-product-content {
+    padding: 12px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.api-product-title {
+    color: #333;
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0 0 5px 0;
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.api-product-category {
+    color: #666;
+    font-size: 11px;
+    margin: 0 0 8px 0;
+}
+
+.api-product-price {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.api-product-price .price {
+    color: #dc3545;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.api-product-price .provider {
+    background: #e9ecef;
+    color: #666;
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-size: 9px;
+    font-weight: 500;
+}
+
+.api-product-actions {
+    margin-top: auto;
+}
+
+.add-to-cart-btn {
+    width: 100%;
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 5px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+.add-to-cart-btn:hover {
+    background: #c82333;
+}
+
+.buy-now-btn {
+    width: 100%;
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 5px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    margin-top: 5px;
+}
+
+.buy-now-btn:hover {
+    background: #218838;
+}
+
+.out-of-stock-btn {
+    width: 100%;
+    background: #6c757d;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 5px;
+    font-size: 12px;
+    cursor: not-allowed;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+.login-required-btn {
+    width: 100%;
+    background: #007bff;
+    color: white;
+    text-decoration: none;
+    padding: 8px 12px;
+    border-radius: 5px;
+    font-size: 12px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    transition: all 0.3s ease;
+}
+
+.login-required-btn:hover {
+    background: #0056b3;
+    color: white;
+    text-decoration: none;
+}
+
+/* تحسينات للشاشات الصغيرة */
+@media (max-width: 768px) {
+    .recently-added {
+        padding: 20px 15px;
+        margin: 20px 0;
+    }
+    
+    .api-product-card {
+        height: 280px;
+    }
+    
+    .api-product-image {
+        height: 140px;
+    }
+}
+    
+    .recently-added .section-header {
+        flex-direction: column;
+        gap: 15px;
+        align-items: stretch;
+    }
+    
+    .recently-added .section-title {
+        font-size: 22px;
+        justify-content: center;
+    }
+    
+    .refresh-products-btn {
+        padding: 8px 12px;
+        font-size: 12px;
+        align-self: center;
+    }
+    
+    .api-product-card {
+        height: 350px;
+    }
+    
+    .api-product-image {
+        height: 160px;
+    }
+    
+    .api-product-title {
+        font-size: 14px;
+    }
+    
+    .api-product-price .price {
+        font-size: 16px;
+    }
+    
+    .add-to-cart-btn,
+    .out-of-stock-btn {
+        padding: 8px 12px;
+        font-size: 12px;
+    }
+    
+    .recently-next,
+    .recently-prev {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .recently-next::after,
+    .recently-prev::after {
+        font-size: 14px;
+    }
+}
+
+@media (max-width: 480px) {
+    .recently-added {
+        padding: 15px 10px;
+        margin: 15px 0;
+        border-radius: 10px;
+    }
+    
+    .recently-added .section-title {
+        font-size: 18px;
+    }
+    
+    .refresh-products-btn {
+        padding: 6px 10px;
+        font-size: 11px;
+    }
+    
+    .api-product-card {
+        height: 320px;
+    }
+    
+    .api-product-image {
+        height: 140px;
+    }
+    
+    .api-product-content {
+        padding: 12px;
+    }
+    
+    .api-product-title {
+        font-size: 13px;
+    }
+    
+    .api-product-category {
+        font-size: 11px;
+    }
+    
+    .api-product-price .price {
+        font-size: 14px;
+    }
+    
+    .add-to-cart-btn,
+    .out-of-stock-btn {
+        padding: 6px 10px;
+        font-size: 11px;
+    }
+    
+    .quick-view-btn {
+        width: 40px;
+        height: 40px;
+        font-size: 14px;
+    }
+    
+    .recently-next,
+    .recently-prev {
+        width: 35px;
+        height: 35px;
+        display: none; /* إخفاء الأسهم في الشاشات الصغيرة جداً */
+    }
+    
+    .more-btn {
+        padding: 10px 16px;
+        font-size: 12px;
+    }
+}
+
+/* تصميم النافذة المنبثقة لتفاصيل المنتجات */
+.product-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.modal-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(5px);
+}
+
+.modal-content {
+    position: relative;
+    background: linear-gradient(145deg, #222, #333);
+    border-radius: 15px;
+    max-width: 600px;
+    width: 100%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+    border: 2px solid #444;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 2px solid #444;
+    background: linear-gradient(135deg, #ff0033, #cc0027);
+}
+
+.modal-header h3 {
+    color: white;
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 50%;
+    width: 35px;
+    height: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.close-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.1);
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+.loading-spinner {
+    text-align: center;
+    padding: 40px 20px;
+    color: #ccc;
+}
+
+.loading-spinner i {
+    font-size: 30px;
+    color: #ff0033;
+    margin-bottom: 15px;
+}
+
+.loading-spinner p {
+    margin: 0;
+    font-size: 14px;
+}
+
+.product-details {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+}
+
+.product-image {
+    flex-shrink: 0;
+    width: 150px;
+    height: 150px;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #444;
+}
+
+.product-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.product-info {
+    flex: 1;
+}
+
+.product-info h4 {
+    color: #fff;
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0 0 10px 0;
+    line-height: 1.3;
+}
+
+.product-description {
+    color: #ccc;
+    font-size: 14px;
+    line-height: 1.5;
+    margin: 0 0 20px 0;
+}
+
+.product-meta {
+    margin-bottom: 20px;
+}
+
+.meta-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #444;
+    font-size: 14px;
+}
+
+.meta-item:last-child {
+    border-bottom: none;
+}
+
+.meta-item strong {
+    color: #fff;
+}
+
+.meta-item span {
+    color: #ccc;
+}
+
+.status.available {
+    color: #28a745;
+    font-weight: 600;
+}
+
+.status.unavailable {
+    color: #dc3545;
+    font-weight: 600;
+}
+
+.modal-add-to-cart {
+    width: 100%;
+    background: linear-gradient(135deg, #ff0033 0%, #cc0027 100%);
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-family: 'Cairo', sans-serif;
+}
+
+.modal-add-to-cart:hover {
+    background: linear-gradient(135deg, #ff1a4a 0%, #d9003d 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(255, 0, 51, 0.4);
+}
+
+.modal-out-of-stock {
+    width: 100%;
+    background: #666;
+    color: #ccc;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: not-allowed;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-family: 'Cairo', sans-serif;
+}
+
+.error-message {
+    text-align: center;
+    padding: 40px 20px;
+    color: #dc3545;
+}
+
+.error-message i {
+    font-size: 30px;
+    margin-bottom: 15px;
+}
+
+.error-message p {
+    margin: 5px 0;
+    font-size: 14px;
+}
+
+.error-details {
+    color: #999 !important;
+    font-size: 12px !important;
+}
+
+/* تحسينات للشاشات الصغيرة للنافذة المنبثقة */
+@media (max-width: 768px) {
+    .product-modal {
+        padding: 10px;
+    }
+    
+    .modal-content {
+        max-height: 90vh;
+    }
+    
+    .modal-header {
+        padding: 15px;
+    }
+    
+    .modal-header h3 {
+        font-size: 16px;
+    }
+    
+    .modal-body {
+        padding: 15px;
+    }
+    
+    .product-details {
+        flex-direction: column;
+        text-align: center;
+        gap: 15px;
+    }
+    
+    .product-image {
+        width: 120px;
+        height: 120px;
+        margin: 0 auto;
+    }
+    
+    .product-info h4 {
+        font-size: 18px;
+    }
+    
+    .meta-item {
+        flex-direction: column;
+        gap: 5px;
+        text-align: center;
+    }
+}
+
+/* تحسينات responsive للمنتجات الجديدة من OneCard */
+@media (max-width: 768px) {
+    .recently-added-section {
+        padding: 20px 15px;
+        margin: 20px 0;
+    }
+    
+    .recently-added-section .section-title {
+        font-size: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .onecard-product img {
+        height: 150px;
+    }
+    
+    .onecard-bottom-text {
+        padding: 15px;
+    }
+    
+    .onecard-bottom-text h4 {
+        font-size: 14px;
+    }
+    
+    .onecard-price-box .price {
+        font-size: 14px;
+    }
+    
+    .cart-action-btn, .quick-buy-btn {
+        padding: 6px 8px;
+        font-size: 11px;
+    }
+}
+
+@media (max-width: 480px) {
+    .recently-added-section {
+        padding: 15px 10px;
+        margin: 15px 0;
+    }
+    
+    .recently-added-section .section-title {
+        font-size: 18px;
+    }
+    
+    .onecard-product img {
+        height: 120px;
+    }
+    
+    .onecard-bottom-text {
+        padding: 12px;
+    }
+    
+    .onecard-bottom-text h4 {
+        font-size: 13px;
+    }
+    
+    .onecard-bottom-text p {
+        font-size: 11px;
+    }
+    
+    .onecard-price-box .price {
+        font-size: 13px;
+    }
+    
+    .onecard-price-box .provider {
+        font-size: 9px;
+    }
+    
+    .onecard-actions {
+        flex-direction: column;
+        gap: 4px;
+    }
+    
+    .cart-action-btn, .quick-buy-btn, .unavailable-btn, .auth-required-btn {
+        padding: 6px 8px;
+        font-size: 10px;
+    }
+    
+    .fresh-badge, .out-of-stock-overlay {
+        font-size: 10px;
+        padding: 4px 8px;
+    }
+}
+
+@media (max-width: 480px) {
+    .product-modal {
+        padding: 5px;
+    }
+    
+    .modal-header {
+        padding: 12px;
+    }
+    
+    .modal-header h3 {
+        font-size: 14px;
+    }
+    
+    .close-btn {
+        width: 30px;
+        height: 30px;
+        font-size: 16px;
+    }
+    
+    .modal-body {
+        padding: 12px;
+    }
+    
+    .product-image {
+        width: 100px;
+        height: 100px;
+    }
+    
+    .product-info h4 {
+        font-size: 16px;
+    }
+    
+    .product-description {
+        font-size: 13px;
+    }
+    
+    .meta-item {
+        font-size: 12px;
+    }
+    
+    .modal-add-to-cart,
+    .modal-out-of-stock {
+        padding: 10px 15px;
+        font-size: 12px;
+    }
+}
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.api-product-price .price {
+    color: #ff0033;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.api-product-price .provider {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ccc;
+    padding: 2px 6px;
+    border-radius: 8px;
+    font-size: 10px;
+    font-weight: 500;
+}
+
+.api-product-actions {
+    margin-top: auto;
+}
+
+.add-to-cart-btn {
+    width: 100%;
+    background: linear-gradient(135deg, #ff0033 0%, #cc0027 100%);
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-family: 'Cairo', sans-serif;
+}
+
+.add-to-cart-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(255, 0, 51, 0.4);
+    background: linear-gradient(135deg, #ff1a4a 0%, #d9003d 100%);
+}
+
+.out-of-stock-btn {
+    width: 100%;
+    background: #666;
+    color: #ccc;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: not-allowed;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-family: 'Cairo', sans-serif;
+}
+
+/* تحسينات للشاشات الصغيرة للمنتجات المضافة حديثاً */
+@media (max-width: 768px) {
+    .recently-added {
+        padding: 20px 15px;
+        margin: 20px 0;
+    }
+    
+    .recently-added .section-title {
+        font-size: 22px;
+        margin-bottom: 20px;
+    }
+    
+    .api-product-card {
+        height: 320px;
+    }
+    
+    .api-product-image {
+        height: 150px;
+    }
+    
+    .api-product-title {
+        font-size: 14px;
+    }
+    
+    .api-product-price .price {
+        font-size: 16px;
+    }
+    
+    .add-to-cart-btn,
+    .out-of-stock-btn {
+        padding: 8px 12px;
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .recently-added {
+        padding: 15px 10px;
+        margin: 15px 0;
+    }
+    
+    .recently-added .section-title {
+        font-size: 18px;
+    }
+    
+    .api-product-card {
+        height: 280px;
+    }
+    
+    .api-product-image {
+        height: 120px;
+    }
+    
+    .api-product-content {
+        padding: 12px;
+    }
+    
+    .api-product-title {
+        font-size: 13px;
+    }
+    
+    .api-product-category {
+        font-size: 11px;
+    }
+    
+    .api-product-price .price {
+        font-size: 14px;
+    }
+    
+    .api-product-price .provider {
+        font-size: 9px;
+    }
+    
+    .new-badge,
+    .out-of-stock-badge {
+        font-size: 10px;
+        padding: 3px 6px;
     }
 }
 
@@ -1108,7 +3459,523 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
+    
+    // تهيئة سلايدر المنتجات المضافة حديثاً
+    const recentlyAddedSwiper = new Swiper('.recently-added-swiper', {
+        slidesPerView: 1,
+        spaceBetween: 20,
+        loop: true,
+        autoplay: {
+            delay: 5000,
+            disableOnInteraction: false,
+        },
+        breakpoints: {
+            480: {
+                slidesPerView: 2,
+                spaceBetween: 15,
+            },
+            768: {
+                slidesPerView: 3,
+                spaceBetween: 20,
+            },
+            1024: {
+                slidesPerView: 4,
+                spaceBetween: 25,
+            }
+        }
+    });
+        }
+    });
 });
+
+// إضافة منتج من API للسلة مع دعم المنتجات المحدثة
+function addApiProductToCart(productId, isFresh = false) {
+    {% if current_user.is_authenticated %}
+    
+    // إضافة تأثير تحميل على الزر
+    const button = event.target.closest('button');
+    const originalHTML = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإضافة...';
+    button.disabled = true;
+    
+    fetch('/add-to-cart', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            product_id: productId,
+            quantity: 1,
+            is_api_product: true,
+            is_fresh_product: isFresh
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('تمت إضافة المنتج إلى السلة بنجاح ✅', 'success');
+            // تحديث عداد السلة بالعدد المُرسل من الخادم
+            if (typeof updateCartCount === 'function' && data.cart_count !== undefined) {
+                updateCartCount(data.cart_count);
+            }
+            
+            // تأثير نجاح على الزر
+            button.innerHTML = '<i class="fas fa-check"></i> تمت الإضافة';
+            button.style.background = 'linear-gradient(135deg, #28a745, #20943e)';
+            
+            setTimeout(() => {
+                button.innerHTML = originalHTML;
+                button.style.background = '';
+                button.disabled = false;
+            }, 2000);
+            
+        } else {
+            showNotification(data.message || 'حدث خطأ، يرجى المحاولة مرة أخرى', 'error');
+            button.innerHTML = originalHTML;
+            button.disabled = false;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('حدث خطأ في الاتصال، يرجى المحاولة مرة أخرى', 'error');
+        button.innerHTML = originalHTML;
+        button.disabled = false;
+    });
+    {% else %}
+    showNotification('يجب تسجيل الدخول أولاً', 'warning');
+    // التأكد من وجود النافذة المنبثقة قبل عرضها
+    if (typeof showLoginForm === 'function') {
+        showLoginForm();
+    } else {
+        // إعادة توجيه لصفحة تسجيل الدخول إذا لم تكن النافذة متاحة
+        window.location.href = '{{ url_for("main.login") }}';
+    }
+    {% endif %}
+}
+
+// تحديث المنتجات الحديثة من API
+function refreshRecentProducts() {
+    const button = event.target.closest('button');
+    const originalHTML = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري التحديث...';
+    button.disabled = true;
+    
+    fetch('/refresh-api-products', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('تم تحديث المنتجات بنجاح ✅', 'success');
+            // إعادة تحميل الصفحة لعرض المنتجات المحدثة
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
+        } else {
+            showNotification(data.message || 'فشل في التحديث', 'error');
+            button.innerHTML = originalHTML;
+            button.disabled = false;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('حدث خطأ في التحديث', 'error');
+        button.innerHTML = originalHTML;
+        button.disabled = false;
+    });
+}
+
+// عرض تفاصيل المنتج
+function viewProductDetails(externalProductId) {
+    // إنشاء نافذة منبثقة لعرض تفاصيل المنتج
+    const modal = document.createElement('div');
+    modal.className = 'product-modal';
+    modal.innerHTML = `
+        <div class="modal-backdrop" onclick="closeProductModal()"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>جاري تحميل تفاصيل المنتج...</h3>
+                <button class="close-btn" onclick="closeProductModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="loading-spinner">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>جاري جلب التفاصيل من OneCard...</p>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // جلب تفاصيل المنتج من API
+    fetch(`/api-product-details/${externalProductId}`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const product = data.product;
+            modal.querySelector('.modal-header h3').textContent = product.name || 'تفاصيل المنتج';
+            modal.querySelector('.modal-body').innerHTML = `
+                <div class="product-details">
+                    <div class="product-image">
+                        <img src="/static/images/default-product.jpg" alt="${product.name}" />
+                    </div>
+                    <div class="product-info">
+                        <h4>${product.name}</h4>
+                        <p class="product-description">${product.description || 'لا يوجد وصف متاح'}</p>
+                        <div class="product-meta">
+                            <div class="meta-item">
+                                <strong>الفئة:</strong> ${product.category || 'غير محدد'}
+                            </div>
+                            <div class="meta-item">
+                                <strong>السعر:</strong> ${product.price} ${product.currency || 'SAR'}
+                            </div>
+                            <div class="meta-item">
+                                <strong>الحالة:</strong> 
+                                <span class="status ${product.stock_status ? 'available' : 'unavailable'}">
+                                    ${product.stock_status ? 'متوفر' : 'غير متوفر'}
+                                </span>
+                            </div>
+                            <div class="meta-item">
+                                <strong>المزود:</strong> ${product.provider || 'OneCard'}
+                            </div>
+                        </div>
+                        ${product.stock_status ? `
+                            <button class="modal-add-to-cart" onclick="addApiProductToCart('${externalProductId}', false)">
+                                <i class="fas fa-cart-plus"></i> أضف إلى السلة
+                            </button>
+                        ` : `
+                            <button class="modal-out-of-stock" disabled>
+                                <i class="fas fa-times"></i> غير متوفر
+                            </button>
+                        `}
+                    </div>
+                </div>
+            `;
+        } else {
+            modal.querySelector('.modal-body').innerHTML = `
+                <div class="error-message">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <p>فشل في جلب تفاصيل المنتج</p>
+                    <p class="error-details">${data.message}</p>
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        modal.querySelector('.modal-body').innerHTML = `
+            <div class="error-message">
+                <i class="fas fa-exclamation-triangle"></i>
+                <p>حدث خطأ في الاتصال</p>
+                <p class="error-details">يرجى المحاولة مرة أخرى</p>
+            </div>
+        `;
+    });
+}
+
+// إضافة منتج API للسلة
+function addApiProductToCart(productId, productName, productPrice) {
+    {% if current_user.is_authenticated %}
+    fetch('/add-to-cart', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            product_id: productId,
+            quantity: 1,
+            is_api_product: true
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(`تمت إضافة "${productName}" إلى السلة`, 'success');
+            // تحديث عداد السلة
+            if (typeof updateCartCount === 'function' && data.cart_count !== undefined) {
+                updateCartCount(data.cart_count);
+            }
+        } else {
+            showNotification(data.message || 'حدث خطأ، يرجى المحاولة مرة أخرى', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('حدث خطأ، يرجى المحاولة مرة أخرى', 'error');
+    });
+    {% else %}
+    showNotification('يجب تسجيل الدخول أولاً', 'warning');
+    window.location.href = '{{ url_for("main.login") }}';
+    {% endif %}
+}
+
+// شراء منتج API فوري
+function buyApiProductNow(productId, productName, productPrice) {
+    {% if current_user.is_authenticated %}
+    if (confirm(`هل تريد شراء "${productName}" بسعر ${productPrice} ريال؟`)) {
+        const button = event.target.closest('button');
+        const originalText = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الشراء...';
+        button.disabled = true;
+        
+        fetch('/purchase-api-product', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                api_product_id: productId,
+                quantity: 1
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification(`تم شراء "${productName}" بنجاح! تحقق من بريدك الإلكتروني للحصول على الأكواد`, 'success');
+                // إعادة توجيه لصفحة الطلبات
+                setTimeout(() => {
+                    window.location.href = '/my-orders';
+                }, 2000);
+            } else {
+                showNotification(data.message || 'فشل في الشراء، يرجى المحاولة مرة أخرى', 'error');
+                button.innerHTML = originalText;
+                button.disabled = false;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('حدث خطأ، يرجى المحاولة مرة أخرى', 'error');
+            button.innerHTML = originalText;
+            button.disabled = false;
+        });
+    }
+    {% else %}
+    showNotification('يجب تسجيل الدخول أولاً', 'warning');
+    window.location.href = '{{ url_for("main.login") }}';
+    {% endif %}
+}
+
+// Functions للمنتجات الجديدة من OneCard
+function viewOnecardProductDetails(externalProductId) {
+    {% if current_user.is_authenticated %}
+    fetch(`/api-product-details/${externalProductId}`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showProductModal(data.product);
+        } else {
+            showNotification('فشل في جلب تفاصيل المنتج', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('حدث خطأ، يرجى المحاولة مرة أخرى', 'error');
+    });
+    {% else %}
+    showNotification('يجب تسجيل الدخول أولاً', 'warning');
+    window.location.href = '{{ url_for("main.login") }}';
+    {% endif %}
+}
+
+function addOnecardToCart(productId, productName, productPrice) {
+    {% if current_user.is_authenticated %}
+    const button = event.target.closest('button');
+    const originalText = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإضافة...';
+    button.disabled = true;
+    
+    fetch('/add-to-cart', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            product_id: productId,
+            quantity: 1,
+            is_api_product: true
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(`تم إضافة "${productName}" إلى السلة`, 'success');
+            if (typeof updateCartCount === 'function' && data.cart_count !== undefined) {
+                updateCartCount(data.cart_count);
+            }
+        } else {
+            showNotification(data.message || 'فشل في إضافة المنتج للسلة', 'error');
+        }
+        button.innerHTML = originalText;
+        button.disabled = false;
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('حدث خطأ، يرجى المحاولة مرة أخرى', 'error');
+        button.innerHTML = originalText;
+        button.disabled = false;
+    });
+    {% else %}
+    showNotification('يجب تسجيل الدخول أولاً', 'warning');
+    window.location.href = '{{ url_for("main.login") }}';
+    {% endif %}
+}
+
+function buyOnecardNow(productId, productName, productPrice) {
+    {% if current_user.is_authenticated %}
+    if (confirm(`هل تريد شراء "${productName}" بسعر ${productPrice} ريال؟`)) {
+        const button = event.target.closest('button');
+        const originalText = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الشراء...';
+        button.disabled = true;
+        
+        fetch('/purchase-api-product', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                api_product_id: productId,
+                quantity: 1
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification(`تم شراء "${productName}" بنجاح! تحقق من بريدك الإلكتروني للحصول على الأكواد`, 'success');
+                setTimeout(() => {
+                    window.location.href = '/my-orders';
+                }, 2000);
+            } else {
+                showNotification(data.message || 'فشل في الشراء، يرجى المحاولة مرة أخرى', 'error');
+                button.innerHTML = originalText;
+                button.disabled = false;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('حدث خطأ، يرجى المحاولة مرة أخرى', 'error');
+            button.innerHTML = originalText;
+            button.disabled = false;
+        });
+    }
+    {% else %}
+    showNotification('يجب تسجيل الدخول أولاً', 'warning');
+    window.location.href = '{{ url_for("main.login") }}';
+    {% endif %}
+}
+
+// عرض تفاصيل منتج API
+function viewProductDetails(externalProductId) {
+    {% if current_user.is_authenticated %}
+    fetch(`/api-product-details/${externalProductId}`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showProductModal(data.product);
+        } else {
+            showNotification('فشل في جلب تفاصيل المنتج', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('حدث خطأ، يرجى المحاولة مرة أخرى', 'error');
+    });
+    {% else %}
+    showNotification('يجب تسجيل الدخول أولاً', 'warning');
+    {% endif %}
+}
+
+// عرض نافذة منبثقة لتفاصيل المنتج
+function showProductModal(product) {
+    const modal = document.createElement('div');
+    modal.className = 'product-modal';
+    modal.innerHTML = `
+        <div class="modal-overlay" onclick="closeProductModal()"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>${product.name}</h3>
+                <button class="close-btn" onclick="closeProductModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="product-info">
+                    <p><strong>السعر:</strong> ${product.price} ${product.currency}</p>
+                    <p><strong>الفئة:</strong> ${product.category || 'غير محدد'}</p>
+                    <p><strong>الحالة:</strong> ${product.stock_status ? 'متوفر' : 'غير متوفر'}</p>
+                    ${product.description ? `<p><strong>الوصف:</strong> ${product.description}</p>` : ''}
+                </div>
+            </div>
+            <div class="modal-footer">
+                ${product.stock_status ? `
+                    <button class="btn-primary" onclick="buyApiProductNow('${product.id}', '${product.name}', ${product.price})">
+                        <i class="fas fa-bolt"></i> شراء فوري
+                    </button>
+                    <button class="btn-secondary" onclick="addApiProductToCart('${product.id}', '${product.name}', ${product.price})">
+                        <i class="fas fa-cart-plus"></i> أضف للسلة
+                    </button>
+                ` : `
+                    <button class="btn-disabled" disabled>غير متوفر</button>
+                `}
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+// تحديث منتجات API
+function refreshRecentProducts() {
+    const button = document.querySelector('.refresh-products-btn');
+    const originalHtml = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري التحديث...';
+    button.disabled = true;
+    
+    fetch('/refresh-api-products', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('تم تحديث المنتجات بنجاح', 'success');
+            // إعادة تحميل الصفحة لعرض المنتجات المحدثة
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            showNotification(data.message || 'فشل في تحديث المنتجات', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('حدث خطأ في التحديث', 'error');
+    })
+    .finally(() => {
+        button.innerHTML = originalHtml;
+        button.disabled = false;
+    });
+}
+
+// إغلاق نافذة تفاصيل المنتج
+function closeProductModal() {
+    const modal = document.querySelector('.product-modal');
+    if (modal) {
+        modal.remove();
+    }
+}
 
 // إضافة منتج للسلة
 function addToCart(productId) {
@@ -1167,6 +4034,285 @@ function showNotification(message, type) {
 function updateCartCount() {
     // لا حاجة لطلبات إضافية - العدد يتم تحديثه من خلال استجابة addToCart
     console.log('Cart count updated from server response');
+}
+
+// وظائف OneCard الجديدة
+function scrollOnecardProducts(direction) {
+    const wrapper = document.querySelector('.onecard-products-wrapper');
+    if (!wrapper) return;
+    
+    const scrollAmount = 300;
+    const currentScroll = wrapper.scrollLeft;
+    
+    if (direction === 'left') {
+        wrapper.scrollTo({
+            left: currentScroll - scrollAmount,
+            behavior: 'smooth'
+        });
+    } else {
+        wrapper.scrollTo({
+            left: currentScroll + scrollAmount,
+            behavior: 'smooth'
+        });
+    }
+}
+
+// إضافة منتج OneCard للسلة
+function addOnecardToCart(productId, productName, productPrice) {
+    {% if current_user.is_authenticated %}
+    const button = event.target.closest('button');
+    const originalHTML = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    button.disabled = true;
+    
+    fetch('/add-to-cart', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            product_id: productId,
+            quantity: 1,
+            is_api_product: true
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(`تمت إضافة ${productName} إلى السلة ✅`, 'success');
+            // تحديث عداد السلة
+            if (typeof updateCartCount === 'function' && data.cart_count !== undefined) {
+                updateCartCount(data.cart_count);
+            }
+        } else {
+            showNotification(data.message || 'حدث خطأ في الإضافة', 'error');
+        }
+        button.innerHTML = originalHTML;
+        button.disabled = false;
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('حدث خطأ، يرجى المحاولة مرة أخرى', 'error');
+        button.innerHTML = originalHTML;
+        button.disabled = false;
+    });
+    {% else %}
+    showNotification('يجب تسجيل الدخول أولاً', 'warning');
+    setTimeout(() => {
+        window.location.href = '/login';
+    }, 1500);
+    {% endif %}
+}
+
+// شراء منتج OneCard فوري
+function buyOnecardNow(productId, productName, productPrice) {
+    {% if current_user.is_authenticated %}
+    if (!confirm(`هل أنت متأكد من شراء ${productName} بسعر ${productPrice} SAR؟`)) {
+        return;
+    }
+    
+    const button = event.target.closest('button');
+    const originalHTML = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    button.disabled = true;
+    
+    fetch('/purchase-api-product', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            external_product_id: productId,
+            product_name: productName,
+            product_price: productPrice
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(`تم شراء ${productName} بنجاح! 🎉`, 'success');
+            showNotification('تحقق من البريد الإلكتروني للحصول على الأكواد 📧', 'info');
+        } else {
+            showNotification(data.message || 'فشل في الشراء', 'error');
+        }
+        button.innerHTML = originalHTML;
+        button.disabled = false;
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('حدث خطأ في الشراء', 'error');
+        button.innerHTML = originalHTML;
+        button.disabled = false;
+    });
+    {% else %}
+    showNotification('يجب تسجيل الدخول أولاً', 'warning');
+    setTimeout(() => {
+        window.location.href = '/login';
+    }, 1500);
+    {% endif %}
+}
+
+// عرض تفاصيل منتج OneCard
+function viewOnecardProductDetails(externalProductId) {
+    // إنشاء نافذة منبثقة
+    const modal = document.createElement('div');
+    modal.className = 'product-modal';
+    modal.innerHTML = `
+        <div class="modal-backdrop" onclick="closeProductModal()"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-box"></i> تفاصيل المنتج</h3>
+                <button class="close-btn" onclick="closeProductModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="loading-spinner">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>جاري تحميل التفاصيل...</p>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    document.body.style.overflow = 'hidden';
+    
+    // جلب التفاصيل من API
+    fetch(`/api-product-details/${externalProductId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const product = data.data;
+                modal.querySelector('.modal-body').innerHTML = `
+                    <div class="product-details-grid">
+                        <div class="product-image-section">
+                            <img src="${product.image_url || '/static/images/default-product.jpg'}" 
+                                 alt="${product.name}" 
+                                 onerror="this.src='/static/images/default-product.jpg'">
+                        </div>
+                        <div class="product-info-section">
+                            <h4>${product.name}</h4>
+                            <p class="product-description">${product.description || 'لا يوجد وصف متاح'}</p>
+                            <div class="product-meta">
+                                <div class="meta-item">
+                                    <i class="fas fa-tag"></i>
+                                    <strong>الفئة:</strong> ${product.category || 'غير محدد'}
+                                </div>
+                                <div class="meta-item">
+                                    <i class="fas fa-money-bill-wave"></i>
+                                    <strong>السعر:</strong> ${product.price} ${product.currency || 'SAR'}
+                                </div>
+                                <div class="meta-item">
+                                    <i class="fas fa-check-circle"></i>
+                                    <strong>الحالة:</strong> 
+                                    <span class="status ${product.stock_status ? 'available' : 'unavailable'}">
+                                        ${product.stock_status ? 'متوفر' : 'غير متوفر'}
+                                    </span>
+                                </div>
+                                <div class="meta-item">
+                                    <i class="fas fa-store"></i>
+                                    <strong>المزود:</strong> ${product.provider || 'OneCard'}
+                                </div>
+                            </div>
+                            ${product.stock_status ? `
+                                <div class="modal-actions">
+                                    <button class="modal-btn modal-btn-cart" onclick="addOnecardToCart('${product.id}', '${product.name}', ${product.price})">
+                                        <i class="fas fa-cart-plus"></i> أضف إلى السلة
+                                    </button>
+                                    <button class="modal-btn modal-btn-buy" onclick="buyOnecardNow('${product.external_product_id}', '${product.name}', ${product.price})">
+                                        <i class="fas fa-bolt"></i> شراء فوري
+                                    </button>
+                                </div>
+                            ` : `
+                                <div class="modal-actions">
+                                    <button class="modal-btn modal-btn-unavailable" disabled>
+                                        <i class="fas fa-times"></i> غير متوفر
+                                    </button>
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                `;
+            } else {
+                modal.querySelector('.modal-body').innerHTML = `
+                    <div class="error-message">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <p>حدث خطأ في تحميل تفاصيل المنتج</p>
+                        <p class="error-details">${data.message || 'خطأ غير معروف'}</p>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            modal.querySelector('.modal-body').innerHTML = `
+                <div class="error-message">
+                    <i class="fas fa-wifi"></i>
+                    <p>خطأ في الاتصال</p>
+                    <p class="error-details">تحقق من اتصال الإنترنت وحاول مرة أخرى</p>
+                </div>
+            `;
+        });
+}
+
+// إغلاق النافذة المنبثقة
+function closeProductModal() {
+    const modal = document.querySelector('.product-modal');
+    if (modal) {
+        modal.remove();
+        document.body.style.overflow = '';
+    }
+}
+
+// إضافة تأثيرات touch للموبايل
+document.addEventListener('DOMContentLoaded', function() {
+    const wrapper = document.querySelector('.onecard-products-wrapper');
+    if (wrapper && 'ontouchstart' in window) {
+        let isScrolling = false;
+        let startX;
+        let scrollLeft;
+        
+        wrapper.addEventListener('touchstart', e => {
+            isScrolling = true;
+            startX = e.touches[0].pageX - wrapper.offsetLeft;
+            scrollLeft = wrapper.scrollLeft;
+        });
+        
+        wrapper.addEventListener('touchmove', e => {
+            if (!isScrolling) return;
+            e.preventDefault();
+            const x = e.touches[0].pageX - wrapper.offsetLeft;
+            const walk = (x - startX) * 2;
+            wrapper.scrollLeft = scrollLeft - walk;
+        });
+        
+        wrapper.addEventListener('touchend', () => {
+            isScrolling = false;
+        });
+    }
+    
+    // إخفاء/إظهار أزرار السكرول حسب المحتوى
+    updateScrollButtons();
+    if (wrapper) {
+        wrapper.addEventListener('scroll', updateScrollButtons);
+    }
+});
+
+function updateScrollButtons() {
+    const wrapper = document.querySelector('.onecard-products-wrapper');
+    const leftBtn = document.querySelector('.scroll-left');
+    const rightBtn = document.querySelector('.scroll-right');
+    
+    if (!wrapper || !leftBtn || !rightBtn) return;
+    
+    const maxScroll = wrapper.scrollWidth - wrapper.clientWidth;
+    
+    leftBtn.style.opacity = wrapper.scrollLeft > 0 ? '1' : '0.5';
+    rightBtn.style.opacity = wrapper.scrollLeft < maxScroll ? '1' : '0.5';
+    
+    leftBtn.disabled = wrapper.scrollLeft <= 0;
+    rightBtn.disabled = wrapper.scrollLeft >= maxScroll;
 }
 </script>
 {% endblock %}

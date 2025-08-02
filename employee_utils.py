@@ -71,6 +71,16 @@ def has_page_access(employee, page_route):
     
     return False
 
+def get_current_employee():
+    """
+    الحصول على بيانات الموظف الحالي
+    """
+    if not current_user.is_authenticated:
+        return None
+    
+    employee = Employee.query.filter_by(user_id=current_user.id).first()
+    return employee
+
 def requires_permission(permission_name):
     """
     ديكوريتر للتحقق من صلاحية الموظف

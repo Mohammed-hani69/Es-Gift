@@ -19,10 +19,10 @@ from reportlab.graphics.shapes import Drawing, Rect, Line
 from reportlab.graphics import renderPDF
 
 from flask import current_app, url_for
-from brevo_email_service import send_invoice_email as brevo_send_invoice, send_simple_email
+from email_sender_pro_service import send_custom_email, send_email
 
 from models import db, Invoice, Order, User
-from utils import send_email
+from utils import send_email as utils_send_email
 
 
 class ModernInvoiceService:
@@ -689,24 +689,25 @@ class ModernInvoiceService:
                     'invoice_date': invoice.invoice_date.strftime('%Y/%m/%d') if invoice.invoice_date else 'غير محدد'
                 }
                 
-                # محاولة استخدام قالب Brevo للفواتير
-                success, message = brevo_send_invoice(
-                    user_email=invoice.customer_email,
-                    user_name=invoice.customer_name or 'عزيزي العميل',
-                    invoice_data=invoice_data,
-                    pdf_content=pdf_content
+                # إرسال الفاتورة باستخدام Email Sender Pro
+                invoice_subject = f"فاتورة رقم {invoice.invoice_number} - {invoice.customer_name}"
+                success, message = send_custom_email(
+                    email=invoice.customer_email,
+                    subject=invoice_subject,
+                    message_content=email_html,
+                    message_title="فاتورة ES-GIFT"
                 )
                 
                 if success:
-                    print(f"تم إرسال الفاتورة بنجاح إلى: {invoice.customer_email} باستخدام Brevo")
+                    print(f"تم إرسال الفاتورة بنجاح إلى: {invoice.customer_email} باستخدام Email Sender Pro")
                     return True
                 else:
-                    print(f"فشل إرسال الفاتورة باستخدام Brevo: {message}")
+                    print(f"فشل إرسال الفاتورة باستخدام Email Sender Pro: {message}")
                     # استخدام الطريقة البديلة
                     return _send_invoice_email_fallback(invoice, email_html, pdf_full_path)
                 
             except Exception as e:
-                print(f"خطأ في إرسال البريد الإلكتروني باستخدام Brevo: {e}")
+                print(f"خطأ في إرسال البريد الإلكتروني باستخدام Email Sender Pro: {e}")
                 # استخدام الطريقة البديلة
                 return _send_invoice_email_fallback(invoice, email_html, pdf_full_path)
             

@@ -9,12 +9,13 @@ Author: ES-Gift Development Team
 Created: 2025
 """
 
-from flask import Blueprint, request, redirect, url_for, flash, session, current_app
+from flask import Blueprint, request, redirect, url_for, flash, session, current_app, render_template
 from flask_login import login_user, current_user
 from werkzeug.security import generate_password_hash
 from models import User, db
 from google_auth import GoogleAuthService
 import logging
+from datetime import datetime
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -166,3 +167,151 @@ def google_callback():
         logger.error(f"Error in Google callback: {str(e)}")
         flash(f'خطأ في معالجة تسجيل الدخول: {str(e)}', 'error')
         return redirect(url_for('main.login'))
+
+# ========== مسارات التحقق من البريد الإلكتروني باستخدام Email Sender Pro ==========
+
+@auth_bp.route('/verify-email-code')
+def verify_email_code_page():
+    """صفحة إدخال كود التحقق"""
+    user_email = session.get('pending_verification_email')
+    if not user_email:
+        flash('جلسة التحقق منتهية الصلاحية', 'warning')
+        return redirect(url_for('main.register'))
+    
+    return render_template('auth/verify_email_code.html', user_email=user_email)
+
+@auth_bp.route('/verify-email-code', methods=['POST'])
+def verify_email_code():
+    """التحقق من كود التحقق المرسل عبر Email Sender Pro"""
+    try:
+        from flask import jsonify, render_template
+        from email_verification_service import EmailVerificationService
+        
+        data = request.get_json()
+        email = data.get('email')
+        code = data.get('code')
+        
+        if not email or not code:
+            return jsonify({
+                'success': False,
+                'message': 'البريد الإلكتروني وكود التحقق مطلوبان'
+            })
+        
+        # التحقق من الكود
+        success, message = EmailVerificationService.verify_code(email, code)
+        
+        if success:
+            # مسح جلسة التحقق
+            session.pop('pending_verification_email', None)
+            
+            return jsonify({
+                'success': True,
+                'message': message
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': message
+            })
+            
+    except Exception as e:
+        logger.error(f"خطأ في التحقق من الكود: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': 'حدث خطأ أثناء التحقق من الكود'
+        })
+
+@auth_bp.route('/resend-verification-code', methods=['POST'])
+def resend_verification_code():
+    """إعادة إرسال كود التحقق"""
+    try:
+        from flask import jsonify
+        from email_sender_pro_service import send_verification_email
+        
+        data = request.get_json()
+        email = data.get('email')
+        
+        if not email:
+            return jsonify({
+                'success': False,
+                'message': 'البريد الإلكتروني مطلوب'
+            })
+        
+        # البحث عن المستخدم
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            return jsonify({
+                'success': False,
+                'message': 'المستخدم غير موجود'
+            })
+        
+        # إرسال كود جديد
+        success, message, verification_code = send_verification_email(email)
+        
+        if success:
+            # حفظ الكود الجديد
+            try:
+                user.email_verification_code = verification_code
+                user.email_verification_sent_at = datetime.utcnow()
+                db.session.commit()
+            except Exception as e:
+                logger.error(f"خطأ في حفظ الكود الجديد: {str(e)}")
+            
+            return jsonify({
+                'success': True,
+                'message': 'تم إرسال كود التحقق الجديد بنجاح'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': message
+            })
+            
+    except Exception as e:
+        logger.error(f"خطأ في إعادة إرسال الكود: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': 'حدث خطأ أثناء إعادة إرسال الكود'
+        })
+
+@auth_bp.route('/send-welcome-email', methods=['POST'])
+def send_welcome_email_route():
+    """إرسال رسالة ترحيبية للمستخدم الجديد"""
+    try:
+        from flask import jsonify
+        from email_sender_pro_service import send_welcome_email
+        
+        data = request.get_json()
+        email = data.get('email')
+        
+        if not email:
+            return jsonify({
+                'success': False,
+                'message': 'البريد الإلكتروني مطلوب'
+            })
+        
+        # البحث عن المستخدم
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            return jsonify({
+                'success': False,
+                'message': 'المستخدم غير موجود'
+            })
+        
+        # إرسال رسالة الترحيب
+        success, message = send_welcome_email(
+            email=email,
+            customer_name=user.name or user.username or 'عميل عزيز'
+        )
+        
+        return jsonify({
+            'success': success,
+            'message': message if not success else 'تم إرسال رسالة الترحيب بنجاح'
+        })
+        
+    except Exception as e:
+        logger.error(f"خطأ في إرسال رسالة الترحيب: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': 'حدث خطأ أثناء إرسال رسالة الترحيب'
+        })

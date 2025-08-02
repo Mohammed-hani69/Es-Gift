@@ -7,10 +7,12 @@ import os
 import requests
 import re
 import unicodedata
+import json
 
 from models import *
-from utils import get_user_price, convert_currency, send_email, send_order_email, get_visible_products, send_order_confirmation_without_codes
-from email_verification_service import EmailVerificationService
+from utils import get_user_price, convert_currency, send_email, send_order_email, get_visible_products, send_order_confirmation_without_codes, generate_order_number
+from email_pro_verification_service import send_user_verification_code, verify_user_code, resend_user_verification_code, is_verification_pending
+from email_sender_pro_service import send_order_confirmation
 
 def create_slug(text):
     """إنشاء slug من النص العربي أو الإنجليزي"""
@@ -54,6 +56,110 @@ def index():
     # العروض المحدودة
     limited_offers = get_visible_products(current_user if current_user.is_authenticated else None).limit(4).all()
     
+    # المنتجات المضافة حديثاً من API مع جلب مباشر وتحديث تلقائي
+    api_products = []
+    try:
+        # أولاً: جلب المنتجات المحفوظة محلياً
+        recent_api_products = APIProduct.query.filter_by(is_active=True).order_by(APIProduct.created_at.desc()).limit(12).all()
+        
+        # ثانياً: محاولة جلب منتجات حديثة مباشرة من OneCard API إذا أمكن
+        fresh_products = []
+        try:
+            from api_services import APIManager
+            api_settings = APISettings.query.filter_by(api_type='onecard', is_active=True).first()
+            
+            if api_settings:
+                service = APIManager.get_api_service(api_settings)
+                # جلب أحدث المنتجات من API
+                response = service.get_products_list()
+                
+                if 'error' not in response:
+                    products_data = []
+                    if isinstance(response, dict):
+                        if 'products' in response:
+                            products_data = response['products']
+                        elif 'result' in response:
+                            products_data = response['result']
+                        elif 'data' in response:
+                            products_data = response['data']
+                    elif isinstance(response, list):
+                        products_data = response
+                    
+                    # جلب أول 6 منتجات من API مباشرة
+                    for i, product_data in enumerate(products_data[:6]):
+                        try:
+                            # OneCard API يستخدم productID وليس id
+                            product_id = str(product_data.get('productID') or product_data.get('id') or product_data.get('productId') or product_data.get('ProductId', ''))
+                            if product_id:
+                                # استخراج الاسم العربي أو الإنجليزي
+                                product_name = product_data.get('nameAr') or product_data.get('nameEn') or product_data.get('name') or product_data.get('productName') or 'منتج من OneCard'
+                                # استخراج الفئة العربية أو الإنجليزية  
+                                category_name = product_data.get('categoryNameAr') or product_data.get('categoryNameEn') or product_data.get('category') or 'منتجات OneCard'
+                                # استخراج السعر المناسب
+                                price = float(product_data.get('recommendedRetailPriceAfterVat') or product_data.get('price') or product_data.get('sellingPrice') or 0)
+                                
+                                # استخراج رابط الصورة من API
+                                image_url = product_data.get('logo') or product_data.get('image') or product_data.get('imageUrl') or product_data.get('logoUrl') or 'default-product.jpg'
+                                # إذا كان الرابط نسبي، اجعله مطلق
+                                if image_url and not image_url.startswith('http') and image_url != 'default-product.jpg':
+                                    # معظم الصور في OneCard تأتي كـ relative paths
+                                    image_url = f"https://cdn.onecard.net/images/{image_url}" if '/' not in image_url else image_url
+                                
+                                fresh_products.append({
+                                    'id': f"fresh_{i}_{product_id}",
+                                    'name': product_name,
+                                    'description': f'منتج جديد من OneCard API - {category_name}',
+                                    'regular_price': price,
+                                    'image_url': image_url,
+                                    'category': category_name,
+                                    'is_api_product': True,
+                                    'external_product_id': product_id,
+                                    'provider': 'OneCard',
+                                    'stock_status': product_data.get('available', True),
+                                    'currency': 'SAR',  # تحويل من USD إلى SAR
+                                    'is_fresh': True  # إشارة إلى أنه منتج محدث من API
+                                })
+                        except Exception as e:
+                            current_app.logger.warning(f"Error processing fresh product: {e}")
+                            continue
+                
+                current_app.logger.info(f"Extracted {len(fresh_products)} products from API response")
+        except Exception as e:
+            current_app.logger.warning(f"Could not fetch fresh products from API: {e}")
+        
+        # دمج المنتجات المحدثة مع المحفوظة محلياً
+        for fresh_product in fresh_products:
+            product_obj = type('Product', (), fresh_product)()
+            api_products.append(product_obj)
+        
+        current_app.logger.info(f"Found {len(fresh_products)} fresh products from API")
+        
+        # إضافة المنتجات المحفوظة محلياً (تجنب التكرار)
+        for api_product in recent_api_products[:6]:  # أول 6 منتجات محفوظة
+            product_obj = type('Product', (), {
+                'id': api_product.id,
+                'name': api_product.name,
+                'description': api_product.description or 'منتج من API',
+                'regular_price': float(api_product.price) if api_product.price else 0.0,
+                'image_url': 'default-product.jpg',
+                'category': api_product.category or 'منتجات جديدة',
+                'is_api_product': True,
+                'external_product_id': api_product.external_product_id,
+                'provider': api_product.provider or 'API',
+                'stock_status': api_product.stock_status,
+                'currency': api_product.currency or 'SAR',
+                'is_fresh': False
+            })()
+            api_products.append(product_obj)
+            
+    except Exception as e:
+        current_app.logger.error(f"Error fetching API products: {e}")
+        api_products = []
+    
+    current_app.logger.info(f"Total API products to display: {len(api_products)}")
+    
+    current_app.logger.info(f"Total API products to display: {len(api_products)}")
+    
     user_currency = session.get('currency', 'SAR')
     
     # تحويل أسعار المنتجات
@@ -76,6 +182,12 @@ def index():
         # تطبيق نفس التحويل على الأسعار الأخرى إذا لزم الأمر
         if hasattr(product, 'regular_price') and product.regular_price:
             product.regular_price_converted = convert_currency(product.regular_price, 'SAR', user_currency)
+    
+    # تحويل أسعار المنتجات من API
+    for product in api_products:
+        price = product.regular_price if product.regular_price else 0
+        product.original_price_sar = price
+        product.display_price = convert_currency(price, 'SAR', user_currency)
     
     # العروض الرئيسية
     main_offers = MainOffer.query.filter_by(is_active=True).order_by(MainOffer.display_order).all()
@@ -105,6 +217,7 @@ def index():
                          offer_products=offer_products,
                          other_products=other_products,
                          limited_offers=limited_offers,
+                         api_products=api_products,
                          main_offers=main_offers,
                          gift_card_sections=gift_card_sections,
                          other_brands=other_brands,
@@ -294,25 +407,32 @@ def register():
         
         db.session.commit()
         
-        # إرسال بريد التحقق بدلاً من تسجيل الدخول المباشر
-        verification_sent = EmailVerificationService.send_verification_email(user)
+        # إرسال كود التحقق باستخدام Email Sender Pro
+        user_display_name = name if name else email.split('@')[0]
+        verification_sent, message, verification_code = send_user_verification_code(email, user_display_name)
         
         if verification_sent:
-            success_msg = 'تم إنشاء الحساب بنجاح! يرجى التحقق من بريدك الإلكتروني لتفعيل الحساب'
+            # حفظ بيانات المستخدم في الجلسة مؤقتاً
+            session['pending_user_id'] = user.id
+            session['pending_user_email'] = email
+            session['pending_user_name'] = user_display_name
+            
+            success_msg = 'تم إنشاء الحساب بنجاح! تم إرسال كود التحقق إلى بريدك الإلكتروني'
             if request.is_json:
                 return jsonify({
                     'success': True, 
                     'message': success_msg,
                     'verification_required': True,
-                    'email': user.email
+                    'email': email,
+                    'redirect_url': url_for('auth_routes.verify_email')
                 })
             else:
-                flash(success_msg, 'info')
-                return render_template('verification_sent.html', email=user.email)
+                flash(success_msg, 'success')
+                return redirect(url_for('auth_routes.verify_email'))
         else:
-            # في حالة فشل إرسال بريد التحقق، نسجل الدخول مباشرة
+            # في حالة فشل إرسال كود التحقق، نسجل الدخول مباشرة
             login_user(user)
-            success_msg = 'تم إنشاء الحساب بنجاح! (تعذر إرسال بريد التحقق)'
+            success_msg = f'تم إنشاء الحساب بنجاح! (تعذر إرسال كود التحقق: {message})'
             if request.is_json:
                 return jsonify({'success': True, 'message': success_msg})
             else:
@@ -338,6 +458,7 @@ def logout():
 def verify_email(token):
     """التحقق من البريد الإلكتروني باستخدام الرمز"""
     try:
+        from email_verification_service import EmailVerificationService  # Ensure the correct import path
         success, result = EmailVerificationService.verify_token(token)
         
         if success:
@@ -366,6 +487,7 @@ def verify_email(token):
 def resend_verification():
     """إعادة إرسال بريد التحقق"""
     try:
+        from email_verification_service import EmailVerificationService  # Ensure the correct import path
         data = request.get_json()
         email = data.get('email')
         
@@ -631,6 +753,553 @@ def product_detail(product_id, slug=None):
 @main.route('/add-to-cart', methods=['POST'])
 @login_required
 def add_to_cart():
+    """إضافة منتج إلى السلة"""
+    try:
+        data = request.get_json()
+        product_id = data.get('product_id')
+        quantity = int(data.get('quantity', 1))
+        is_api_product = data.get('is_api_product', False)
+        
+        if not product_id:
+            return jsonify({'success': False, 'message': 'معرف المنتج مطلوب'})
+        
+        # إضافة إلى السلة باستخدام session
+        cart = session.get('cart', {})
+        api_cart = session.get('api_cart', {})  # سلة منفصلة للمنتجات من API
+        
+        if is_api_product:
+            # التعامل مع المنتجات من API
+            api_product = APIProduct.query.get(product_id)
+            if not api_product:
+                return jsonify({'success': False, 'message': 'المنتج غير موجود'})
+            
+            # التحقق من حالة المخزون
+            if not api_product.stock_status:
+                return jsonify({'success': False, 'message': 'المنتج غير متوفر'})
+            
+            # التحقق من حالة API
+            if not api_product.api_setting.is_active:
+                return jsonify({'success': False, 'message': 'خدمة المنتج غير متاحة حالياً'})
+            
+            # إضافة إلى السلة الخاصة بمنتجات API
+            api_cart[str(product_id)] = api_cart.get(str(product_id), 0) + quantity
+            session['api_cart'] = api_cart
+            
+        else:
+            # التعامل مع المنتجات العادية
+            product = Product.query.get(product_id)
+            if not product:
+                return jsonify({'success': False, 'message': 'المنتج غير موجود'})
+            
+            # التحقق من قيود الرؤية
+            if product.visibility == 'restricted':
+                if not current_user.is_admin:
+                    access = ProductUserAccess.query.filter_by(
+                        product_id=product_id,
+                        user_id=current_user.id
+                    ).first()
+                    if not access:
+                        return jsonify({'success': False, 'message': 'هذا المنتج غير متاح لك'})
+            
+            # إضافة إلى السلة العادية
+            cart[str(product_id)] = cart.get(str(product_id), 0) + quantity
+            session['cart'] = cart
+        
+        # حساب إجمالي عدد العناصر في السلة
+        cart_count = sum(cart.values()) + sum(api_cart.values())
+        
+        return jsonify({
+            'success': True, 
+            'message': 'تمت إضافة المنتج إلى السلة',
+            'cart_count': cart_count
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f"Add to cart error: {e}")
+        return jsonify({'success': False, 'message': 'حدث خطأ، يرجى المحاولة مرة أخرى'})
+
+
+@main.route('/purchase-api-product', methods=['POST'])
+@login_required
+def purchase_api_product():
+    """شراء منتج من OneCard API مباشرة مع دعم شامل للأكواد والفواتير"""
+    try:
+        data = request.get_json()
+        api_product_id = data.get('api_product_id') or data.get('product_id')
+        external_product_id = data.get('external_product_id')
+        quantity = int(data.get('quantity', 1))
+        
+        # التحقق من المعرفات
+        if not api_product_id and not external_product_id:
+            return jsonify({'success': False, 'message': 'معرف المنتج مطلوب'})
+        
+        # جلب المنتج من قاعدة البيانات أو API
+        api_product = None
+        if api_product_id:
+            api_product = APIProduct.query.get(api_product_id)
+            if api_product:
+                external_product_id = api_product.external_product_id
+        
+        if not external_product_id:
+            return jsonify({'success': False, 'message': 'معرف المنتج الخارجي غير موجود'})
+        
+        # التحقق من إعدادات OneCard API
+        api_settings = APISettings.query.filter_by(api_type='onecard', is_active=True).first()
+        if not api_settings:
+            return jsonify({'success': False, 'message': 'خدمة OneCard غير متاحة حالياً'})
+        
+        # إنشاء طلب جديد
+        from utils import generate_order_number
+        order_number = generate_order_number()
+        
+        # حساب السعر الإجمالي
+        unit_price = float(api_product.price) if api_product else 0
+        total_amount = unit_price * quantity
+        
+        order = Order(
+            user_id=current_user.id,
+            order_number=order_number,
+            total_amount=total_amount,
+            currency='SAR',
+            order_status='processing',
+            payment_status='paid',  # افتراض الدفع المسبق
+            payment_method='wallet',
+            order_type='api_product'
+        )
+        
+        db.session.add(order)
+        db.session.flush()  # للحصول على order.id
+        
+        # معالجة شراء كل قطعة
+        successful_transactions = []
+        failed_transactions = []
+        all_product_codes = []
+        
+        for i in range(quantity):
+            try:
+                # توليد رقم مرجعي فريد لكل معاملة
+                from api_services import OnecardAPIService
+                service = OnecardAPIService(api_settings)
+                ref_number = service.generate_unique_ref_number()
+                
+                # إنشاء معاملة API
+                transaction = APITransaction(
+                    api_settings_id=api_settings.id,
+                    order_id=order.id,
+                    external_product_id=external_product_id,
+                    reseller_ref_number=ref_number,
+                    transaction_status='pending',
+                    amount=unit_price,
+                    currency='SAR'
+                )
+                db.session.add(transaction)
+                db.session.flush()
+                
+                # شراء المنتج من OneCard API
+                current_app.logger.info(f"Purchasing product {external_product_id} with ref {ref_number}")
+                response = service.purchase_product(external_product_id, ref_number)
+                
+                # حفظ استجابة API
+                transaction.purchase_response = json.dumps(response, ensure_ascii=False)
+                
+                if 'error' not in response:
+                    # نجح الشراء - استخراج الأكواد
+                    transaction.transaction_status = 'success'
+                    product_codes = extract_product_codes_from_onecard_response(response)
+                    
+                    if product_codes:
+                        transaction.product_codes = json.dumps(product_codes, ensure_ascii=False)
+                        all_product_codes.extend(product_codes)
+                        successful_transactions.append(transaction)
+                        current_app.logger.info(f"Successfully purchased product, got {len(product_codes)} codes")
+                    else:
+                        # نجح الشراء لكن بدون أكواد واضحة
+                        transaction.product_codes = json.dumps(response, ensure_ascii=False)
+                        successful_transactions.append(transaction)
+                        current_app.logger.warning(f"Purchase successful but no clear codes found in response")
+                else:
+                    # فشل الشراء
+                    transaction.transaction_status = 'failed'
+                    failed_transactions.append({
+                        'transaction': transaction,
+                        'error': response.get('error', 'خطأ غير معروف')
+                    })
+                    current_app.logger.error(f"Purchase failed: {response.get('error')}")
+                
+            except Exception as e:
+                current_app.logger.error(f"Error in purchase iteration {i+1}: {e}")
+                transaction.transaction_status = 'failed'
+                failed_transactions.append({
+                    'transaction': transaction,
+                    'error': str(e)
+                })
+        
+        # تحديث حالة الطلب حسب النتائج
+        if len(successful_transactions) == quantity:
+            order.order_status = 'completed'
+            order.payment_status = 'paid'
+        elif len(successful_transactions) > 0:
+            order.order_status = 'partially_completed'
+        else:
+            order.order_status = 'failed'
+        
+        db.session.commit()
+        
+        # إرسال البريد الإلكتروني والفاتورة للمشتريات الناجحة
+        email_sent = False
+        invoice_created = False
+        
+        if successful_transactions and all_product_codes:
+            try:
+                # إرسال أكواد المنتج بالبريد الإلكتروني
+                email_sent = send_api_product_codes_email_enhanced(
+                    order, successful_transactions, all_product_codes
+                )
+                
+                # إنشاء فاتورة
+                invoice_created = create_api_product_invoice(order, successful_transactions)
+                
+            except Exception as e:
+                current_app.logger.error(f"Error in post-purchase processing: {e}")
+        
+        # إعداد الاستجابة
+        if len(successful_transactions) == quantity:
+            message = f'تم شراء المنتج بنجاح! تم إرسال {len(all_product_codes)} كود إلى بريدك الإلكتروني'
+            success = True
+        elif len(successful_transactions) > 0:
+            message = f'تم شراء {len(successful_transactions)} من أصل {quantity} بنجاح'
+            success = True
+        else:
+            message = 'فشل في شراء المنتج'
+            success = False
+        
+        response_data = {
+            'success': success,
+            'order_id': order.id,
+            'order_number': order.order_number,
+            'successful_purchases': len(successful_transactions),
+            'failed_purchases': len(failed_transactions),
+            'total_codes': len(all_product_codes),
+            'email_sent': email_sent,
+            'invoice_created': invoice_created,
+            'message': message
+        }
+        
+        if failed_transactions:
+            response_data['errors'] = [ft['error'] for ft in failed_transactions]
+        
+        return jsonify(response_data)
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"API product purchase error: {e}")
+        return jsonify({'success': False, 'message': f'حدث خطأ: {str(e)}'})
+
+
+def extract_product_codes_from_onecard_response(response):
+    """استخراج أكواد المنتج من استجابة OneCard API"""
+    product_codes = []
+    
+    try:
+        if isinstance(response, dict):
+            # Pattern 1: مباشرة في codes
+            if 'codes' in response and isinstance(response['codes'], list):
+                product_codes = [str(code) for code in response['codes']]
+            
+            # Pattern 2: في serialNumbers
+            elif 'serialNumbers' in response and isinstance(response['serialNumbers'], list):
+                product_codes = [str(sn) for sn in response['serialNumbers']]
+            
+            # Pattern 3: كود واحد
+            elif 'code' in response:
+                product_codes = [str(response['code'])]
+            elif 'serialNumber' in response:
+                product_codes = [str(response['serialNumber'])]
+            
+            # Pattern 4: في cards array
+            elif 'cards' in response and isinstance(response['cards'], list):
+                for card in response['cards']:
+                    if isinstance(card, dict):
+                        if 'serialNumber' in card:
+                            product_codes.append(str(card['serialNumber']))
+                        elif 'code' in card:
+                            product_codes.append(str(card['code']))
+                        elif 'cardNumber' in card:
+                            product_codes.append(str(card['cardNumber']))
+            
+            # Pattern 5: في result
+            elif 'result' in response:
+                result = response['result']
+                if isinstance(result, list):
+                    product_codes = [str(item) for item in result]
+                elif isinstance(result, dict):
+                    # استدعاء recursive للبحث في result
+                    product_codes = extract_product_codes_from_onecard_response(result)
+                elif isinstance(result, str):
+                    product_codes = [str(result)]
+            
+            # Pattern 6: في data
+            elif 'data' in response:
+                data = response['data']
+                if isinstance(data, list):
+                    product_codes = [str(item) for item in data]
+                elif isinstance(data, dict):
+                    product_codes = extract_product_codes_from_onecard_response(data)
+                elif isinstance(data, str):
+                    product_codes = [str(data)]
+            
+            # Pattern 7: البحث في جميع القيم النصية الطويلة (possible codes)
+            else:
+                for key, value in response.items():
+                    if isinstance(value, str) and len(value) > 5 and key.lower() in ['pin', 'password', 'activation', 'redemption']:
+                        product_codes.append(str(value))
+    
+    except Exception as e:
+        current_app.logger.error(f"Error extracting codes from OneCard response: {e}")
+    
+    # تنظيف الأكواد من المساحات والأحرف الزائدة
+    cleaned_codes = []
+    for code in product_codes:
+        if code and isinstance(code, str):
+            cleaned_code = code.strip()
+            if len(cleaned_code) > 3:
+                cleaned_codes.append(cleaned_code)
+    
+    return cleaned_codes
+
+
+def send_api_product_codes_email_enhanced(order, transactions, product_codes):
+    """إرسال أكواد منتج API بالبريد الإلكتروني مع دعم محسن"""
+    try:
+        from product_code_email_service import ProductCodeEmailService
+        
+        if not product_codes:
+            current_app.logger.warning(f"No product codes to send for order {order.order_number}")
+            return False
+        
+        # الحصول على معلومات المنتج من أول معاملة ناجحة
+        first_transaction = transactions[0]
+        product_name = f"منتج OneCard - {first_transaction.external_product_id}"
+        
+        # محاولة الحصول على اسم المنتج من استجابة API
+        try:
+            if first_transaction.purchase_response:
+                response_data = json.loads(first_transaction.purchase_response)
+                if isinstance(response_data, dict):
+                    product_name = (response_data.get('productName') or 
+                                  response_data.get('name') or 
+                                  response_data.get('product_name') or 
+                                  product_name)
+        except:
+            pass
+        
+        # تحضير بيانات الطلب للبريد الإلكتروني
+        order_data = {
+            'order_number': order.order_number,
+            'customer_name': order.user.full_name or order.user.email.split('@')[0],
+            'customer_email': order.user.email,
+            'order_date': order.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'product_name': product_name,
+            'quantity': len(product_codes),
+            'total_amount': float(order.total_amount),
+            'currency': order.currency or 'SAR'
+        }
+        
+        # إرسال البريد الإلكتروني
+        email_service = ProductCodeEmailService()
+        success, message, excel_file_path = email_service.send_product_codes_email(order_data, product_codes)
+        
+        if success and excel_file_path:
+            # حفظ مسار ملف Excel في الطلب
+            order.excel_file_path = excel_file_path.replace(os.getcwd() + os.sep, '').replace('\\', '/')
+            db.session.commit()
+            current_app.logger.info(f"Email sent successfully with Excel file: {excel_file_path}")
+        elif success:
+            current_app.logger.info(f"Email sent successfully for order {order.order_number}")
+        else:
+            current_app.logger.error(f"Failed to send email: {message}")
+        
+        return success
+        
+    except Exception as e:
+        current_app.logger.error(f"Error sending API product codes email: {e}")
+        return False
+
+
+def create_api_product_invoice(order, transactions):
+    """إنشاء فاتورة للمنتجات المشتراة من API"""
+    try:
+        from invoice_service import InvoiceService
+        
+        # إنشاء الفاتورة
+        invoice = InvoiceService.create_invoice(order)
+        
+        if invoice:
+            current_app.logger.info(f"Invoice #{invoice.invoice_number} created for order {order.order_number}")
+            return True
+        else:
+            current_app.logger.error(f"Failed to create invoice for order {order.order_number}")
+            return False
+            
+    except Exception as e:
+        current_app.logger.error(f"Error creating API product invoice: {e}")
+        return False
+
+
+@main.route('/api-product-details/<external_product_id>')
+@login_required
+def api_product_details(external_product_id):
+    """جلب تفاصيل منتج من API"""
+    try:
+        # البحث عن المنتج في قاعدة البيانات المحلية أولاً
+        api_product = APIProduct.query.filter_by(external_product_id=external_product_id).first()
+        
+        if api_product:
+            # إرجاع البيانات المحلية
+            return jsonify({
+                'success': True,
+                'product': {
+                    'id': api_product.id,
+                    'external_id': api_product.external_product_id,
+                    'name': api_product.name,
+                    'description': api_product.description,
+                    'category': api_product.category,
+                    'price': float(api_product.price or 0),
+                    'currency': api_product.currency,
+                    'stock_status': api_product.stock_status,
+                    'provider': api_product.provider or 'onecard'
+                },
+                'source': 'local'
+            })
+        
+        # إذا لم يوجد محلياً، جلب من API مباشرة
+        api_settings = APISettings.query.filter_by(api_type='onecard', is_active=True).first()
+        if not api_settings:
+            return jsonify({'success': False, 'message': 'خدمة API غير متاحة'})
+        
+        from api_services import APIManager
+        service = APIManager.get_api_service(api_settings)
+        response = service.get_product_info(external_product_id)
+        
+        if 'error' in response:
+            return jsonify({'success': False, 'message': f'خطأ في API: {response["error"]}'})
+        
+        # تنسيق البيانات المُرجعة من API
+        product_data = {
+            'external_id': external_product_id,
+            'name': response.get('name') or response.get('productName', 'غير محدد'),
+            'description': response.get('description') or response.get('productDescription', ''),
+            'category': response.get('category') or response.get('categoryName', ''),
+            'price': float(response.get('price') or response.get('sellingPrice', 0)),
+            'currency': response.get('currency', 'SAR'),
+            'stock_status': response.get('inStock', True),
+            'provider': 'onecard'
+        }
+        
+        return jsonify({
+            'success': True,
+            'product': product_data,
+            'source': 'api'
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f"API product details error: {e}")
+        return jsonify({'success': False, 'message': 'حدث خطأ، يرجى المحاولة مرة أخرى'})
+
+
+@main.route('/refresh-api-products', methods=['POST'])
+def refresh_api_products():
+    """تحديث المنتجات من API"""
+    try:
+        from api_services import APIManager
+        
+        # جلب إعدادات API النشطة
+        api_settings = APISettings.query.filter_by(api_type='onecard', is_active=True).first()
+        if not api_settings:
+            return jsonify({'success': False, 'message': 'لا توجد إعدادات API نشطة'})
+        
+        service = APIManager.get_api_service(api_settings)
+        response = service.get_products_list()
+        
+        if 'error' in response:
+            return jsonify({'success': False, 'message': f'خطأ في API: {response["error"]}'})
+        
+        # معالجة البيانات وحفظ المنتجات الجديدة
+        products_data = []
+        if isinstance(response, dict):
+            if 'products' in response:
+                products_data = response['products']
+            elif 'result' in response:
+                products_data = response['result']
+            elif 'data' in response:
+                products_data = response['data']
+        elif isinstance(response, list):
+            products_data = response
+        
+        new_products_count = 0
+        updated_products_count = 0
+        
+        for product_data in products_data[:20]:  # معالجة أول 20 منتج
+            try:
+                product_id = str(product_data.get('id') or product_data.get('productId') or product_data.get('ProductId', ''))
+                if not product_id:
+                    continue
+                
+                # البحث عن المنتج الموجود
+                existing_product = APIProduct.query.filter_by(
+                    external_product_id=product_id,
+                    api_settings_id=api_settings.id
+                ).first()
+                
+                if existing_product:
+                    # تحديث المنتج الموجود
+                    existing_product.name = product_data.get('name') or product_data.get('productName') or existing_product.name
+                    existing_product.price = float(product_data.get('price') or product_data.get('sellingPrice', 0))
+                    existing_product.stock_status = product_data.get('inStock', True)
+                    existing_product.category = product_data.get('category') or product_data.get('categoryName', existing_product.category)
+                    existing_product.updated_at = datetime.utcnow()
+                    updated_products_count += 1
+                else:
+                    # إنشاء منتج جديد
+                    new_product = APIProduct(
+                        api_settings_id=api_settings.id,
+                        external_product_id=product_id,
+                        name=product_data.get('name') or product_data.get('productName') or f'منتج {product_id}',
+                        description=product_data.get('description') or product_data.get('productDescription', ''),
+                        price=float(product_data.get('price') or product_data.get('sellingPrice', 0)),
+                        currency=product_data.get('currency', 'SAR'),
+                        category=product_data.get('category') or product_data.get('categoryName', 'منتجات OneCard'),
+                        provider='OneCard',
+                        stock_status=product_data.get('inStock', True),
+                        is_active=True,
+                        raw_data=json.dumps(product_data, ensure_ascii=False)
+                    )
+                    db.session.add(new_product)
+                    new_products_count += 1
+                    
+            except Exception as e:
+                current_app.logger.warning(f"Error processing product {product_id}: {e}")
+                continue
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'تم التحديث بنجاح - منتجات جديدة: {new_products_count}, منتجات محدثة: {updated_products_count}',
+            'new_products': new_products_count,
+            'updated_products': updated_products_count
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f"Refresh API products error: {e}")
+        return jsonify({'success': False, 'message': f'حدث خطأ في التحديث: {str(e)}'})
+
+
+
+@main.route('/add-to-cart-old', methods=['POST'])
+@login_required
+def add_to_cart_old():
+    """إضافة منتج إلى السلة - الطريقة القديمة"""
     data = request.get_json()
     product_id = data.get('product_id')
     quantity = data.get('quantity', 1)
@@ -836,7 +1505,7 @@ def payment(order_id):
 @login_required
 def process_payment():
     from api_services import APIManager
-    from email_service import ProductCodeEmailService
+    from order_email_service import ProductCodeEmailService
     from wallet_utils import check_spending_limit, record_spending, get_user_wallet_balance, deduct_from_wallet
     from invoice_service import InvoiceService, ExcelReportService
     
@@ -961,7 +1630,7 @@ def process_payment():
         
         # إرسال البريد الإلكتروني مع ملف Excel
         try:
-            from email_service import email_service
+            from order_email_service import email_service
             
             # تحضير بيانات الطلب للبريد الإلكتروني
             order_data = {
@@ -1041,10 +1710,12 @@ def process_payment():
                 
                 # إرسال إشعار للإدارة (اختياري)
                 try:
-                    from brevo_integration import send_admin_notification
-                    send_admin_notification(
+                    from email_sender_pro_service import send_custom_email
+                    send_custom_email(
+                        email="admin@es-gift.com",  # البريد الإداري
                         subject=f"طلب جديد يحتاج أكواد - #{order.order_number}",
-                        message=f"الطلب #{order.order_number} للعميل {current_user.email} يحتاج إضافة أكواد للمنتجات"
+                        message_content=f"الطلب #{order.order_number} للعميل {current_user.email} يحتاج إضافة أكواد للمنتجات",
+                        message_title="إشعار إداري"
                     )
                 except:
                     pass

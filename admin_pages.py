@@ -166,6 +166,57 @@ def get_required_pages():
     """جلب الصفحات المطلوبة لجميع الموظفين"""
     return {k: v for k, v in ADMIN_PAGES.items() if v.get('required', False)}
 
+def get_allowed_pages_for_employee(employee):
+    """
+    جلب الصفحات المسموحة لموظف معين
+    """
+    if not employee or not employee.role:
+        return {}
+    
+    # الأدوار الإدارية لها وصول كامل
+    if employee.role.is_admin:
+        return ADMIN_PAGES
+    
+    # جلب الصفحات المسموحة من الدور
+    allowed_pages = {}
+    if employee.role.allowed_pages:
+        try:
+            import json
+            allowed_page_routes = json.loads(employee.role.allowed_pages)
+            for route in allowed_page_routes:
+                if route in ADMIN_PAGES:
+                    allowed_pages[route] = ADMIN_PAGES[route]
+        except (json.JSONDecodeError, TypeError):
+            pass
+    
+    return allowed_pages
+
+def get_sidebar_menu_for_employee(employee):
+    """
+    إنشاء قائمة الشريط الجانبي المخصصة للموظف
+    """
+    if not employee:
+        return {}
+        
+    allowed_pages = get_allowed_pages_for_employee(employee)
+    
+    # تجميع الصفحات حسب الفئات
+    menu_categories = {}
+    for page_route, page_info in allowed_pages.items():
+        category = page_info.get('category', 'other')
+        if category not in menu_categories:
+            menu_categories[category] = {
+                'name': PAGE_CATEGORIES.get(category, 'أخرى'),
+                'pages': []
+            }
+        menu_categories[category]['pages'].append({
+            'route': page_route,
+            'name': page_info['name'],
+            'description': page_info['description']
+        })
+    
+    return menu_categories
+
 def is_valid_page(page_route):
     """التحقق من صحة مسار الصفحة"""
     return page_route in ADMIN_PAGES

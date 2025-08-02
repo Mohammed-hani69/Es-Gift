@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>التحقق من البريد الإلكتروني - ES-GIFT</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .verification-container {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .verification-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+        
+        .verification-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 30px;
+            animation: pulse 2s infinite;
+        }
+        
+        .verification-icon i {
+            font-size: 40px;
+            color: white;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .verification-title {
+            font-size: 28px;
+            font-weight: bold;
+            color: #2d3748;
+            margin-bottom: 10px;
+        }
+        
+        .verification-subtitle {
+            color: #718096;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+        
+        .email-display {
+            background: #f7fafc;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .email-display .email-text {
+            font-weight: bold;
+            color: #2d3748;
+            font-size: 18px;
+        }
+        
+        .code-input-container {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 30px;
+            direction: ltr;
+        }
+        
+        .code-input {
+            width: 60px;
+            height: 60px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: #2d3748;
+            transition: all 0.3s ease;
+            background: #f7fafc;
+        }
+        
+        .code-input:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            transform: scale(1.05);
+        }
+        
+        .code-input.filled {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        
+        .code-input.error {
+            border-color: #e53e3e;
+            background: #fed7d7;
+            animation: shake 0.5s;
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        
+        .verify-button {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 15px 40px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        
+        .verify-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+        
+        .verify-button:disabled {
+            background: #cbd5e0;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .resend-container {
+            color: #718096;
+            margin-bottom: 20px;
+        }
+        
+        .resend-button {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: bold;
+            transition: color 0.3s ease;
+        }
+        
+        .resend-button:hover {
+            color: #5a67d8;
+            text-decoration: underline;
+        }
+        
+        .resend-button.disabled {
+            color: #cbd5e0;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+        
+        .timer {
+            color: #e53e3e;
+            font-weight: bold;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .alert-success {
+            background: #c6f6d5;
+            color: #22543d;
+            border: 1px solid #9ae6b4;
+        }
+        
+        .alert-error {
+            background: #fed7d7;
+            color: #742a2a;
+            border: 1px solid #fc8181;
+        }
+        
+        .alert-info {
+            background: #bee3f8;
+            color: #2a4365;
+            border: 1px solid #90cdf4;
+        }
+        
+        .back-link {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: bold;
+            transition: color 0.3s ease;
+        }
+        
+        .back-link:hover {
+            color: #5a67d8;
+        }
+        
+        .loading-spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        @media (max-width: 480px) {
+            .verification-card {
+                padding: 30px 20px;
+            }
+            
+            .code-input {
+                width: 45px;
+                height: 45px;
+                font-size: 20px;
+            }
+            
+            .verification-title {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="verification-container">
+        <div class="verification-card">
+            <div class="verification-icon">
+                <i class="fas fa-envelope-open"></i>
+            </div>
+            
+            <h1 class="verification-title">التحقق من البريد الإلكتروني</h1>
+            <p class="verification-subtitle">
+                لقد أرسلنا كود التحقق المكون من 6 أرقام إلى بريدك الإلكتروني
+            </p>
+            
+            <div class="email-display">
+                <div class="email-text">
+                    <i class="fas fa-envelope"></i>
+                    {{ email }}
+                </div>
+            </div>
+            
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'success' if category == 'success' else 'error' if category == 'error' else 'info' }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            <form method="POST" id="verificationForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                
+                <div class="code-input-container">
+                    <input type="text" class="code-input" maxlength="1" pattern="[0-9]" inputmode="numeric" data-index="0">
+                    <input type="text" class="code-input" maxlength="1" pattern="[0-9]" inputmode="numeric" data-index="1">
+                    <input type="text" class="code-input" maxlength="1" pattern="[0-9]" inputmode="numeric" data-index="2">
+                    <input type="text" class="code-input" maxlength="1" pattern="[0-9]" inputmode="numeric" data-index="3">
+                    <input type="text" class="code-input" maxlength="1" pattern="[0-9]" inputmode="numeric" data-index="4">
+                    <input type="text" class="code-input" maxlength="1" pattern="[0-9]" inputmode="numeric" data-index="5">
+                </div>
+                
+                <input type="hidden" name="verification_code" id="fullCode">
+                
+                <button type="submit" class="verify-button" id="verifyButton">
+                    <span id="verifyText">تأكيد التحقق</span>
+                    <div class="loading-spinner" id="loadingSpinner"></div>
+                </button>
+            </form>
+            
+            <div class="resend-container">
+                <span>لم تستلم الكود؟</span>
+                <a href="#" class="resend-button" id="resendButton">إعادة الإرسال</a>
+                <span class="timer" id="timer" style="display: none;"></span>
+            </div>
+            
+            <div style="margin-top: 30px;">
+                <a href="{{ url_for('auth_routes.register') }}" class="back-link">
+                    <i class="fas fa-arrow-right"></i> العودة للتسجيل
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // عناصر DOM
+        const codeInputs = document.querySelectorAll('.code-input');
+        const fullCodeInput = document.getElementById('fullCode');
+        const verifyButton = document.getElementById('verifyButton');
+        const verifyText = document.getElementById('verifyText');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const resendButton = document.getElementById('resendButton');
+        const timer = document.getElementById('timer');
+        const form = document.getElementById('verificationForm');
+
+        // متغيرات المؤقت
+        let resendCountdown = 60;
+        let resendTimer = null;
+
+        // إعداد حقول الإدخال
+        codeInputs.forEach((input, index) => {
+            input.addEventListener('input', (e) => {
+                const value = e.target.value.replace(/[^0-9]/g, '');
+                e.target.value = value;
+                
+                // إضافة كلاس للحقل المملوء
+                if (value) {
+                    e.target.classList.add('filled');
+                    // الانتقال للحقل التالي
+                    if (index < codeInputs.length - 1) {
+                        codeInputs[index + 1].focus();
+                    }
+                } else {
+                    e.target.classList.remove('filled');
+                }
+                
+                // إزالة كلاس الخطأ
+                e.target.classList.remove('error');
+                
+                // تحديث الكود الكامل
+                updateFullCode();
+            });
+
+            input.addEventListener('keydown', (e) => {
+                // Backspace - الانتقال للحقل السابق
+                if (e.key === 'Backspace' && !e.target.value && index > 0) {
+                    codeInputs[index - 1].focus();
+                }
+                
+                // Enter - إرسال النموذج
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (getFullCode().length === 6) {
+                        form.submit();
+                    }
+                }
+                
+                // السماح بالأرقام فقط
+                if (!/[0-9]/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Enter'].includes(e.key)) {
+                    e.preventDefault();
+                }
+            });
+
+            input.addEventListener('paste', (e) => {
+                e.preventDefault();
+                const pastedData = e.clipboardData.getData('text').replace(/[^0-9]/g, '');
+                
+                if (pastedData.length === 6) {
+                    // ملء جميع الحقول
+                    pastedData.split('').forEach((digit, i) => {
+                        if (i < codeInputs.length) {
+                            codeInputs[i].value = digit;
+                            codeInputs[i].classList.add('filled');
+                        }
+                    });
+                    updateFullCode();
+                    codeInputs[5].focus();
+                }
+            });
+        });
+
+        // تحديث الكود الكامل
+        function updateFullCode() {
+            const fullCode = getFullCode();
+            fullCodeInput.value = fullCode;
+            
+            // تفعيل/تعطيل زر التحقق
+            verifyButton.disabled = fullCode.length !== 6;
+        }
+
+        // الحصول على الكود الكامل
+        function getFullCode() {
+            return Array.from(codeInputs).map(input => input.value).join('');
+        }
+
+        // إظهار خطأ في الحقول
+        function showError() {
+            codeInputs.forEach(input => {
+                input.classList.add('error');
+            });
+            setTimeout(() => {
+                codeInputs.forEach(input => {
+                    input.classList.remove('error');
+                });
+            }, 1000);
+        }
+
+        // إعادة الإرسال
+        resendButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (resendButton.classList.contains('disabled')) return;
+            
+            // إرسال طلب إعادة الإرسال
+            fetch('{{ url_for("auth_routes.resend_verification") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({
+                    email: '{{ email }}'
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    startResendTimer();
+                    // إظهار رسالة نجاح
+                    showAlert('تم إعادة إرسال الكود بنجاح', 'success');
+                } else {
+                    showAlert(data.message || 'فشل في إعادة الإرسال', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showAlert('حدث خطأ أثناء إعادة الإرسال', 'error');
+            });
+        });
+
+        // بدء مؤقت إعادة الإرسال
+        function startResendTimer() {
+            resendButton.classList.add('disabled');
+            resendButton.style.display = 'none';
+            timer.style.display = 'inline';
+            
+            resendCountdown = 60;
+            resendTimer = setInterval(() => {
+                timer.textContent = `(${resendCountdown}s)`;
+                resendCountdown--;
+                
+                if (resendCountdown < 0) {
+                    clearInterval(resendTimer);
+                    resendButton.classList.remove('disabled');
+                    resendButton.style.display = 'inline';
+                    timer.style.display = 'none';
+                }
+            }, 1000);
+        }
+
+        // إظهار تنبيه
+        function showAlert(message, type) {
+            // إزالة التنبيهات السابقة
+            const existingAlerts = document.querySelectorAll('.alert');
+            existingAlerts.forEach(alert => alert.remove());
+            
+            // إنشاء تنبيه جديد
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            
+            // إدراج التنبيه
+            const form = document.getElementById('verificationForm');
+            form.parentNode.insertBefore(alert, form);
+            
+            // إزالة التنبيه بعد 5 ثوان
+            setTimeout(() => {
+                alert.remove();
+            }, 5000);
+        }
+
+        // معالجة إرسال النموذج
+        form.addEventListener('submit', (e) => {
+            if (getFullCode().length !== 6) {
+                e.preventDefault();
+                showError();
+                showAlert('يرجى إدخال الكود كاملاً', 'error');
+                return;
+            }
+            
+            // إظهار محتوى التحميل
+            verifyText.style.display = 'none';
+            loadingSpinner.style.display = 'block';
+            verifyButton.disabled = true;
+        });
+
+        // بدء مؤقت إعادة الإرسال عند تحميل الصفحة
+        startResendTimer();
+        
+        // التركيز على أول حقل عند تحميل الصفحة
+        codeInputs[0].focus();
+    </script>
+</body>
+</html>

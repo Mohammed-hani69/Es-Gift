@@ -44,6 +44,27 @@ def create_app():
         from secrets import token_urlsafe
         return {'csrf_token': token_urlsafe(32)}
     
+    # Context processor لإضافة بيانات الموظف والصلاحيات
+    @app.context_processor
+    def inject_employee_data():
+        """إضافة بيانات الموظف والصلاحيات لجميع القوالب"""
+        from flask_login import current_user
+        from models import Employee
+        from admin_pages import get_sidebar_menu_for_employee
+        
+        current_employee = None
+        sidebar_menu = None
+        
+        if current_user.is_authenticated and not current_user.is_admin:
+            current_employee = Employee.query.filter_by(user_id=current_user.id).first()
+            if current_employee:
+                sidebar_menu = get_sidebar_menu_for_employee(current_employee)
+        
+        return {
+            'current_employee': current_employee,
+            'sidebar_menu': sidebar_menu
+        }
+    
     @login_manager.user_loader
     def load_user(user_id):
         return db.session.get(User, int(user_id))
@@ -53,6 +74,18 @@ def create_app():
     
     # إضافة فلتر JSON لـ Jinja2
     app.template_filter('tojsonfilter')(to_json_filter)
+    
+    # إضافة فلتر fromjson لتحويل JSON string إلى Python object
+    @app.template_filter('fromjson')
+    def fromjson_filter(json_str):
+        """تحويل JSON string إلى Python object"""
+        if not json_str:
+            return []
+        try:
+            import json
+            return json.loads(json_str)
+        except (json.JSONDecodeError, TypeError, ValueError):
+            return []
     
     # إضافة دالة إنشاء الـ slug كفلتر للقوالب
     @app.template_filter('create_slug')
@@ -171,16 +204,24 @@ def create_app():
     from auth_routes import auth_bp
     app.register_blueprint(auth_bp)
     
+    # تسجيل blueprint المصادقة الجديد (Email Sender Pro)
+    from new_auth_routes import auth_routes
+    app.register_blueprint(auth_routes)
+    
     # تسجيل blueprint الصفحات الثابتة
     from static_pages_routes import static_pages_bp
     app.register_blueprint(static_pages_bp)
+    
+    # تسجيل blueprint إدارة الأدوار
+    from roles_routes import roles_bp
+    app.register_blueprint(roles_bp)
     
     # تهيئة Google OAuth Service
     from google_auth import google_auth_service
     google_auth_service.init_app(app)
     
     # تهيئة خدمة البريد الإلكتروني
-    from email_service import init_email_service
+    from order_email_service import init_email_service
     init_email_service(app)
     
     return app

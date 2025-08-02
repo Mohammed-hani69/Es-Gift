@@ -10,6 +10,14 @@
             منتجات API - {{ api_setting.api_name }}
         </h2>
         <div>
+            <button class="btn btn-info" onclick="refreshLiveProducts()">
+                <i class="fas fa-refresh"></i>
+                تحديث مباشر
+            </button>
+            <button class="btn btn-warning" onclick="testProducts()">
+                <i class="fas fa-flask"></i>
+                اختبار المنتجات
+            </button>
             <button class="btn btn-success" onclick="syncProducts()">
                 <i class="fas fa-sync"></i>
                 مزامنة المنتجات
@@ -21,10 +29,31 @@
         </div>
     </div>
 
+    <!-- معلومات حالة API -->
+    {% if api_status == 'error' %}
+    <div class="alert alert-danger">
+        <i class="fas fa-exclamation-triangle"></i>
+        <strong>خطأ في الاتصال بـ API:</strong> {{ api_error }}
+        <br><small>يتم عرض المنتجات المحفوظة محلياً ({{ saved_products_count }} منتج)</small>
+    </div>
+    {% elif live_products_count > 0 %}
+    <div class="alert alert-success">
+        <i class="fas fa-check-circle"></i>
+        <strong>تم جلب {{ live_products_count }} منتج مباشرة من OneCard API</strong>
+        {% if saved_products_count > 0 %}
+        <br><small>يوجد {{ saved_products_count }} منتج محفوظ محلياً</small>
+        {% endif %}
+    </div>
+    {% endif %}
+
     <div class="stats-row">
         <div class="stat-card">
             <div class="stat-number">{{ products|length }}</div>
-            <div class="stat-label">إجمالي المنتجات</div>
+            <div class="stat-label">إجمالي المنتجات المعروضة</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ products|selectattr('is_test_product', 'equalto', true)|list|length }}</div>
+            <div class="stat-label">منتجات الاختبار</div>
         </div>
         <div class="stat-card">
             <div class="stat-number">{{ products|selectattr('is_imported', 'equalto', true)|list|length }}</div>
@@ -55,6 +84,7 @@
                 <option value="not_imported">غير مستورد</option>
                 <option value="in_stock">متوفر</option>
                 <option value="out_of_stock">غير متوفر</option>
+                <option value="test_products">منتجات الاختبار</option>
             </select>
         </div>
     </div>
@@ -76,12 +106,19 @@
                 {% for product in products %}
                 <tr data-category="{{ product.category }}" 
                     data-imported="{{ product.is_imported|lower }}" 
-                    data-stock="{{ product.stock_status|lower }}">
+                    data-stock="{{ product.stock_status|lower }}"
+                    data-test="{{ product.is_test_product|lower if product.is_test_product is defined else 'false' }}">
                     <td>
-                        <strong>{{ product.name }}</strong>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <strong>{{ product.name }}</strong>
+                            {% if product.is_test_product is defined and product.is_test_product %}
+                            <span class="badge badge-test">اختبار</span>
+                            {% endif %}
+                        </div>
                         {% if product.description %}
-                        <br><small class="text-muted">{{ product.description[:100] }}...</small>
+                        <small class="text-muted">{{ product.description[:100] }}...</small>
                         {% endif %}
+                        <br><small class="text-info">ID: {{ product.external_product_id }}</small>
                     </td>
                     <td>{{ product.category or 'غير محدد' }}</td>
                     <td><strong>{{ product.price }}</strong></td>
@@ -109,14 +146,14 @@
                         <div class="action-buttons">
                             {% if not product.is_imported %}
                             <button class="btn btn-sm btn-success" 
-                                    onclick="importProduct({{ product.id }})" 
+                                    onclick="importProduct('{{ product.external_product_id }}')" 
                                     title="استيراد كمنتج محلي">
                                 <i class="fas fa-download"></i>
                             </button>
                             {% endif %}
                             
                             <button class="btn btn-sm btn-info" 
-                                    onclick="viewProductDetails({{ product.id }})" 
+                                    onclick="viewProductDetails('{{ product.external_product_id }}')" 
                                     title="عرض التفاصيل">
                                 <i class="fas fa-eye"></i>
                             </button>
@@ -132,7 +169,17 @@
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="7" class="text-center">لا توجد منتجات</td>
+                    <td colspan="7" class="text-center">
+                        <div style="padding: 40px;">
+                            <i class="fas fa-box-open" style="font-size: 48px; color: #ccc; margin-bottom: 15px;"></i>
+                            <h4>لا توجد منتجات للعرض</h4>
+                            <p class="text-muted">قم بمزامنة المنتجات من OneCard API أو تحقق من إعدادات الاتصال</p>
+                            <button class="btn btn-primary" onclick="refreshLiveProducts()">
+                                <i class="fas fa-sync"></i>
+                                جلب المنتجات الآن
+                            </button>
+                        </div>
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -154,6 +201,89 @@
 </div>
 
 <script>
+// جلب المنتجات المباشرة من OneCard
+function refreshLiveProducts() {
+    const button = event.target;
+    const originalHTML = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري التحديث...';
+    button.disabled = true;
+    
+    fetch(`/admin/api/live-products/{{ api_setting.id }}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert(`تم جلب ${data.data.length} منتج من أصل ${data.total_count} منتج متاح`, 'success');
+            setTimeout(() => {
+                location.reload();
+            }, 2000);
+        } else {
+            showAlert('فشل في جلب المنتجات: ' + data.message, 'error');
+        }
+    })
+    .catch(error => {
+        showAlert('خطأ في جلب المنتجات: ' + error.message, 'error');
+    })
+    .finally(() => {
+        button.innerHTML = originalHTML;
+        button.disabled = false;
+    });
+}
+
+// اختبار المنتجات المحددة
+function testProducts() {
+    const button = event.target;
+    const originalHTML = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الاختبار...';
+    button.disabled = true;
+    
+    fetch(`/admin/api/test-products/{{ api_setting.id }}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            let message = 'نتائج اختبار المنتجات:\n\n';
+            const results = data.data;
+            let successCount = 0;
+            let errorCount = 0;
+            
+            Object.keys(results).forEach(productId => {
+                const result = results[productId];
+                if (result.status === 'success') {
+                    message += `✅ المنتج ${productId}: ${result.name} - ${result.price} SAR\n`;
+                    successCount++;
+                } else {
+                    message += `❌ المنتج ${productId}: ${result.message}\n`;
+                    errorCount++;
+                }
+            });
+            
+            message += `\n📊 النتيجة: ${successCount} ناجح، ${errorCount} فاشل`;
+            
+            showAlert(message, successCount > errorCount ? 'success' : 'warning');
+        } else {
+            showAlert('فشل الاختبار: ' + data.message, 'error');
+        }
+    })
+    .catch(error => {
+        showAlert('خطأ في الاختبار: ' + error.message, 'error');
+    })
+    .finally(() => {
+        button.innerHTML = originalHTML;
+        button.disabled = false;
+    });
+}
+
 function syncProducts() {
     const button = event.target;
     const originalHTML = button.innerHTML;
@@ -194,12 +324,14 @@ function importProduct(productId) {
         button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
         button.disabled = true;
         
-        fetch(`/admin/api/import-product/${productId}`, {
+        // البحث عن المنتج في قاعدة البيانات أولاً
+        fetch(`/admin/api/import-product-by-external-id/${productId}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': '{{ csrf_token }}'
-            }
+            },
+            body: JSON.stringify({'api_settings_id': {{ api_setting.id }}})
         })
         .then(response => response.json())
         .then(data => {
@@ -223,28 +355,39 @@ function importProduct(productId) {
 }
 
 function viewProductDetails(productId) {
-    // عرض تفاصيل المنتج في modal
-    fetch(`/admin/api/product-details/${productId}`)
+    // عرض تفاصيل المنتج من OneCard مباشرة
+    fetch(`/admin/api/onecard-product-details/{{ api_setting.id }}/${productId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            const product = data.product;
+            const product = data.data;
+            const isTestProduct = ['3770', '3771', '3772', '3773', '3774'].includes(productId);
+            
             document.getElementById('modalBody').innerHTML = `
                 <div class="product-details">
-                    <h4>${product.name}</h4>
-                    <p><strong>المعرف الخارجي:</strong> ${product.external_product_id}</p>
-                    <p><strong>الفئة:</strong> ${product.category || 'غير محدد'}</p>
-                    <p><strong>السعر:</strong> ${product.price} ${product.currency}</p>
-                    <p><strong>الوصف:</strong> ${product.description || 'لا يوجد وصف'}</p>
-                    <p><strong>حالة المخزن:</strong> ${product.stock_status ? 'متوفر' : 'غير متوفر'}</p>
-                    <p><strong>تاريخ الإضافة:</strong> ${new Date(product.created_at).toLocaleString('ar')}</p>
-                    <p><strong>آخر تحديث:</strong> ${new Date(product.updated_at).toLocaleString('ar')}</p>
-                    ${product.raw_data ? `<details><summary>البيانات الخام</summary><pre>${JSON.stringify(JSON.parse(product.raw_data), null, 2)}</pre></details>` : ''}
+                    <h4>${product.name || product.productName || 'غير محدد'}</h4>
+                    ${isTestProduct ? '<span class="badge badge-test" style="margin-bottom: 10px;">منتج اختبار</span>' : ''}
+                    <p><strong>المعرف الخارجي:</strong> ${productId}</p>
+                    <p><strong>الفئة:</strong> ${product.category || product.categoryName || 'غير محدد'}</p>
+                    <p><strong>السعر:</strong> ${product.price || product.sellingPrice || 'غير محدد'} ${product.currency || 'SAR'}</p>
+                    <p><strong>الوصف:</strong> ${product.description || product.productDescription || 'لا يوجد وصف'}</p>
+                    <p><strong>حالة المخزن:</strong> ${product.inStock !== false ? 'متوفر' : 'غير متوفر'}</p>
+                    <p><strong>وقت الاستعلام:</strong> ${new Date().toLocaleString('ar')}</p>
+                    <details>
+                        <summary>البيانات الخام من OneCard</summary>
+                        <pre>${JSON.stringify(product, null, 2)}</pre>
+                    </details>
                 </div>
             `;
             document.getElementById('productModal').style.display = 'flex';
         } else {
-            showAlert('فشل في جلب تفاصيل المنتج', 'error');
+            showAlert('فشل في جلب تفاصيل المنتج: ' + data.message, 'error');
         }
     })
     .catch(error => {
@@ -273,6 +416,7 @@ function filterProducts() {
         const category = row.dataset.category;
         const isImported = row.dataset.imported === 'true';
         const inStock = row.dataset.stock === 'true';
+        const isTestProduct = row.dataset.test === 'true';
         
         let showRow = true;
         
@@ -300,6 +444,9 @@ function filterProducts() {
                     break;
                 case 'out_of_stock':
                     if (inStock) showRow = false;
+                    break;
+                case 'test_products':
+                    if (!isTestProduct) showRow = false;
                     break;
             }
         }
@@ -404,6 +551,24 @@ function showAlert(message, type) {
 
 .text-muted {
     color: #6c757d;
+}
+
+.text-info {
+    color: #17a2b8;
+    font-family: monospace;
+}
+
+.badge {
+    display: inline-block;
+    padding: 3px 8px;
+    font-size: 0.75em;
+    font-weight: bold;
+    border-radius: 12px;
+}
+
+.badge-test {
+    background-color: #ff9800;
+    color: white;
 }
 
 .modal {

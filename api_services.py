@@ -12,6 +12,9 @@ from decimal import Decimal
 from models import db, APISettings, APIProduct, APITransaction, Product
 from flask import current_app
 
+# معرفات المنتجات للاختبار
+TEST_PRODUCT_IDS = ["3770", "3771", "3772", "3773", "3774"]
+
 class OnecardAPIService:
     """خدمة API لـ OneCard - متوافق مع Integration API Staging"""
     
@@ -86,11 +89,17 @@ class OnecardAPIService:
         # إذا لم يتم تمرير merchant_id، استخدم من الإعدادات
         if not merchant_id:
             try:
-                import json
-                settings = json.loads(self.api_settings.settings_json)
-                merchant_id = settings.get('merchant_id', '315325')  # القيمة الافتراضية
-            except:
+                if self.api_settings.settings_json:
+                    import json
+                    settings = json.loads(self.api_settings.settings_json)
+                    merchant_id = settings.get('merchant_id', '315325')  # القيمة الافتراضية
+                else:
+                    merchant_id = '315325'  # fallback
+            except Exception as e:
+                current_app.logger.warning(f"Could not parse settings_json: {e}")
                 merchant_id = '315325'  # fallback
+        
+        current_app.logger.info(f"Getting products for merchant ID: {merchant_id}")
         
         # MD5 (resellerUsername + merchantId + secretKey)
         password = self._generate_password(merchant_id)
@@ -161,6 +170,28 @@ class OnecardAPIService:
         timestamp = str(int(time.time()))
         random_num = str(random.randint(1000, 9999))
         return f"ES{timestamp}{random_num}"
+    
+    def test_products_availability(self):
+        """اختبار توفر المنتجات المحددة للاختبار"""
+        results = {}
+        for product_id in TEST_PRODUCT_IDS:
+            try:
+                response = self.get_product_info(product_id)
+                if 'error' in response:
+                    results[product_id] = {'status': 'error', 'message': response['error']}
+                else:
+                    name = response.get('name') or response.get('productName', 'غير محدد')
+                    price = response.get('price') or response.get('sellingPrice', 0)
+                    available = response.get('inStock', True)
+                    results[product_id] = {
+                        'status': 'success',
+                        'name': name,
+                        'price': price,
+                        'available': available
+                    }
+            except Exception as e:
+                results[product_id] = {'status': 'error', 'message': str(e)}
+        return results
 
 class APIManager:
     """مدير عام لجميع APIs مع دعم كامل لـ OneCard"""
@@ -399,11 +430,54 @@ class APIManager:
             transaction.purchase_response = json.dumps(response)
             
             # استخراج أكواد المنتج إذا كانت متوفرة
+            product_codes = None
             if 'codes' in response:
                 transaction.product_codes = json.dumps(response['codes'])
+                product_codes = response['codes']
             elif 'result' in response and isinstance(response['result'], dict):
-                if 'codes' in response['result']:
-                    transaction.product_codes = json.dumps(response['result']['codes'])
+                result = response['result']
+                if 'codes' in result:
+                    transaction.product_codes = json.dumps(result['codes'])
+                    product_codes = result['codes']
+                elif 'serialNumbers' in result:
+                    transaction.product_codes = json.dumps(result['serialNumbers'])
+                    product_codes = result['serialNumbers']
+                elif 'codeDetails' in result:
+                    # OneCard format
+                    codes_list = []
+                    for code_detail in result['codeDetails']:
+                        if 'code' in code_detail:
+                            codes_list.append(code_detail['code'])
+                        elif 'serialNumber' in code_detail:
+                            codes_list.append(code_detail['serialNumber'])
+                    if codes_list:
+                        transaction.product_codes = json.dumps(codes_list)
+                        product_codes = codes_list
+            elif 'serialNumbers' in response:
+                transaction.product_codes = json.dumps(response['serialNumbers'])
+                product_codes = response['serialNumbers']
+            elif 'codeDetails' in response:
+                # OneCard direct format
+                codes_list = []
+                for code_detail in response['codeDetails']:
+                    if 'code' in code_detail:
+                        codes_list.append(code_detail['code'])
+                    elif 'serialNumber' in code_detail:
+                        codes_list.append(code_detail['serialNumber'])
+                if codes_list:
+                    transaction.product_codes = json.dumps(codes_list)
+                    product_codes = codes_list
+            
+            # تسجيل معلومات الأكواد المستلمة
+            if product_codes:
+                current_app.logger.info(f"Received {len(product_codes)} product codes for transaction {ref_number}")
+            else:
+                current_app.logger.warning(f"No product codes received for transaction {ref_number}")
+                # محاولة استخراج أي أكواد من الاستجابة الكاملة
+                response_str = json.dumps(response)
+                if 'code' in response_str.lower() or 'serial' in response_str.lower():
+                    transaction.product_codes = json.dumps(response)
+                    current_app.logger.info(f"Stored full response as product codes for transaction {ref_number}")
             
             db.session.commit()
             

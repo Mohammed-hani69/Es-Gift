@@ -10,6 +10,7 @@ from models import db, APISettings, APIProduct, APITransaction
 from api_services import APIManager
 import json
 from datetime import datetime
+from decimal import Decimal
 
 # إنشاء Blueprint
 api_admin_bp = Blueprint('api_admin', __name__, url_prefix='/admin/api')
@@ -156,17 +157,210 @@ def test_api_connection(setting_id):
 @api_admin_bp.route('/products/<int:setting_id>')
 @login_required
 def api_products(setting_id):
-    """صفحة منتجات API"""
+    """صفحة منتجات API مع جلب مباشر من OneCard"""
     if not current_user.is_admin:
         flash('غير مصرح لك بالوصول لهذه الصفحة', 'error')
         return redirect(url_for('main.index'))
     
     api_setting = APISettings.query.get_or_404(setting_id)
-    products = APIProduct.query.filter_by(api_settings_id=setting_id).all()
+    
+    # جلب المنتجات المحفوظة من قاعدة البيانات
+    saved_products = APIProduct.query.filter_by(api_settings_id=setting_id).all()
+    
+    # جلب المنتجات مباشرة من OneCard API للمقارنة
+    live_products = []
+    api_products_status = "success"
+    api_error_message = None
+    
+    try:
+        if api_setting.api_type == 'onecard' and api_setting.is_active:
+            service = APIManager.get_api_service(api_setting)
+            
+            # أولاً: جلب منتجات الاختبار المحددة مباشرة
+            test_products = []
+            for test_id in ["3770", "3771", "3772", "3773", "3774"]:
+                try:
+                    test_response = service.get_product_info(test_id)
+                    if 'error' not in test_response:
+                        test_product = {
+                            'id': len(test_products) + 1,
+                            'external_product_id': test_id,
+                            'name': test_response.get('name') or test_response.get('productName') or test_response.get('ProductName', f'منتج اختبار {test_id}'),
+                            'description': test_response.get('description') or test_response.get('productDescription', 'منتج للاختبار - OneCard'),
+                            'category': test_response.get('category') or test_response.get('categoryName', 'منتجات الاختبار'),
+                            'price': float(test_response.get('price') or test_response.get('sellingPrice', 0)),
+                            'currency': test_response.get('currency', 'SAR'),
+                            'stock_status': test_response.get('inStock', True),
+                            'is_imported': False,
+                            'is_test_product': True,
+                            'raw_data': json.dumps(test_response, ensure_ascii=False)
+                        }
+                        
+                        # تحقق إذا كان المنتج مستورد مسبقاً
+                        existing_saved = next((p for p in saved_products if p.external_product_id == test_id), None)
+                        if existing_saved:
+                            test_product['is_imported'] = existing_saved.is_imported
+                            test_product['local_product'] = existing_saved.local_product
+                        
+                        test_products.append(test_product)
+                        current_app.logger.info(f"✅ تم جلب منتج الاختبار {test_id}: {test_product['name']}")
+                    else:
+                        current_app.logger.warning(f"⚠️ فشل جلب منتج الاختبار {test_id}: {test_response['error']}")
+                except Exception as e:
+                    current_app.logger.error(f"❌ خطأ في جلب منتج الاختبار {test_id}: {e}")
+            
+            # ثانياً: جلب باقي المنتجات من القائمة العامة
+            response = service.get_products_list()
+            
+            if 'error' not in response:
+                # معالجة بيانات المنتجات من OneCard
+                products_data = []
+                if isinstance(response, dict):
+                    if 'products' in response:
+                        products_data = response['products']
+                    elif 'result' in response and isinstance(response['result'], list):
+                        products_data = response['result']
+                    elif 'data' in response:
+                        products_data = response['data']
+                elif isinstance(response, list):
+                    products_data = response
+                
+                # إضافة منتجات الاختبار أولاً
+                live_products.extend(test_products)
+                
+                # ثم إضافة باقي المنتجات (تجنب التكرار مع منتجات الاختبار)
+                test_ids = ["3770", "3771", "3772", "3773", "3774"]
+                for product_data in products_data[:47]:  # 47 منتج إضافي مع 3 منتجات اختبار = 50 منتج إجمالي
+                    try:
+                        product_id = str(product_data.get('id') or product_data.get('productId') or product_data.get('ProductId', ''))
+                        
+                        # تجنب إضافة منتجات الاختبار مرة أخرى
+                        if product_id and product_id not in test_ids:
+                            live_product = {
+                                'id': len(live_products) + 1,  # معرف مؤقت للعرض
+                                'external_product_id': product_id,
+                                'name': product_data.get('name') or product_data.get('productName') or product_data.get('ProductName', 'غير محدد'),
+                                'description': product_data.get('description') or product_data.get('productDescription', ''),
+                                'category': product_data.get('category') or product_data.get('categoryName', 'غير محدد'),
+                                'price': float(product_data.get('price') or product_data.get('sellingPrice', 0)),
+                                'currency': product_data.get('currency', 'SAR'),
+                                'stock_status': product_data.get('inStock', True),
+                                'is_imported': False,  # تأكد من أنه غير مستورد افتراضياً
+                                'is_test_product': False,
+                                'raw_data': json.dumps(product_data, ensure_ascii=False)
+                            }
+                            
+                            # تحقق إذا كان المنتج مستورد مسبقاً
+                            existing_saved = next((p for p in saved_products if p.external_product_id == product_id), None)
+                            if existing_saved:
+                                live_product['is_imported'] = existing_saved.is_imported
+                                live_product['local_product'] = existing_saved.local_product
+                            
+                            live_products.append(live_product)
+                    except Exception as e:
+                        current_app.logger.error(f"Error processing product data: {e}")
+                        continue
+            else:
+                # حتى لو فشل جلب القائمة العامة، نعرض منتجات الاختبار
+                live_products.extend(test_products)
+                if not test_products:  # فقط إذا لم نجد حتى منتجات الاختبار
+                    api_products_status = "error"
+                    api_error_message = response['error']
+    except Exception as e:
+        current_app.logger.error(f"Error fetching live products: {e}")
+        api_products_status = "error"
+        api_error_message = str(e)
+    
+    # إذا لم نتمكن من جلب المنتجات المباشرة، استخدم المحفوظة
+    products_to_display = live_products if live_products else saved_products
     
     return render_template('admin/api_products.html', 
                          api_setting=api_setting, 
-                         products=products)
+                         products=products_to_display,
+                         saved_products_count=len(saved_products),
+                         live_products_count=len(live_products),
+                         api_status=api_products_status,
+                         api_error=api_error_message)
+
+@api_admin_bp.route('/test-products/<int:setting_id>', methods=['POST'])
+@login_required
+def test_api_products(setting_id):
+    """اختبار منتجات API المحددة للاختبار"""
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'غير مصرح'})
+    
+    try:
+        api_setting = APISettings.query.get_or_404(setting_id)
+        service = APIManager.get_api_service(api_setting)
+        
+        # اختبار المنتجات المحددة
+        test_results = service.test_products_availability()
+        
+        return jsonify({
+            'success': True,
+            'message': 'تم اختبار المنتجات بنجاح',
+            'data': test_results
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'خطأ في الاختبار: {str(e)}'})
+
+@api_admin_bp.route('/live-products/<int:setting_id>', methods=['POST'])
+@login_required  
+def get_live_products(setting_id):
+    """جلب المنتجات المباشرة من OneCard API"""
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'غير مصرح'})
+    
+    try:
+        api_setting = APISettings.query.get_or_404(setting_id)
+        service = APIManager.get_api_service(api_setting)
+        
+        # جلب قائمة المنتجات
+        response = service.get_products_list()
+        
+        if 'error' in response:
+            return jsonify({'success': False, 'message': response['error']})
+        
+        # معالجة البيانات
+        products_data = []
+        if isinstance(response, dict):
+            if 'products' in response:
+                products_data = response['products']
+            elif 'result' in response and isinstance(response['result'], list):
+                products_data = response['result']
+            elif 'data' in response:
+                products_data = response['data']
+        elif isinstance(response, list):
+            products_data = response
+        
+        # تحويل البيانات للعرض
+        formatted_products = []
+        for product_data in products_data[:100]:  # أول 100 منتج
+            try:
+                product_id = str(product_data.get('id') or product_data.get('productId') or product_data.get('ProductId', ''))
+                if product_id:
+                    formatted_products.append({
+                        'external_product_id': product_id,
+                        'name': product_data.get('name') or product_data.get('productName') or product_data.get('ProductName', 'غير محدد'),
+                        'price': float(product_data.get('price') or product_data.get('sellingPrice', 0)),
+                        'currency': product_data.get('currency', 'SAR'), 
+                        'category': product_data.get('category') or product_data.get('categoryName', 'غير محدد'),
+                        'stock_status': product_data.get('inStock', True),
+                        'is_test_product': product_id in ["3770", "3771", "3772", "3773", "3774"]
+                    })
+            except Exception as e:
+                continue
+        
+        return jsonify({
+            'success': True,
+            'message': f'تم جلب {len(formatted_products)} منتج بنجاح',
+            'data': formatted_products,
+            'total_count': len(products_data)
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'خطأ في جلب المنتجات: {str(e)}'})
 
 @api_admin_bp.route('/sync/<int:setting_id>', methods=['POST'])
 @login_required
@@ -203,6 +397,64 @@ def sync_products(setting_id):
     except Exception as e:
         current_app.logger.error(f"Sync products error: {e}")
         return jsonify({'success': False, 'message': f'خطأ في المزامنة: {str(e)}'})
+
+@api_admin_bp.route('/import-product-by-external-id/<external_id>', methods=['POST'])
+@login_required
+def import_product_by_external_id(external_id):
+    """استيراد منتج باستخدام المعرف الخارجي"""
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'غير مصرح'})
+    
+    try:
+        data = request.get_json()
+        api_settings_id = data.get('api_settings_id')
+        
+        if not api_settings_id:
+            return jsonify({'success': False, 'message': 'معرف إعدادات API مطلوب'})
+        
+        # البحث عن المنتج في قاعدة البيانات
+        api_product = APIProduct.query.filter_by(
+            api_settings_id=api_settings_id,
+            external_product_id=external_id
+        ).first()
+        
+        if not api_product:
+            # إذا لم يكن المنتج موجود، قم بجلبه من API أولاً
+            api_setting = APISettings.query.get(api_settings_id)
+            service = APIManager.get_api_service(api_setting)
+            
+            # جلب تفاصيل المنتج من API
+            product_data = service.get_product_info(external_id)
+            
+            if 'error' in product_data:
+                return jsonify({'success': False, 'message': f'فشل في جلب المنتج من API: {product_data["error"]}'})
+            
+            # إنشاء منتج API جديد
+            api_product = APIProduct(
+                api_settings_id=api_settings_id,
+                external_product_id=external_id,
+                name=product_data.get('name') or product_data.get('productName', 'غير محدد'),
+                description=product_data.get('description') or product_data.get('productDescription', ''),
+                category=product_data.get('category') or product_data.get('categoryName', 'غير محدد'),
+                price=Decimal(str(float(product_data.get('price') or product_data.get('sellingPrice', 0)))),
+                currency=product_data.get('currency', 'SAR'),
+                stock_status=product_data.get('inStock', True),
+                raw_data=json.dumps(product_data, ensure_ascii=False)
+            )
+            db.session.add(api_product)
+            db.session.commit()
+        
+        # استيراد المنتج كمنتج محلي
+        success, message = APIManager.import_product_to_local(api_product.id)
+        
+        return jsonify({
+            'success': success,
+            'message': message
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f"Import product by external ID error: {e}")
+        return jsonify({'success': False, 'message': f'خطأ في الاستيراد: {str(e)}'})
 
 @api_admin_bp.route('/import-product/<int:product_id>', methods=['POST'])
 @login_required

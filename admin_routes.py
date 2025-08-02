@@ -540,7 +540,7 @@ def add_codes_to_order(order_id):
             if all_codes_complete:
                 # إرسال الإيميل مع الأكواد
                 try:
-                    from email_service import ProductCodeEmailService
+                    from order_email_service import ProductCodeEmailService
                     email_service = ProductCodeEmailService()
                     
                     order_data = {
@@ -613,7 +613,7 @@ def resend_order_email(order_id):
         if not product_codes:
             return jsonify({'success': False, 'message': 'لا توجد أكواد لهذا الطلب'})
         
-        from email_service import ProductCodeEmailService
+        from order_email_service import ProductCodeEmailService
         email_service = ProductCodeEmailService()
         
         order_data = {
