@@ -228,7 +228,7 @@ body {
 .support-icon,
 .logout-btn,
 .search-icon {
-  display: flex;
+  display: flex !important;
   align-items: center;
   justify-content: center;
   width: 40px;

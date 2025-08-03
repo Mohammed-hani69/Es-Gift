@@ -7,10 +7,15 @@
     <div class="floating-icons" id="floatingIcons">
         <!-- سيتم إضافة الأيقونات هنا عبر JavaScript -->
     </div>
+
+    
+    
+   
     
 
 
     <div class="swiper home-swiper">
+        
         <div class="swiper-wrapper">
             {% for offer in main_offers %}
             <div class="swiper-slide">
@@ -127,8 +132,9 @@
 <!-- عروض محدودة -->
 <section class="limited-offers">
     <h3 class="section-title">عروض محدودة</h3>
-    <div class="swiper limited-offers-swiper">
-        <div class="swiper-wrapper">
+
+    <div class="limited-offers-swiper">
+        <div class="limited-offeres-wrapper">
             {% for product in limited_offers %}
             <div class="swiper-slide">
                 <div class="limited-offers-item">
@@ -150,16 +156,17 @@
         </div>
         
     </div>
+
 </section>
 
 <!-- المنتجات الجديدة من OneCard -->
 {% if api_products %}
 <section class="recently-added-section">
-    <h3 class="section-title">المنتجات الجديدة</h3>
-    <div class="onecard-products-container">
-        <div class="onecard-products-wrapper">
+    <h3 class="section-title">المنتجات الجديدة </h3>
+    <div class="onecard-products-container swiper">
+        <div class="onecard-products-wrapper swiper-wrapper">
             {% for product in api_products %}
-            <div class="onecard-product-card">
+            <div class="onecard-product-card swiper-slide">
                 <div class="onecard-product-image">
                     {% if product.image_url and product.image_url != 'default-product.jpg' %}
                         <img src="{{ product.image_url }}" 
@@ -226,14 +233,15 @@
             {% endfor %}
         </div>
         </div>
-        <div class="onecard-scroll-nav">
-            <button class="scroll-btn scroll-left" onclick="scrollOnecardProducts('left')">
-                <i class="fas fa-chevron-left"></i>
-            </button>
-            <button class="scroll-btn scroll-right" onclick="scrollOnecardProducts('right')">
-                <i class="fas fa-chevron-right"></i>
-            </button>
-        </div>
+       <div class="onecard-scroll-nav">
+  <button class="scroll-btn scroll-left" onclick="scrollOnecardProducts('left')">
+    <i class="fas fa-chevron-right"></i>
+  </button>
+  <button class="scroll-btn scroll-right" onclick="scrollOnecardProducts('right')">
+    <i class="fas fa-chevron-left"></i>
+  </button>
+</div>
+
     </div>
 </section>
 {% endif %}
@@ -242,15 +250,17 @@
 {% if published_articles %}
 <section class="know-more">
     <h3 class="section-title">تعرف على المزيد في مدونتنا</h3>
-    <div class="swiper articles-swiper">
-        <div class="swiper-wrapper">
+    <div class="articles-swiper">
+        <div class="articles-swiper-wrapper">
             {% for article in published_articles %}
             <div class="swiper-slide">
                 <div class="digital-item article-card">
                     <a href="{{ url_for('main.article_detail', article_id=article.id, slug=article.title|create_slug) }}" class="article-link">
                         <div class="article-image">
                             {% if article.image_url %}
-                                <img src="/static/uploads/articles/{{ article.image_url }}" alt="{{ article.title }}" onerror="this.src='/static/images/default-article.jpg'">
+                                <!-- <img src="/static/uploads/articles/{{ article.image_url }}" alt="{{ article.title }}" onerror="this.src='/static/images/default-article.jpg'"> -->
+                                 <!-- تعديل جديد : حطيت الصوره دي هنا وعملت كومنت للصوره القديمه عشان الصوره القديمه مش شغاله وعماله تخلي السيرفر يحمل كل ثانيه -->
+                                  <img src="{{ url_for('static', filename='images/default-article.jpg') }}" alt="{{ article.title }}">
                             {% else %}
                                 <img src="{{ url_for('static', filename='images/default-article.jpg') }}" alt="{{ article.title }}">
                             {% endif %}
@@ -294,7 +304,7 @@
 /* OneCard Products - تصميم محسن ومناسب للموبايل */
 .recently-added-section {
     padding: 30px 15px;
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    background-color: #222222;
     margin: 20px 0;
     position: relative;
 }
@@ -343,8 +353,8 @@
 }
 
 .onecard-product-card {
-    flex: 0 0 260px;
-    background: #fff;
+    flex: 0 0 32% !important;
+    background: #111111;
     border-radius: 20px;
     box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -365,6 +375,7 @@
 
 .onecard-product-image {
     position: relative;
+    width: 80%;
     height: 180px;
     overflow: hidden;
     background: linear-gradient(135deg, #f1f3f4, #e8eaed);
@@ -386,14 +397,14 @@
     position: absolute;
     top: 12px;
     right: 12px;
-    background: linear-gradient(45deg, #28a745, #20c997);
+    background: linear-gradient(135deg, #ff0033, #ff3366);
     color: white;
     padding: 6px 12px;
     border-radius: 20px;
     font-size: 11px;
     font-weight: bold;
     z-index: 3;
-    box-shadow: 0 3px 10px rgba(40, 167, 69, 0.4);
+    background: linear-gradient(135deg, #ff0033, #ff3366);
     animation: pulse 2s infinite;
     display: flex;
     align-items: center;
@@ -433,12 +444,13 @@
     flex: 1;
     display: flex;
     flex-direction: column;
+    width: 80%;
 }
 
 .onecard-product-title {
     font-size: 15px;
     font-weight: 600;
-    color: #2c3e50;
+    color: #fff;
     margin: 0 0 10px 0;
     line-height: 1.4;
     min-height: 40px;
@@ -470,12 +482,12 @@
 .onecard-price {
     font-size: 16px;
     font-weight: 700;
-    color: #e74c3c;
+    color: #f1f3f4;
     text-shadow: 0 1px 2px rgba(231, 76, 60, 0.1);
 }
 
 .onecard-provider {
-    background: linear-gradient(45deg, #007bff, #0056b3);
+    background: linear-gradient(135deg, #ff0033, #ff3366);
     color: white;
     padding: 4px 10px;
     border-radius: 15px;
@@ -484,8 +496,7 @@
     letter-spacing: 0.5px;
     text-transform: uppercase;
 }
-    animation: pulse 2s infinite;
-}
+
 
 .out-of-stock-overlay {
     position: absolute;
@@ -512,7 +523,7 @@
 .onecard-product-title {
     font-size: 16px;
     font-weight: 600;
-    color: #2c3e50;
+    color: #fff;
     margin: 0 0 8px 0;
     line-height: 1.4;
     min-height: 44px;
@@ -541,12 +552,12 @@
 .onecard-price {
     font-size: 18px;
     font-weight: 700;
-    color: #e74c3c;
+    color: #f1f3f4;
     text-shadow: 0 1px 2px rgba(231, 76, 60, 0.1);
 }
 
 .onecard-provider {
-    background: linear-gradient(45deg, #007bff, #0056b3);
+    background: linear-gradient(135deg, #ff0033, #ff3366);
     color: white;
     padding: 4px 8px;
     border-radius: 12px;
@@ -560,10 +571,12 @@
     display: flex;
     gap: 8px;
     background: #f8f9fa;
+    width: 70%;
+    justify-content: space-around;
 }
 
 .onecard-btn {
-    flex: 1;
+    /* flex: 1; */
     border: none;
     border-radius: 8px;
     padding: 10px;
@@ -583,12 +596,12 @@
 }
 
 .onecard-btn-cart {
-    background: linear-gradient(45deg, #28a745, #20c997);
+    background: linear-gradient(135deg, #ff0033, #ff3366);
     color: white;
 }
 
 .onecard-btn-cart:hover {
-    background: linear-gradient(45deg, #20c997, #17a2b8);
+    background: linear-gradient(135deg, #b74058, #ff0040);
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
 }
@@ -646,20 +659,20 @@
     height: 45px;
     border: none;
     border-radius: 50%;
-    background: linear-gradient(45deg, #007bff, #0056b3);
+    background: linear-gradient(135deg, #ff1a4a 0%, #d9003d 100%);
     color: white;
     cursor: pointer;
     transition: all 0.3s ease;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 3px 10px rgba(0, 123, 255, 0.3);
 }
 
 .scroll-btn:hover {
     background: linear-gradient(45deg, #0056b3, #004085);
     transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(0, 123, 255, 0.4);
+        background: linear-gradient(135deg, #ff0b40 0%, #d9003d 100%);
+
 }
 
 .scroll-btn:active {
@@ -1394,7 +1407,7 @@
 }
 
 .fresh-badge {
-    background: linear-gradient(135deg, #00b894, #00cec9);
+    background: linear-gradient(135deg, #ff0033, #ff3366);
 }
 
 .out-of-stock-badge {
@@ -1918,16 +1931,14 @@
 }
 
 /* تصميم سلايدر المقالات */
-.articles-swiper {
-    overflow: hidden;
+.articles-swiper-wrapper {
     padding: 20px 0;
     margin: 20px 0;
+    display: grid;
+    gap:10px;
+    grid-template-columns: repeat(4,1fr);
 }
 
-.articles-swiper .swiper-slide {
-    height: auto;
-    display: flex;
-}
 
 .articles-swiper .custom-navigation {
     display: flex;
@@ -1966,6 +1977,16 @@
 }
 
 /* تحسينات للشاشات الصغيرة */
+
+@media (max-width:900px){
+      .articles-swiper-wrapper {
+    padding: 20px 0;
+    margin: 20px 0;
+    display: grid;
+    gap:10px;
+    grid-template-columns: repeat(2,1fr);
+}
+}
 @media (max-width: 768px) {
     .article-image {
         height: 150px;
@@ -1976,7 +1997,7 @@
     }
     
     .article-title {
-        font-size: 14px;
+        font-size: 12px;
     }
     
     .article-excerpt {
@@ -1997,6 +2018,8 @@
     .articles-swiper-next i {
         font-size: 14px;
     }
+  
+
 }
 
 @media (max-width: 480px) {
@@ -2052,10 +2075,8 @@
 /* تصميم سلايدر المنتجات المضافة حديثاً */
 .recently-added, .recently-added-section {
     padding: 30px 20px;
-    background: #f8f9fa;
     margin: 30px 0;
     border-radius: 10px;
-    border: 1px solid #e9ecef;
 }
 
 .recently-added .section-title, .recently-added-section .section-title {
@@ -2100,7 +2121,7 @@
     position: absolute;
     top: 10px;
     left: 10px;
-    background: linear-gradient(135deg, #28a745, #20c997);
+    background: linear-gradient(135deg, #ff0033, #ff3366);
     color: white;
     padding: 5px 10px;
     border-radius: 20px;
@@ -3124,7 +3145,7 @@
 
 /* تصميم سلايدر العروض المحدودة */
 .limited-offers-swiper {
-    overflow: hidden;
+    /* overflow: hidden; */
     padding: 20px 0;
     margin: 20px 0;
 }
@@ -3231,11 +3252,34 @@
         font-size: 12px;
     }
 }
+.onecard-products-wrapper {
+    overflow-x: auto;
+    scroll-behavior: smooth;
+  }
+
+  .onecard-product-card {
+    min-width: 250px; /* أو حسب عرض البطاقة الفعلي */
+    flex: 0 0 auto;
+    margin-left: 10px;
+    margin-right: 10px;
+  }
 </style>
 {% endblock %}
 
+
 {% block extra_js %}
 <script>
+ function scrollOnecardProducts(direction) {
+    const container = document.querySelector(".onecard-products-wrapper");
+    const card = container.querySelector(".onecard-product-card");
+    const scrollAmount = card.offsetWidth + 20; // حجم البطاقة + margin تقريبًا
+
+    if (direction === "left") {
+      container.scrollLeft -= scrollAmount;
+    } else if (direction === "right") {
+      container.scrollLeft += scrollAmount;
+    }
+  }
 // تفعيل الأيقونات المتحركة عند تحميل الصفحة
 document.addEventListener('DOMContentLoaded', function() {
     // إنشاء الأيقونات المتحركة
@@ -4264,6 +4308,8 @@ function closeProductModal() {
         document.body.style.overflow = '';
     }
 }
+
+console.log("amr ksmal")
 
 // إضافة تأثيرات touch للموبايل
 document.addEventListener('DOMContentLoaded', function() {

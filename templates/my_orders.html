@@ -1,1526 +1,1545 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>طلباتي - ES Gift</title>
-    
+
     <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+
     <!-- Google Fonts - Cairo -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap"
+      rel="stylesheet"
+    />
+
     <style>
-/* متغيرات CSS للتصميم العصري */
-:root {
-    --primary-red: #ff0033;
-    --primary-red-dark: #cc0027;
-    --primary-red-light: rgba(255, 0, 51, 0.1);
-    --bg-primary: #0f0f0f;
-    --bg-secondary: #1a1a1a;
-    --bg-card: #1e1e1e;
-    --text-primary: #ffffff;
-    --text-secondary: #cccccc;
-    --text-tertiary: #999999;
-    --border-color: rgba(255, 255, 255, 0.1);
-    --shadow-main: 0 8px 32px rgba(0, 0, 0, 0.3);
-    --shadow-hover: 0 16px 64px rgba(255, 0, 51, 0.2);
-    --gradient-primary: linear-gradient(135deg, var(--primary-red) 0%, var(--primary-red-dark) 100%);
-    --gradient-card: linear-gradient(145deg, rgba(30, 30, 30, 0.95) 0%, rgba(40, 40, 40, 0.95) 100%);
-    --blur-effect: blur(20px);
-}
-
-/* إعدادات أساسية للجسم والخط */
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-}
-
-body {
-    font-family: 'Cairo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: var(--bg-primary);
-    color: var(--text-primary);
-    line-height: 1.6;
-    direction: rtl;
-    overflow-x: hidden;
-}
-
-/* تطبيق تصميم مطابق للصفحة الرئيسية */
-.orders-page {
-    background: var(--bg-primary);
-    min-height: 100vh;
-    padding: 2rem 0;
-    position: relative;
-    overflow: hidden;
-}
-
-/* الأيقونات المتحركة في الخلفية - مثل الصفحة الرئيسية */
-.floating-icons {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    z-index: 1;
-    overflow: hidden;
-}
-
-.floating-icon {
-    position: absolute;
-    opacity: 0.6;
-    animation-timing-function: linear;
-    animation-iteration-count: infinite;
-}
-
-.floating-icon img {
-    width: 100%;
-    height: 100%;
-    filter: brightness(2) contrast(1) invert(1) drop-shadow(0 0 15px rgba(255, 255, 255, 0.4));
-    transition: all 0.3s ease;
-}
-
-.floating-icon:hover img {
-    filter: brightness(2.5) contrast(1.2) invert(1) drop-shadow(0 0 25px rgba(255, 255, 255, 0.7));
-    transform: scale(1.2);
-}
-
-/* أحجام مختلفة للأيقونات */
-.icon-small { width: 25px; height: 25px; }
-.icon-medium { width: 45px; height: 45px; }
-.icon-large { width: 65px; height: 65px; }
-
-/* حركات مختلفة للأيقونات */
-.float-up { animation-name: floatUp; }
-.float-diagonal { animation-name: floatDiagonal; }
-.float-horizontal { animation-name: floatHorizontal; }
-.float-rotate { animation-name: floatRotate; }
-
-@keyframes floatUp {
-    0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
-    10% { opacity: 0.6; }
-    50% { transform: translateY(50vh) rotate(180deg); opacity: 0.8; }
-    90% { opacity: 0.6; }
-    100% { transform: translateY(-50px) rotate(360deg); opacity: 0; }
-}
-
-@keyframes floatDiagonal {
-    0% { transform: translate(0, 0) rotate(0deg); opacity: 0; }
-    10% { opacity: 0.5; }
-    50% { transform: translate(-50vw, -50vh) rotate(180deg); opacity: 0.8; }
-    90% { opacity: 0.5; }
-    100% { transform: translate(-100vw, -100vh) rotate(-360deg); opacity: 0; }
-}
-
-@keyframes floatHorizontal {
-    0% { transform: translateX(0) rotate(0deg); opacity: 0; }
-    10% { opacity: 0.7; }
-    50% { transform: translateX(50vw) rotate(90deg); opacity: 0.8; }
-    90% { opacity: 0.7; }
-    100% { transform: translateX(100vw) rotate(180deg); opacity: 0; }
-}
-
-@keyframes floatRotate {
-    0% { transform: translate(0, 0) rotate(0deg) scale(0.5); opacity: 0; }
-    10% { opacity: 0.4; }
-    25% { transform: translate(-20vw, -20vh) rotate(90deg) scale(0.8); opacity: 0.6; }
-    50% { transform: translate(-40vw, 0) rotate(180deg) scale(1); opacity: 0.8; }
-    75% { transform: translate(-60vw, 20vh) rotate(270deg) scale(0.8); opacity: 0.6; }
-    90% { opacity: 0.4; }
-    100% { transform: translate(-80vw, 40vh) rotate(360deg) scale(0.5); opacity: 0; }
-}
-
-.container {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 0 1rem;
-    position: relative;
-    z-index: 10;
-}
-
-/* رأس الصفحة العصري */
-.page-header {
-    text-align: center;
-    margin-bottom: 3rem;
-    background: var(--gradient-card);
-    border-radius: 25px;
-    padding: 4rem 2rem;
-    border: 2px solid var(--border-color);
-    box-shadow: var(--shadow-main), 0 0 30px rgba(255, 0, 51, 0.15);
-    backdrop-filter: var(--blur-effect);
-    position: relative;
-    overflow: hidden;
-}
-
-.page-header::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: var(--gradient-primary);
-    background-size: 200% 100%;
-    animation: gradientMove 4s ease-in-out infinite;
-}
-
-.page-title {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 1.5rem;
-    margin-bottom: 1.5rem;
-    font-size: 3.5rem;
-    font-weight: 800;
-    background: linear-gradient(135deg, #fff 0%, var(--primary-red) 50%, #fff 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    text-shadow: none;
-}
-
-.page-title i {
-    color: var(--primary-red);
-    filter: drop-shadow(0 0 20px rgba(255, 0, 51, 0.8));
-    animation: pulse 2.5s infinite;
-}
-
-/* شبكة الطلبات العصرية - كروت بجانب بعض */
-.es-grid {
-    display: grid;
-    gap: 2rem;
-    grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
-}
-
-/* بطاقات الطلبات العصرية المحسنة */
-.order-card {
-    background: var(--gradient-card);
-    border: 2px solid var(--border-color);
-    border-radius: 25px;
-    padding: 2rem;
-    position: relative;
-    overflow: hidden;
-    backdrop-filter: var(--blur-effect);
-    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: var(--shadow-main), 0 8px 32px rgba(255, 0, 51, 0.1);
-    transform-origin: center;
-    margin-bottom: 1.5rem;
-}
-
-.order-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 6px;
-    background: var(--gradient-primary);
-    background-size: 400% 100%;
-    animation: gradientMove 6s ease-in-out infinite;
-    border-radius: 25px 25px 0 0;
-}
-
-.order-card::after {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, transparent 30%, rgba(255, 0, 51, 0.08) 60%, transparent 80%);
-    opacity: 0;
-    transition: opacity 0.6s ease;
-    pointer-events: none;
-}
-
-.order-card:hover {
-    transform: translateY(-12px) scale(1.02);
-    box-shadow: var(--shadow-hover), 0 25px 45px rgba(0, 0, 0, 0.4), 0 0 30px rgba(255, 0, 51, 0.25);
-    border-color: var(--primary-red);
-    background: linear-gradient(145deg, rgba(30, 30, 30, 0.98) 0%, rgba(45, 45, 45, 0.98) 100%);
-}
-
-.order-card:hover::after {
-    opacity: 1;
-    animation: pulse 2s infinite;
-}
-
-.card-header {
-    margin-bottom: 2rem;
-    padding-bottom: 1.5rem;
-    border-bottom: 2px solid var(--border-color);
-    position: relative;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
-    border-radius: 15px;
-    padding: 1.5rem;
-    margin-bottom: 2rem;
-}
-
-.card-header::before {
-    content: '';
-    position: absolute;
-    bottom: -2px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 60px;
-    height: 3px;
-    background: var(--gradient-primary);
-    border-radius: 2px;
-    box-shadow: 0 0 15px rgba(255, 0, 51, 0.5);
-}
-
-.order-info-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1.5rem;
-    flex-wrap: wrap;
-    gap: 1.5rem;
-    background: rgba(255, 255, 255, 0.03);
-    padding: 1rem;
-    border-radius: 12px;
-    border: 1px solid var(--border-color);
-}
-
-.order-id {
-    font-size: 1.5rem;
-    font-weight: 800;
-    color: var(--text-primary);
-    display: flex;
-    align-items: center;
-    gap: 0.8rem;
-    background: linear-gradient(135deg, #fff 0%, var(--primary-red) 50%, #fff 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    text-shadow: 0 2px 8px rgba(255, 0, 51, 0.25);
-    position: relative;
-}
-
-.order-id::before {
-    content: '';
-    position: absolute;
-    bottom: -5px;
-    left: 0;
-    width: 100%;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, var(--primary-red), transparent);
-    border-radius: 1px;
-}
-
-.order-id i {
-    color: var(--primary-red);
-    filter: drop-shadow(0 0 10px rgba(255, 0, 51, 0.6));
-    font-size: 1.2rem;
-    animation: pulse 2s infinite;
-}
-
-/* شارات الحالة العصرية المحسنة */
-.es-status-badge {
-    padding: 0.8rem 1.5rem;
-    border-radius: 25px;
-    font-weight: 600;
-    font-size: 0.9rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.6rem;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    backdrop-filter: blur(12px);
-    border: 2px solid transparent;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-    overflow: hidden;
-    min-width: 120px;
-    justify-content: center;
-}
-
-.es-status-badge::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-    transition: left 0.6s;
-}
-
-.es-status-badge:hover::before {
-    left: 100%;
-}
-
-.es-status-badge.success {
-    background: linear-gradient(135deg, #10b981, #059669);
-    color: white;
-    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.5), 0 0 30px rgba(16, 185, 129, 0.3);
-    border-color: rgba(16, 185, 129, 0.3);
-}
-
-.es-status-badge.success:hover {
-    transform: translateY(-3px) scale(1.05);
-    box-shadow: 0 12px 35px rgba(16, 185, 129, 0.7), 0 0 40px rgba(16, 185, 129, 0.5);
-}
-
-.es-status-badge.warning {
-    background: linear-gradient(135deg, #f59e0b, #d97706);
-    color: white;
-    box-shadow: 0 8px 25px rgba(245, 158, 11, 0.5), 0 0 30px rgba(245, 158, 11, 0.3);
-    border-color: rgba(245, 158, 11, 0.3);
-}
-
-.es-status-badge.warning:hover {
-    transform: translateY(-3px) scale(1.05);
-    box-shadow: 0 12px 35px rgba(245, 158, 11, 0.7), 0 0 40px rgba(245, 158, 11, 0.5);
-}
-
-.es-status-badge.danger {
-    background: linear-gradient(135deg, #ef4444, #dc2626);
-    color: white;
-    box-shadow: 0 8px 25px rgba(239, 68, 68, 0.5), 0 0 30px rgba(239, 68, 68, 0.3);
-    border-color: rgba(239, 68, 68, 0.3);
-}
-
-.es-status-badge.danger:hover {
-    transform: translateY(-3px) scale(1.05);
-    box-shadow: 0 12px 35px rgba(239, 68, 68, 0.7), 0 0 40px rgba(239, 68, 68, 0.5);
-}
-
-.order-date {
-    display: flex;
-    align-items: center;
-    gap: 0.8rem;
-    color: var(--text-secondary);
-    font-size: 1rem;
-    font-weight: 500;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04));
-    padding: 1rem 1.5rem;
-    border-radius: 20px;
-    border: 1px solid var(--border-color);
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    backdrop-filter: blur(15px);
-    position: relative;
-    overflow: hidden;
-}
-
-.order-date::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 0, 51, 0.1), transparent);
-    transition: left 0.6s;
-}
-
-.order-date:hover::before {
-    left: 100%;
-}
-
-.order-date:hover {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.06));
-    border-color: var(--primary-red);
-    transform: translateY(-3px) scale(1.01);
-    box-shadow: 0 8px 25px rgba(255, 0, 51, 0.25), 0 0 20px rgba(255, 0, 51, 0.15);
-    color: var(--text-primary);
-}
-
-.order-date i {
-    color: var(--primary-red);
-    font-size: 1.1rem;
-    filter: drop-shadow(0 0 8px rgba(255, 0, 51, 0.5));
-    animation: pulse 2.5s infinite;
-}
-
-/* ملخص الطلب العصري المحسن */
-.order-summary {
-    margin-bottom: 2rem;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1.5rem;
-    padding: 1.5rem;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01));
-    border-radius: 20px;
-    border: 1px solid var(--border-color);
-    position: relative;
-    overflow: hidden;
-}
-
-.order-summary::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, transparent, var(--primary-red), transparent);
-    background-size: 200% 100%;
-    animation: gradientMove 4s ease-in-out infinite;
-}
-
-.summary-item {
-    display: flex;
-    align-items: center;
-    gap: 1.5rem;
-    padding: 1.8rem;
-    background: linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%);
-    border-radius: 18px;
-    border: 1px solid var(--border-color);
-    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-    backdrop-filter: blur(15px);
-    position: relative;
-    overflow: hidden;
-}
-
-.summary-item::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
-    transition: left 0.8s;
-}
-
-.summary-item:hover::before {
-    left: 100%;
-}
-
-.summary-item:hover {
-    background: linear-gradient(145deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.06) 100%);
-    border-color: var(--primary-red);
-    transform: translateY(-6px) scale(1.02);
-    box-shadow: 0 15px 30px rgba(255, 0, 51, 0.25), 0 0 25px rgba(255, 0, 51, 0.15);
-}
-
-.summary-icon {
-    width: 55px;
-    height: 55px;
-    background: var(--gradient-primary);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 1.3rem;
-    flex-shrink: 0;
-    box-shadow: 0 10px 25px rgba(255, 0, 51, 0.5), 0 0 20px rgba(255, 0, 51, 0.3);
-    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-    overflow: hidden;
-}
-
-.summary-icon::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.3) 50%, transparent 70%);
-    transform: translateX(-100%);
-    transition: transform 0.6s;
-}
-
-.summary-item:hover .summary-icon::before {
-    transform: translateX(100%);
-}
-
-.summary-item:hover .summary-icon {
-    transform: scale(1.15) rotate(15deg);
-    box-shadow: 0 15px 35px rgba(255, 0, 51, 0.7), 0 0 30px rgba(255, 0, 51, 0.5);
-}
-
-.summary-details {
-    flex: 1;
-}
-
-.summary-label {
-    display: block;
-    font-size: 0.8rem;
-    color: var(--text-tertiary);
-    margin-bottom: 0.6rem;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    font-weight: 600;
-    opacity: 0.8;
-}
-
-.summary-value {
-    font-size: 1.3rem;
-    font-weight: 800;
-    color: var(--text-primary);
-    text-shadow: 0 2px 15px rgba(255, 0, 51, 0.3);
-    background: linear-gradient(135deg, #fff 0%, var(--primary-red) 50%, #fff 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-/* منتجات الطلب العصرية */
-.order-items {
-    margin-bottom: 2rem;
-}
-
-.items-title {
-    color: var(--text-primary);
-    font-size: 1.3rem;
-    margin-bottom: 1.5rem;
-    display: flex;
-    align-items: center;
-    gap: 0.8rem;
-    font-weight: 700;
-    background: linear-gradient(135deg, #fff 0%, var(--primary-red) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-.items-title i {
-    color: var(--primary-red);
-    filter: drop-shadow(0 0 8px rgba(255, 0, 51, 0.5));
-}
-
-.items-list {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.order-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1.5rem;
-    background: linear-gradient(145deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.08) 100%);
-    border-radius: 15px;
-    border: 1px solid var(--border-color);
-    transition: all 0.4s ease;
-    backdrop-filter: blur(10px);
-    position: relative;
-    overflow: hidden;
-}
-
-.order-item::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 0, 51, 0.1), transparent);
-    transition: left 0.6s;
-}
-
-.order-item:hover::before {
-    left: 100%;
-}
-
-.order-item:hover {
-    background: linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.12) 100%);
-    border-color: var(--primary-red);
-    transform: translateX(8px) scale(1.01);
-    box-shadow: 0 8px 20px rgba(255, 0, 51, 0.2);
-}
-
-.item-info {
-    flex: 1;
-}
-
-.item-name {
-    display: block;
-    color: var(--text-primary);
-    font-weight: 600;
-    margin-bottom: 0.4rem;
-    font-size: 1.1rem;
-}
-
-.item-quantity {
-    font-size: 0.8rem;
-    color: var(--text-tertiary);
-    background: linear-gradient(135deg, var(--primary-red-light), rgba(255, 0, 51, 0.15));
-    padding: 0.3rem 0.8rem;
-    border-radius: 15px;
-    display: inline-block;
-    border: 1px solid rgba(255, 0, 51, 0.25);
-    font-weight: 500;
-}
-
-.item-price {
-    font-weight: 700;
-    color: var(--primary-red);
-    font-size: 1.1rem;
-    text-shadow: 0 2px 10px rgba(255, 0, 51, 0.3);
-}
-
-/* أزرار التحكم العصرية المحسنة */
-.order-actions {
-    display: flex;
-    gap: 1.5rem;
-    justify-content: center;
-    margin-top: 2rem;
-    padding-top: 2rem;
-    border-top: 2px solid var(--border-color);
-    flex-wrap: wrap;
-    position: relative;
-}
-
-.order-actions::before {
-    content: '';
-    position: absolute;
-    top: -2px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 80px;
-    height: 3px;
-    background: var(--gradient-primary);
-    border-radius: 2px;
-    box-shadow: 0 0 20px rgba(255, 0, 51, 0.6);
-}
-
-.es-btn {
-    padding: 1rem 2rem;
-    font-size: 1rem;
-    font-weight: 700;
-    border-radius: 25px;
-    border: none;
-    cursor: pointer;
-    position: relative;
-    overflow: hidden;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-    backdrop-filter: blur(12px);
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.8rem;
-    min-width: 180px;
-    justify-content: center;
-    border: 2px solid transparent;
-}
-
-.es-btn::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-    transition: left 0.6s;
-}
-
-.es-btn:hover::before {
-    left: 100%;
-}
-
-.es-btn-success {
-    background: linear-gradient(135deg, #10b981, #059669);
-    color: white;
-    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4), 0 0 20px rgba(16, 185, 129, 0.25);
-    border-color: rgba(16, 185, 129, 0.3);
-}
-
-.es-btn-success:hover {
-    transform: translateY(-5px) scale(1.03);
-    box-shadow: 0 15px 35px rgba(16, 185, 129, 0.6), 0 0 30px rgba(16, 185, 129, 0.4);
-    background: linear-gradient(135deg, #059669, #047857);
-}
-
-.es-btn-secondary {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.06));
-    color: var(--text-primary);
-    border: 2px solid var(--border-color);
-    box-shadow: 0 6px 20px rgba(255, 255, 255, 0.08);
-}
-
-.es-btn-secondary:hover {
-    background: linear-gradient(135deg, var(--primary-red), var(--primary-red-dark));
-    border-color: var(--primary-red);
-    transform: translateY(-5px) scale(1.03);
-    box-shadow: 0 15px 35px rgba(255, 0, 51, 0.4), 0 0 30px rgba(255, 0, 51, 0.25);
-    color: white;
-}
-
-.es-btn:disabled {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
-    color: var(--text-tertiary);
-    cursor: not-allowed;
-    opacity: 0.4;
-    transform: none !important;
-    box-shadow: none !important;
-}
-
-.es-btn i {
-    font-size: 1rem;
-    transition: transform 0.3s ease;
-}
-
-.es-btn:hover i {
-    transform: scale(1.1);
-}
-
-/* حالة عدم وجود طلبات */
-.no-orders {
-    text-align: center;
-    padding: 5rem 2rem;
-    color: var(--text-secondary);
-}
-
-.no-orders i {
-    font-size: 6rem;
-    margin-bottom: 2.5rem;
-    color: var(--primary-red);
-    opacity: 0.8;
-    filter: drop-shadow(0 0 30px rgba(255, 0, 51, 0.6));
-    animation: pulse 3s infinite;
-}
-
-.no-orders h3 {
-    color: var(--text-primary);
-    font-size: 2.5rem;
-    margin-bottom: 2rem;
-    font-weight: 800;
-    background: linear-gradient(135deg, #fff 0%, var(--primary-red) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-.no-orders p {
-    font-size: 1.2rem;
-    margin-bottom: 3rem;
-    line-height: 1.8;
-    max-width: 600px;
-    margin-left: auto;
-    margin-right: auto;
-}
-
-/* التصفح بين الصفحات */
-.pagination {
-    display: flex;
-    justify-content: center;
-    gap: 1.5rem;
-    margin-top: 4rem;
-    flex-wrap: wrap;
-}
-
-.pagination .page-item {
-    list-style: none;
-}
-
-.pagination .page-link {
-    min-width: 60px;
-    padding: 1.2rem 2rem;
-    text-align: center;
-    transition: all 0.3s ease;
-    border-radius: 18px;
-    font-weight: 600;
-}
-
-.pagination .page-item.active .page-link {
-    background: var(--gradient-primary);
-    border-color: var(--primary-red);
-    box-shadow: 0 8px 25px rgba(255, 0, 51, 0.5);
-}
-
-.pagination .page-item.disabled .page-link {
-    opacity: 0.3;
-    cursor: not-allowed;
-}
-
-/* تصميم متجاوب للأجهزة الصغيرة */
-@media (max-width: 1024px) {
-    /* شاشات التابلت - كروت بجانب بعض */
-    .es-grid {
-        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-        gap: 1.5rem;
-    }
-}
-
-@media (max-width: 768px) {
-    .container {
-        padding: 0 0.75rem;
-    }
-    
-    .page-header {
-        padding: 3rem 1.5rem;
-        margin-bottom: 2rem;
-    }
-    
-    .page-title {
-        font-size: 2.5rem;
-        gap: 1rem;
-        flex-direction: column;
-    }
-    
-    /* شبكة الكروت للأجهزة الصغيرة - كروت بجانب بعض */
-    .es-grid {
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        gap: 1rem;
-    }
-    
-    .order-card {
-        padding: 1.5rem;
-        border-radius: 20px;
-    }
-    
-    .order-info-row {
-        flex-direction: column;
-        text-align: center;
-        gap: 1rem;
-    }
-    
-    .order-id {
-        font-size: 1.2rem;
-        justify-content: center;
-    }
-    
-    .order-date {
-        justify-content: center;
-        font-size: 0.85rem;
-        padding: 0.8rem 1rem;
-    }
-    
-    .order-summary {
-        grid-template-columns: 1fr;
-        gap: 1rem;
-    }
-    
-    .summary-item {
-        padding: 1.2rem;
-        gap: 1rem;
-    }
-    
-    .summary-icon {
-        width: 45px;
-        height: 45px;
-        font-size: 1.1rem;
-    }
-    
-    .summary-label {
-        font-size: 0.75rem;
-    }
-    
-    .summary-value {
-        font-size: 1.1rem;
-    }
-    
-    .items-title {
-        font-size: 1.2rem;
-        margin-bottom: 1rem;
-    }
-    
-    .order-item {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 1rem;
-        text-align: right;
-        padding: 1.5rem;
-    }
-    
-    .item-name {
-        font-size: 1rem;
-    }
-    
-    .item-price {
-        font-size: 1.1rem;
-        align-self: flex-end;
-    }
-    
-    .order-actions {
-        flex-direction: column;
-        gap: 1rem;
-        padding-top: 1.5rem;
-    }
-    
-    .es-btn {
-        min-width: auto;
-        width: 100%;
-        padding: 1rem 1.5rem;
-        font-size: 0.95rem;
-    }
-}
-
-@media (max-width: 480px) {
-    /* للأجهزة الصغيرة جداً - كارت واحد في كل صف */
-    .es-grid {
-        grid-template-columns: 1fr;
-        gap: 1.5rem;
-    }
-    
-    .container {
-        padding: 0 0.5rem;
-    }
-    
-    .order-card {
-        padding: 1.25rem;
-        margin-bottom: 1rem;
-    }
-    
-    .page-header {
-        padding: 2rem 1rem;
-    }
-    
-    .page-title {
-        font-size: 2rem;
-    }
-    
-    .summary-icon {
-        width: 40px;
-        height: 40px;
-        font-size: 1rem;
-    }
-    
-    .no-orders {
-        padding: 3rem 1rem;
-    }
-    
-    .no-orders i {
-        font-size: 4rem;
-    }
-    
-    .no-orders h3 {
-        font-size: 1.8rem;
-    }
-    
-    .pagination {
-        gap: 0.5rem;
-    }
-    
-    .pagination .page-link {
-        padding: 0.8rem 1rem;
-        min-width: 45px;
-        font-size: 0.9rem;
-    }
-}
-
-/* تأثيرات إضافية */
-@keyframes gradientMove {
-    0%, 100% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-}
-
-@keyframes pulse {
-    0%, 100% { transform: scale(1); opacity: 0.8; }
-    50% { transform: scale(1.1); opacity: 1; }
-}
-
-/* التأكد من أن المحتوى في المقدمة */
-.es-grid,
-.page-header,
-.order-card {
-    position: relative;
-    z-index: 10;
-}
-
-/* تحسينات إضافية للأداء */
-.order-card,
-.summary-item,
-.order-item {
-    will-change: transform;
-    backface-visibility: hidden;
-    perspective: 1000px;
+      /* متغيرات CSS للتصميم العصري */
+      :root {
+          --primary-red: #ff0033;
+          --primary-red-dark: #cc0027;
+          --primary-red-light: rgba(255, 0, 51, 0.1);
+          --bg-primary: #0f0f0f;
+          --bg-secondary: #1a1a1a;
+          --bg-card: #1e1e1e;
+          --text-primary: #ffffff;
+          --text-secondary: #cccccc;
+          --text-tertiary: #999999;
+          --border-color: rgba(255, 255, 255, 0.1);
+          --shadow-main: 0 8px 32px rgba(0, 0, 0, 0.3);
+          --shadow-hover: 0 16px 64px rgba(255, 0, 51, 0.2);
+          --gradient-primary: linear-gradient(135deg, var(--primary-red) 0%, var(--primary-red-dark) 100%);
+          --gradient-card: linear-gradient(145deg, rgba(30, 30, 30, 0.95) 0%, rgba(40, 40, 40, 0.95) 100%);
+          --blur-effect: blur(20px);
+      }
+
+      /* إعدادات أساسية للجسم والخط */
+      * {
+          box-sizing: border-box;
+          margin: 0;
+          padding: 0;
+      }
+
+      body {
+          font-family: 'Cairo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          background: var(--bg-primary);
+          color: var(--text-primary);
+          line-height: 1.6;
+          direction: rtl;
+          overflow-x: hidden;
+      }
+
+      /* تطبيق تصميم مطابق للصفحة الرئيسية */
+      .orders-page {
+          background: var(--bg-primary);
+          min-height: 100vh;
+          padding: 2rem 0;
+          position: relative;
+          overflow: hidden;
+      }
+
+      /* الأيقونات المتحركة في الخلفية - مثل الصفحة الرئيسية */
+      .floating-icons {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          pointer-events: none;
+          z-index: 1;
+          overflow: hidden;
+      }
+
+      .floating-icon {
+          position: absolute;
+          opacity: 0.6;
+          animation-timing-function: linear;
+          animation-iteration-count: infinite;
+      }
+
+      .floating-icon img {
+          width: 100%;
+          height: 100%;
+          filter: brightness(2) contrast(1) invert(1) drop-shadow(0 0 15px rgba(255, 255, 255, 0.4));
+          transition: all 0.3s ease;
+      }
+
+      .floating-icon:hover img {
+          filter: brightness(2.5) contrast(1.2) invert(1) drop-shadow(0 0 25px rgba(255, 255, 255, 0.7));
+          transform: scale(1.2);
+      }
+
+      /* أحجام مختلفة للأيقونات */
+      .icon-small { width: 25px; height: 25px; }
+      .icon-medium { width: 45px; height: 45px; }
+      .icon-large { width: 65px; height: 65px; }
+
+      /* حركات مختلفة للأيقونات */
+      .float-up { animation-name: floatUp; }
+      .float-diagonal { animation-name: floatDiagonal; }
+      .float-horizontal { animation-name: floatHorizontal; }
+      .float-rotate { animation-name: floatRotate; }
+
+      @keyframes floatUp {
+          0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+          10% { opacity: 0.6; }
+          50% { transform: translateY(50vh) rotate(180deg); opacity: 0.8; }
+          90% { opacity: 0.6; }
+          100% { transform: translateY(-50px) rotate(360deg); opacity: 0; }
+      }
+
+      @keyframes floatDiagonal {
+          0% { transform: translate(0, 0) rotate(0deg); opacity: 0; }
+          10% { opacity: 0.5; }
+          50% { transform: translate(-50vw, -50vh) rotate(180deg); opacity: 0.8; }
+          90% { opacity: 0.5; }
+          100% { transform: translate(-100vw, -100vh) rotate(-360deg); opacity: 0; }
+      }
+
+      @keyframes floatHorizontal {
+          0% { transform: translateX(0) rotate(0deg); opacity: 0; }
+          10% { opacity: 0.7; }
+          50% { transform: translateX(50vw) rotate(90deg); opacity: 0.8; }
+          90% { opacity: 0.7; }
+          100% { transform: translateX(100vw) rotate(180deg); opacity: 0; }
+      }
+
+      @keyframes floatRotate {
+          0% { transform: translate(0, 0) rotate(0deg) scale(0.5); opacity: 0; }
+          10% { opacity: 0.4; }
+          25% { transform: translate(-20vw, -20vh) rotate(90deg) scale(0.8); opacity: 0.6; }
+          50% { transform: translate(-40vw, 0) rotate(180deg) scale(1); opacity: 0.8; }
+          75% { transform: translate(-60vw, 20vh) rotate(270deg) scale(0.8); opacity: 0.6; }
+          90% { opacity: 0.4; }
+          100% { transform: translate(-80vw, 40vh) rotate(360deg) scale(0.5); opacity: 0; }
+      }
+
+      .container {
+          max-width: 1400px;
+          margin: 0 auto;
+          padding: 0 1rem;
+          position: relative;
+          z-index: 10;
+      }
+
+      /* رأس الصفحة العصري */
+      .page-header {
+          text-align: center;
+          margin-bottom: 3rem;
+          background: var(--gradient-card);
+          border-radius: 25px;
+          padding: 4rem 2rem;
+          border: 2px solid var(--border-color);
+          box-shadow: var(--shadow-main), 0 0 30px rgba(255, 0, 51, 0.15);
+          backdrop-filter: var(--blur-effect);
+          position: relative;
+          overflow: hidden;
+      }
+
+      .page-header::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 4px;
+          background: var(--gradient-primary);
+          background-size: 200% 100%;
+          animation: gradientMove 4s ease-in-out infinite;
+      }
+
+      .page-title {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 1.5rem;
+          margin-bottom: 1.5rem;
+          font-size: 3.5rem;
+          font-weight: 800;
+          background: linear-gradient(135deg, #fff 0%, var(--primary-red) 50%, #fff 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+          text-shadow: none;
+      }
+
+      .page-title i {
+          color: var(--primary-red);
+          filter: drop-shadow(0 0 20px rgba(255, 0, 51, 0.8));
+          animation: pulse 2.5s infinite;
+      }
+
+      /* شبكة الطلبات العصرية - كروت بجانب بعض */
+      .es-grid {
+          display: grid;
+          gap: 2rem;
+          grid-template-columns: repeat(3, 1fr);
+      }
+
+      /* بطاقات الطلبات العصرية المحسنة */
+      .order-card {
+          background: var(--gradient-card);
+          border: 2px solid var(--border-color);
+          border-radius: 25px;
+          padding: 0.4rem;
+          position: relative;
+          overflow: hidden;
+          backdrop-filter: var(--blur-effect);
+          transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+          box-shadow: var(--shadow-main), 0 8px 32px rgba(255, 0, 51, 0.1);
+          transform-origin: center;
+          margin-bottom: 1rem;
+      }
+
+      .order-card::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 6px;
+          background: var(--gradient-primary);
+          background-size: 400% 100%;
+          animation: gradientMove 6s ease-in-out infinite;
+          border-radius: 25px 25px 0 0;
+      }
+
+      .order-card::after {
+          content: '';
+          position: absolute;
+          top: -50%;
+          left: -50%;
+          width: 200%;
+          height: 200%;
+          background: radial-gradient(circle, transparent 30%, rgba(255, 0, 51, 0.08) 60%, transparent 80%);
+          opacity: 0;
+          transition: opacity 0.6s ease;
+          pointer-events: none;
+      }
+
+      .order-card:hover {
+          transform: translateY(-12px) scale(1.02);
+          box-shadow: var(--shadow-hover), 0 25px 45px rgba(0, 0, 0, 0.4), 0 0 30px rgba(255, 0, 51, 0.25);
+          border-color: var(--primary-red);
+          background: linear-gradient(145deg, rgba(30, 30, 30, 0.98) 0%, rgba(45, 45, 45, 0.98) 100%);
+      }
+
+      .order-card:hover::after {
+          opacity: 1;
+          animation: pulse 2s infinite;
+      }
+
+      .card-header {
+          margin-bottom: 0.5rem;
+          padding-bottom: 1.5rem;
+          border-bottom: 2px solid var(--border-color);
+          position: relative;
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
+          border-radius: 15px;
+          padding: 1rem 1.5rem;
+          margin-bottom: 1rem;
+      }
+
+      .card-header::before {
+          content: '';
+          position: absolute;
+          bottom: -2px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 60px;
+          height: 3px;
+          background: var(--gradient-primary);
+          border-radius: 2px;
+          box-shadow: 0 0 15px rgba(255, 0, 51, 0.5);
+      }
+
+      .order-info-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 1.5rem;
+          flex-wrap: wrap;
+          gap: 1rem;
+          background: rgba(255, 255, 255, 0.03);
+          padding: 1rem;
+          border-radius: 12px;
+          border: 1px solid var(--border-color);
+      }
+
+      .order-id {
+          font-size: 1.2rem;
+          font-weight: 800;
+          color: var(--text-primary);
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          background: linear-gradient(135deg, #fff 0%, var(--primary-red) 50%, #fff 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+          text-shadow: 0 2px 8px rgba(255, 0, 51, 0.25);
+          position: relative;
+      }
+
+      .order-id::before {
+          content: '';
+          position: absolute;
+          bottom: -5px;
+          left: 0;
+          width: 100%;
+          height: 2px;
+          background: linear-gradient(90deg, transparent, var(--primary-red), transparent);
+          border-radius: 1px;
+      }
+
+      .order-id i {
+          color: var(--primary-red);
+          filter: drop-shadow(0 0 10px rgba(255, 0, 51, 0.6));
+          font-size: 1.2rem;
+          animation: pulse 2s infinite;
+      }
+
+      /* شارات الحالة العصرية المحسنة */
+      .es-status-badge {
+          padding: 0.5rem 1rem;
+          border-radius: 25px;
+          font-weight: 600;
+          font-size: 0.8rem;
+          display: inline-flex;
+          align-items: center;
+          gap: 0.6rem;
+          text-transform: uppercase;
+          letter-spacing: 0.8px;
+          backdrop-filter: blur(12px);
+          border: 2px solid transparent;
+          transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+          position: relative;
+          overflow: hidden;
+          min-width: 120px;
+          justify-content: center;
+      }
+
+      .es-status-badge::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+          transition: left 0.6s;
+      }
+
+      .es-status-badge:hover::before {
+          left: 100%;
+      }
+
+      .es-status-badge.success {
+          background: linear-gradient(135deg, #10b981, #059669);
+          color: white;
+          box-shadow: 0 8px 25px rgba(16, 185, 129, 0.5), 0 0 30px rgba(16, 185, 129, 0.3);
+          border-color: rgba(16, 185, 129, 0.3);
+      }
+
+      .es-status-badge.success:hover {
+          transform: translateY(-3px) scale(1.05);
+          box-shadow: 0 12px 35px rgba(16, 185, 129, 0.7), 0 0 40px rgba(16, 185, 129, 0.5);
+      }
+
+      .es-status-badge.warning {
+          background: linear-gradient(135deg, #f59e0b, #d97706);
+          color: white;
+          box-shadow: 0 8px 25px rgba(245, 158, 11, 0.5), 0 0 30px rgba(245, 158, 11, 0.3);
+          border-color: rgba(245, 158, 11, 0.3);
+      }
+
+      .es-status-badge.warning:hover {
+          transform: translateY(-3px) scale(1.05);
+          box-shadow: 0 12px 35px rgba(245, 158, 11, 0.7), 0 0 40px rgba(245, 158, 11, 0.5);
+      }
+
+      .es-status-badge.danger {
+          background: linear-gradient(135deg, #ef4444, #dc2626);
+          color: white;
+          box-shadow: 0 8px 25px rgba(239, 68, 68, 0.5), 0 0 30px rgba(239, 68, 68, 0.3);
+          border-color: rgba(239, 68, 68, 0.3);
+      }
+
+      .es-status-badge.danger:hover {
+          transform: translateY(-3px) scale(1.05);
+          box-shadow: 0 12px 35px rgba(239, 68, 68, 0.7), 0 0 40px rgba(239, 68, 68, 0.5);
+      }
+
+      .order-date {
+          display: flex;
+          align-items: center;
+          gap: 0.8rem;
+          color: var(--text-secondary);
+          font-size: 0.9rem;
+          font-weight: 500;
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04));
+          padding: 0.7rem 1rem;
+          border-radius: 20px;
+          border: 1px solid var(--border-color);
+          transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+          backdrop-filter: blur(15px);
+          position: relative;
+          overflow: hidden;
+      }
+
+      .order-date::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255, 0, 51, 0.1), transparent);
+          transition: left 0.6s;
+      }
+
+      .order-date:hover::before {
+          left: 100%;
+      }
+
+      .order-date:hover {
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.06));
+          border-color: var(--primary-red);
+          transform: translateY(-3px) scale(1.01);
+          box-shadow: 0 8px 25px rgba(255, 0, 51, 0.25), 0 0 20px rgba(255, 0, 51, 0.15);
+          color: var(--text-primary);
+      }
+
+      .order-date i {
+          color: var(--primary-red);
+          font-size: 1.1rem;
+          filter: drop-shadow(0 0 8px rgba(255, 0, 51, 0.5));
+          animation: pulse 2.5s infinite;
+      }
+
+      /* ملخص الطلب العصري المحسن */
+      .order-summary {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+          padding: 1.5rem;
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01));
+          border-radius: 20px;
+          border: 1px solid var(--border-color);
+          position: relative;
+          overflow: hidden;
+      }
+
+      .order-summary::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 3px;
+          background: linear-gradient(90deg, transparent, var(--primary-red), transparent);
+          background-size: 200% 100%;
+          animation: gradientMove 4s ease-in-out infinite;
+      }
+
+      .summary-item {
+          display: flex;
+          align-items: center;
+          gap: 1.5rem;
+          padding: 0.6rem 1rem;
+          background: linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%);
+          border-radius: 18px;
+          border: 1px solid var(--border-color);
+          transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+          backdrop-filter: blur(15px);
+          position: relative;
+          overflow: hidden;
+      }
+
+      .summary-item::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
+          transition: left 0.8s;
+      }
+
+      .summary-item:hover::before {
+          left: 100%;
+      }
+
+      .summary-item:hover {
+          background: linear-gradient(145deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.06) 100%);
+          border-color: var(--primary-red);
+          transform: translateY(-6px) scale(1.02);
+          box-shadow: 0 15px 30px rgba(255, 0, 51, 0.25), 0 0 25px rgba(255, 0, 51, 0.15);
+      }
+
+      .summary-icon {
+          width: 40px;
+          height: 40px;
+          background: var(--gradient-primary);
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          font-size: 1.3rem;
+          flex-shrink: 0;
+          box-shadow: 0 10px 25px rgba(255, 0, 51, 0.5), 0 0 20px rgba(255, 0, 51, 0.3);
+          transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+          position: relative;
+          overflow: hidden;
+      }
+
+      .summary-icon::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.3) 50%, transparent 70%);
+          transform: translateX(-100%);
+          transition: transform 0.6s;
+      }
+
+      .summary-item:hover .summary-icon::before {
+          transform: translateX(100%);
+      }
+
+      .summary-item:hover .summary-icon {
+          transform: scale(1.15) rotate(15deg);
+          box-shadow: 0 15px 35px rgba(255, 0, 51, 0.7), 0 0 30px rgba(255, 0, 51, 0.5);
+      }
+
+      .summary-details {
+          flex: 1;
+      }
+
+      .summary-label {
+          display: block;
+          font-size: 0.8rem;
+          color: var(--text-tertiary);
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          font-weight: 600;
+          opacity: 0.8;
+      }
+
+      .summary-value {
+          font-size: 1.2rem;
+          font-weight: 800;
+          color: var(--text-primary);
+          text-shadow: 0 2px 15px rgba(255, 0, 51, 0.3);
+          background: linear-gradient(135deg, #fff 0%, var(--primary-red) 50%, #fff 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+      }
+
+      /* منتجات الطلب العصرية */
+      .order-items {
+          margin-bottom: 2rem;
+      }
+
+      .items-title {
+          color: var(--text-primary);
+          font-size: 1.3rem;
+          margin-top: 1rem;
+          display: flex;
+          align-items: center;
+          gap: 0.8rem;
+          font-weight: 700;
+          background: linear-gradient(135deg, #fff 0%, var(--primary-red) 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+      }
+
+      .items-title i {
+          color: var(--primary-red);
+          filter: drop-shadow(0 0 8px rgba(255, 0, 51, 0.5));
+      }
+
+      .items-list {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+      }
+
+      .order-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 1.5rem;
+          background: linear-gradient(145deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.08) 100%);
+          border-radius: 15px;
+          border: 1px solid var(--border-color);
+          transition: all 0.4s ease;
+          backdrop-filter: blur(10px);
+          position: relative;
+          overflow: hidden;
+      }
+
+      .order-item::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255, 0, 51, 0.1), transparent);
+          transition: left 0.6s;
+      }
+
+      .order-item:hover::before {
+          left: 100%;
+      }
+
+      .order-item:hover {
+          background: linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.12) 100%);
+          border-color: var(--primary-red);
+          transform: translateX(8px) scale(1.01);
+          box-shadow: 0 8px 20px rgba(255, 0, 51, 0.2);
+      }
+
+      .item-info {
+          flex: 1;
+      }
+
+      .item-name {
+          display: block;
+          color: var(--text-primary);
+          font-weight: 600;
+          margin-bottom: 0.4rem;
+          font-size: 1.1rem;
+      }
+
+      .item-quantity {
+          font-size: 0.8rem;
+          color: var(--text-tertiary);
+          background: linear-gradient(135deg, var(--primary-red-light), rgba(255, 0, 51, 0.15));
+          padding: 0.3rem 0.8rem;
+          border-radius: 15px;
+          display: inline-block;
+          border: 1px solid rgba(255, 0, 51, 0.25);
+          font-weight: 500;
+      }
+
+      .item-price {
+          font-weight: 700;
+          color: var(--primary-red);
+          font-size: 1.1rem;
+          text-shadow: 0 2px 10px rgba(255, 0, 51, 0.3);
+      }
+
+      /* أزرار التحكم العصرية المحسنة */
+      .order-actions {
+          display: flex;
+          gap: 1.5rem;
+          justify-content: center;
+          margin-top: 2rem;
+          padding-top: 2rem;
+          border-top: 2px solid var(--border-color);
+          flex-wrap: wrap;
+          position: relative;
+      }
+
+      .order-actions::before {
+          content: '';
+          position: absolute;
+          top: -2px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 80px;
+          height: 3px;
+          background: var(--gradient-primary);
+          border-radius: 2px;
+          box-shadow: 0 0 20px rgba(255, 0, 51, 0.6);
+      }
+
+      .es-btn {
+          padding: 1rem 2rem;
+          font-size: 1rem;
+          font-weight: 700;
+          border-radius: 25px;
+          border: none;
+          cursor: pointer;
+          position: relative;
+          overflow: hidden;
+          text-transform: uppercase;
+          letter-spacing: 0.8px;
+          transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+          backdrop-filter: blur(12px);
+          text-decoration: none;
+          display: inline-flex;
+          align-items: center;
+          gap: 0.8rem;
+          min-width: 180px;
+          justify-content: center;
+          border: 2px solid transparent;
+      }
+
+      .es-btn::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+          transition: left 0.6s;
+      }
+
+      .es-btn:hover::before {
+          left: 100%;
+      }
+
+      .es-btn-success {
+          background: linear-gradient(135deg, #10b981, #059669);
+          color: white;
+          box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4), 0 0 20px rgba(16, 185, 129, 0.25);
+          border-color: rgba(16, 185, 129, 0.3);
+      }
+
+      .es-btn-success:hover {
+          transform: translateY(-5px) scale(1.03);
+          box-shadow: 0 15px 35px rgba(16, 185, 129, 0.6), 0 0 30px rgba(16, 185, 129, 0.4);
+          background: linear-gradient(135deg, #059669, #047857);
+      }
+
+      .es-btn-secondary {
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.06));
+          color: var(--text-primary);
+          border: 2px solid var(--border-color);
+          box-shadow: 0 6px 20px rgba(255, 255, 255, 0.08);
+          margin-bottom: 1rem;
+      }
+
+      .es-btn-secondary:hover {
+          background: linear-gradient(135deg, var(--primary-red), var(--primary-red-dark));
+          border-color: var(--primary-red);
+          transform: translateY(-5px) scale(1.03);
+          box-shadow: 0 15px 35px rgba(255, 0, 51, 0.4), 0 0 30px rgba(255, 0, 51, 0.25);
+          color: white;
+      }
+
+      .es-btn:disabled {
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+          color: var(--text-tertiary);
+          cursor: not-allowed;
+          opacity: 0.4;
+          transform: none !important;
+          box-shadow: none !important;
+      }
+
+      .es-btn i {
+          font-size: 1rem;
+          transition: transform 0.3s ease;
+      }
+
+      .es-btn:hover i {
+          transform: scale(1.1);
+      }
+
+      /* حالة عدم وجود طلبات */
+      .no-orders {
+          text-align: center;
+          padding: 5rem 2rem;
+          color: var(--text-secondary);
+      }
+
+      .no-orders i {
+          font-size: 6rem;
+          margin-bottom: 2.5rem;
+          color: var(--primary-red);
+          opacity: 0.8;
+          filter: drop-shadow(0 0 30px rgba(255, 0, 51, 0.6));
+          animation: pulse 3s infinite;
+      }
+
+      .no-orders h3 {
+          color: var(--text-primary);
+          font-size: 2.5rem;
+          margin-bottom: 2rem;
+          font-weight: 800;
+          background: linear-gradient(135deg, #fff 0%, var(--primary-red) 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+      }
+
+      .no-orders p {
+          font-size: 1.2rem;
+          margin-bottom: 3rem;
+          line-height: 1.8;
+          max-width: 600px;
+          margin-left: auto;
+          margin-right: auto;
+      }
+
+      /* التصفح بين الصفحات */
+      .pagination {
+          display: flex;
+          justify-content: center;
+          gap: 1.5rem;
+          margin-top: 4rem;
+          flex-wrap: wrap;
+      }
+
+      .pagination .page-item {
+          list-style: none;
+      }
+
+      .pagination .page-link {
+          min-width: 60px;
+          padding: 1.2rem 2rem;
+          text-align: center;
+          transition: all 0.3s ease;
+          border-radius: 18px;
+          font-weight: 600;
+      }
+
+      .pagination .page-item.active .page-link {
+          background: var(--gradient-primary);
+          border-color: var(--primary-red);
+          box-shadow: 0 8px 25px rgba(255, 0, 51, 0.5);
+      }
+
+      .pagination .page-item.disabled .page-link {
+          opacity: 0.3;
+          cursor: not-allowed;
+      }
+
+      /* تصميم متجاوب للأجهزة الصغيرة */
+      @media (max-width: 1024px) {
+          /* شاشات التابلت - كروت بجانب بعض */
+          .es-grid {
+              grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+              gap: 1.5rem;
+          }
+      }
+
+      @media (max-width: 768px) {
+          .container {
+              padding: 0 0.75rem;
+          }
+
+          .page-header {
+              padding: 3rem 1.5rem;
+              margin-bottom: 2rem;
+          }
+
+          .page-title {
+              font-size: 2.5rem;
+              gap: 1rem;
+              flex-direction: column;
+          }
+
+          /* شبكة الكروت للأجهزة الصغيرة - كروت بجانب بعض */
+          .es-grid {
+              grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+              gap: 1rem;
+          }
+
+          .order-card {
+              padding: 1.5rem;
+              border-radius: 20px;
+          }
+
+          .order-info-row {
+              flex-direction: column;
+              text-align: center;
+              gap: 1rem;
+          }
+
+          .order-id {
+              font-size: 1.2rem;
+              justify-content: center;
+          }
+
+          .order-date {
+              justify-content: center;
+              font-size: 0.85rem;
+              padding: 0.8rem 1rem;
+          }
+
+          .order-summary {
+              grid-template-columns: 1fr;
+              gap: 1rem;
+          }
+
+          .summary-item {
+              padding: 1.2rem;
+              gap: 1rem;
+          }
+
+          .summary-icon {
+              width: 45px;
+              height: 45px;
+              font-size: 1.1rem;
+          }
+
+          .summary-label {
+              font-size: 0.75rem;
+          }
+
+          .summary-value {
+              font-size: 1.1rem;
+          }
+
+          .items-title {
+              font-size: 1.2rem;
+              margin-bottom: 1rem;
+          }
+
+          .order-item {
+              flex-direction: column;
+              align-items: flex-start;
+              gap: 1rem;
+              text-align: right;
+              padding: 1.5rem;
+          }
+
+          .item-name {
+              font-size: 1rem;
+          }
+
+          .item-price {
+              font-size: 1.1rem;
+              align-self: flex-end;
+          }
+
+          .order-actions {
+              flex-direction: column;
+              gap: 1rem;
+              padding-top: 1.5rem;
+          }
+
+          .es-btn {
+              min-width: auto;
+              width: 100%;
+              padding: 1rem 1.5rem;
+              font-size: 0.95rem;
+          }
+      }
+
+      @media (max-width: 480px) {
+          /* للأجهزة الصغيرة جداً - كارت واحد في كل صف */
+          .es-grid {
+              grid-template-columns: 1fr;
+              gap: 1.5rem;
+          }
+
+          .container {
+              padding: 0 0.5rem;
+          }
+
+          .order-card {
+              padding: 1.25rem;
+              margin-bottom: 1rem;
+          }
+
+          .page-header {
+              padding: 2rem 1rem;
+          }
+
+          .page-title {
+              font-size: 2rem;
+          }
+
+          .summary-icon {
+              width: 40px;
+              height: 40px;
+              font-size: 1rem;
+          }
+
+          .no-orders {
+              padding: 3rem 1rem;
+          }
+
+          .no-orders i {
+              font-size: 4rem;
+          }
+
+          .no-orders h3 {
+              font-size: 1.8rem;
+          }
+
+          .pagination {
+              gap: 0.5rem;
+          }
+
+          .pagination .page-link {
+              padding: 0.8rem 1rem;
+              min-width: 45px;
+              font-size: 0.9rem;
+          }
+      }
+
+      /* تأثيرات إضافية */
+      @keyframes gradientMove {
+          0%, 100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+      }
+
+      @keyframes pulse {
+          0%, 100% { transform: scale(1); opacity: 0.8; }
+          50% { transform: scale(1.1); opacity: 1; }
+      }
+
+      /* التأكد من أن المحتوى في المقدمة */
+      .es-grid,
+      .page-header,
+      .order-card {
+          position: relative;
+          z-index: 10;
+      }
+
+      /* تحسينات إضافية للأداء */
+      .order-card,
+      .summary-item,
+      .order-item {
+          will-change: transform;
+          backface-visibility: hidden;
+          perspective: 1000px;
     </style>
-</head>
+  </head>
 
-<body>
+  <body>
     <div class="orders-page es-bg-pattern">
-        <!-- الأيقونات المتحركة في الخلفية - مثل الصفحة الرئيسية -->
-        <div class="floating-icons" id="floatingIcons">
-            <!-- سيتم إضافة الأيقونات هنا عبر JavaScript -->
-        </div>
-        
-        <div class="container">
+      <!-- الأيقونات المتحركة في الخلفية - مثل الصفحة الرئيسية -->
+      <div class="floating-icons" id="floatingIcons">
+        <!-- سيتم إضافة الأيقونات هنا عبر JavaScript -->
+      </div>
+
+      <div class="container">
         <!-- رأس الصفحة -->
         <div class="es-card page-header">
-            <h1 class="es-heading page-title">
-                <i class="fas fa-shopping-bag"></i>
-                طلباتي
-            </h1>
-            <p class="es-text-secondary">تصفح وإدارة جميع طلباتك السابقة وتحميل ملفات الأكواد</p>
+          <h1 class="es-heading page-title">
+            <i class="fas fa-shopping-bag"></i>
+            طلباتي
+          </h1>
+          <p class="es-text-secondary">
+            تصفح وإدارة جميع طلباتك السابقة وتحميل ملفات الأكواد
+          </p>
         </div>
 
         {% if orders.items %}
-            <!-- قائمة الطلبات العصرية -->
-            <div class="es-grid">
-                {% for order in orders.items %}
-                <div class="order-card">
-                    <!-- رأس البطاقة -->
-                    <div class="card-header">
-                        <div class="order-info-row">
-                            <h3 class="order-id">
-                                <i class="fas fa-receipt"></i>
-                                طلب #{{ order.id }}
-                            </h3>
-                            <span class="es-status-badge
-                                {% if order.status == 'completed' %}success
-                                {% elif order.status == 'pending' %}warning
-                                {% else %}danger{% endif %}">
-                                {% if order.status == 'completed' %}
-                                    <i class="fas fa-check-circle"></i> مكتمل
-                                {% elif order.status == 'pending' %}
-                                    <i class="fas fa-clock"></i> قيد المعالجة
-                                {% else %}
-                                    <i class="fas fa-times-circle"></i> فشل
-                                {% endif %}
-                            </span>
-                        </div>
-                        <div class="order-date">
-                            <i class="fas fa-calendar-alt"></i>
-                            {{ order.created_at.strftime('%Y/%m/%d - %H:%M') }}
-                        </div>
-                    </div>
+        <!-- قائمة الطلبات العصرية -->
+        <div class="es-grid">
+          {% for order in orders.items %}
+          <div class="order-card">
+            <!-- رأس البطاقة -->
+            <div class="card-header">
+              <div class="order-info-row">
+                <h3 class="order-id">
+                  <i class="fas fa-receipt"></i>
+                  طلب #{{ order.id }}
+                </h3>
+                <span
+                  class="es-status-badge {% if order.status == 'completed' %}success {% elif order.status == 'pending' %}warning {% else %}danger{% endif %}"
+                >
+                  {% if order.status == 'completed' %}
+                  <i class="fas fa-check-circle"></i> مكتمل {% elif order.status
+                  == 'pending' %} <i class="fas fa-clock"></i> قيد المعالجة {%
+                  else %} <i class="fas fa-times-circle"></i> فشل {% endif %}
+                </span>
+              </div>
+              <div class="order-date">
+                <i class="fas fa-calendar-alt"></i>
+                {{ order.created_at.strftime('%Y/%m/%d - %H:%M') }}
+              </div>
+            </div>
 
-                    <!-- معلومات الطلب الأساسية -->
-                    <div class="order-summary es-grid es-grid-3">
-                        <div class="summary-item">
-                            <div class="summary-icon">
-                                <i class="fas fa-dollar-sign"></i>
-                            </div>
-                            <div class="summary-details">
-                                <span class="summary-label">إجمالي المبلغ</span>
-                                <span class="summary-value">{{ order.total_amount }} {{ order.currency }}</span>
-                            </div>
-                        </div>
+            <!-- معلومات الطلب الأساسية -->
+            <div class="order-summary es-grid es-grid-3">
+              <div class="summary-item">
+                <div class="summary-icon">
+                  <i class="fas fa-dollar-sign"></i>
+                </div>
+                <div class="summary-details">
+                  <span class="summary-label">إجمالي المبلغ</span>
+                  <span class="summary-value"
+                    >{{ order.total_amount }} {{ order.currency }}</span
+                  >
+                </div>
+              </div>
 
-                        <div class="summary-item">
-                            <div class="summary-icon">
-                                {% if order.payment_method == 'credit_card' %}
-                                    <i class="fas fa-credit-card"></i>
-                                {% elif order.payment_method == 'paypal' %}
-                                    <i class="fab fa-paypal"></i>
-                                {% elif order.payment_method == 'bank_transfer' %}
-                                    <i class="fas fa-university"></i>
-                                {% else %}
-                                    <i class="fas fa-wallet"></i>
-                                {% endif %}
-                            </div>
-                            <div class="summary-details">
-                                <span class="summary-label">طريقة الدفع</span>
-                                <span class="summary-value">
-                                    {% if order.payment_method == 'credit_card' %}
-                                        بطاقة ائتمان
-                                    {% elif order.payment_method == 'paypal' %}
-                                        PayPal
-                                    {% elif order.payment_method == 'bank_transfer' %}
-                                        تحويل بنكي
-                                    {% else %}
-                                        {{ order.payment_method }}
-                                    {% endif %}
-                                </span>
-                            </div>
-                        </div>
+              <div class="summary-item">
+                <div class="summary-icon">
+                  {% if order.payment_method == 'credit_card' %}
+                  <i class="fas fa-credit-card"></i>
+                  {% elif order.payment_method == 'paypal' %}
+                  <i class="fab fa-paypal"></i>
+                  {% elif order.payment_method == 'bank_transfer' %}
+                  <i class="fas fa-university"></i>
+                  {% else %}
+                  <i class="fas fa-wallet"></i>
+                  {% endif %}
+                </div>
+                <div class="summary-details">
+                  <span class="summary-label">طريقة الدفع</span>
+                  <span class="summary-value">
+                    {% if order.payment_method == 'credit_card' %} بطاقة ائتمان
+                    {% elif order.payment_method == 'paypal' %} PayPal {% elif
+                    order.payment_method == 'bank_transfer' %} تحويل بنكي {%
+                    else %} {{ order.payment_method }} {% endif %}
+                  </span>
+                </div>
+              </div>
 
-                        <div class="summary-item">
-                            <div class="summary-icon">
-                                <i class="fas fa-box"></i>
-                            </div>
-                            <div class="summary-details">
-                                <span class="summary-label">عدد المنتجات</span>
-                                <span class="summary-value">{{ order.order_items|length }} منتج</span>
-                            </div>
-                        </div>
-                    </div>
+              <div class="summary-item">
+                <div class="summary-icon">
+                  <i class="fas fa-box"></i>
+                </div>
+                <div class="summary-details">
+                  <span class="summary-label">عدد المنتجات</span>
+                  <span class="summary-value"
+                    >{{ order.order_items|length }} منتج</span
+                  >
+                </div>
+              </div>
+            </div>
 
-                    <!-- منتجات الطلب -->
-                    <div class="order-items">
-                        <h4 class="items-title">
-                            <i class="fas fa-list"></i>
-                            المنتجات المطلوبة
-                        </h4>
-                        <div class="items-list">
-                            {% for item in order.order_items %}
-                            <div class="order-item">
-                                <div class="item-info">
-                                    <span class="item-name">{{ item.product.name }}</span>
-                                    <span class="item-quantity">الكمية: {{ item.quantity }}</span>
-                                </div>
-                                <div class="item-price">
-                                    {{ item.price }} {{ order.currency }}
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-
-                    <!-- أزرار التحكم -->
-                    <div class="order-actions">
-                        {% if order.excel_file_path and order.status == 'completed' %}
-                            <a href="{{ url_for('main.download_order_excel', order_id=order.id) }}" 
-                               class="es-btn es-btn-success">
-                                <i class="fas fa-download"></i>
-                                تحميل ملف الأكواد
-                            </a>
-                        {% else %}
-                            <button class="es-btn" disabled>
-                                <i class="fas fa-download"></i>
-                                {% if order.status != 'completed' %}
-                                    ملف الأكواد غير متاح بعد
-                                {% else %}
-                                    لا يوجد ملف أكواد
-                                {% endif %}
-                            </button>
-                        {% endif %}
-
-                        <a href="#" class="es-btn es-btn-secondary">
-                            <i class="fas fa-eye"></i>
-                            عرض التفاصيل
-                        </a>
-                    </div>
+            <!-- منتجات الطلب -->
+            <div class="order-items">
+              <h4 class="items-title">
+                <i class="fas fa-list"></i>
+                المنتجات المطلوبة
+              </h4>
+              <div class="items-list">
+                {% for item in order.order_items %}
+                <div class="order-item">
+                  <div class="item-info">
+                    <span class="item-name">{{ item.product.name }}</span>
+                    <span class="item-quantity"
+                      >الكمية: {{ item.quantity }}</span
+                    >
+                  </div>
+                  <div class="item-price">
+                    {{ item.price }} {{ order.currency }}
+                  </div>
                 </div>
                 {% endfor %}
+              </div>
             </div>
 
-            <!-- نظام الصفحات -->
-            {% if orders.pages > 1 %}
-            <nav aria-label="صفحات الطلبات">
-                <ul class="pagination">
-                    {% if orders.has_prev %}
-                        <li class="page-item">
-                            <a class="page-link es-btn es-btn-secondary" href="{{ url_for('main.my_orders', page=orders.prev_num) }}">
-                                <i class="fas fa-chevron-right"></i>
-                            </a>
-                        </li>
-                    {% endif %}
+            <!-- أزرار التحكم -->
+            <div class="order-actions">
+              {% if order.excel_file_path and order.status == 'completed' %}
+              <a
+                href="{{ url_for('main.download_order_excel', order_id=order.id) }}"
+                class="es-btn es-btn-success"
+              >
+                <i class="fas fa-download"></i>
+                تحميل ملف الأكواد
+              </a>
+              {% else %}
+              <button class="es-btn" disabled>
+                <i class="fas fa-download"></i>
+                {% if order.status != 'completed' %} ملف الأكواد غير متاح بعد {%
+                else %} لا يوجد ملف أكواد {% endif %}
+              </button>
+              {% endif %}
 
-                    {% for page_num in orders.iter_pages() %}
-                        {% if page_num %}
-                            {% if page_num != orders.page %}
-                                <li class="page-item">
-                                    <a class="page-link es-btn es-btn-secondary" href="{{ url_for('main.my_orders', page=page_num) }}">{{ page_num }}</a>
-                                </li>
-                            {% else %}
-                                <li class="page-item active">
-                                    <span class="page-link es-btn">{{ page_num }}</span>
-                                </li>
-                            {% endif %}
-                        {% else %}
-                            <li class="page-item disabled">
-                                <span class="page-link es-btn" disabled>…</span>
-                            </li>
-                        {% endif %}
-                    {% endfor %}
-
-                    {% if orders.has_next %}
-                        <li class="page-item">
-                            <a class="page-link es-btn es-btn-secondary" href="{{ url_for('main.my_orders', page=orders.next_num) }}">
-                                <i class="fas fa-chevron-left"></i>
-                            </a>
-                        </li>
-                    {% endif %}
-                </ul>
-            </nav>
-            {% endif %}
-
-        {% else %}
-            <!-- رسالة عدم وجود طلبات -->
-            <div class="order-card">
-                <div class="no-orders">
-                    <i class="fas fa-shopping-bag"></i>
-                    <h3>لا توجد طلبات بعد</h3>
-                    <p>لم تقم بإجراء أي طلبات حتى الآن. ابدأ التسوق الآن!</p>
-                    <a href="{{ url_for('main.index') }}" class="es-btn es-btn-success">
-                        <i class="fas fa-shopping-cart"></i>
-                        ابدأ التسوق
-                    </a>
-                </div>
+              <a href="#" class="es-btn es-btn-secondary">
+                <i class="fas fa-eye"></i>
+                عرض التفاصيل
+              </a>
             </div>
-        {% endif %}
+          </div>
+          {% endfor %}
         </div>
+
+        <!-- نظام الصفحات -->
+        {% if orders.pages > 1 %}
+        <nav aria-label="صفحات الطلبات">
+          <ul class="pagination">
+            {% if orders.has_prev %}
+            <li class="page-item">
+              <a
+                class="page-link es-btn es-btn-secondary"
+                href="{{ url_for('main.my_orders', page=orders.prev_num) }}"
+              >
+                <i class="fas fa-chevron-right"></i>
+              </a>
+            </li>
+            {% endif %} {% for page_num in orders.iter_pages() %} {% if page_num
+            %} {% if page_num != orders.page %}
+            <li class="page-item">
+              <a
+                class="page-link es-btn es-btn-secondary"
+                href="{{ url_for('main.my_orders', page=page_num) }}"
+                >{{ page_num }}</a
+              >
+            </li>
+            {% else %}
+            <li class="page-item active">
+              <span class="page-link es-btn">{{ page_num }}</span>
+            </li>
+            {% endif %} {% else %}
+            <li class="page-item disabled">
+              <span class="page-link es-btn" disabled>…</span>
+            </li>
+            {% endif %} {% endfor %} {% if orders.has_next %}
+            <li class="page-item">
+              <a
+                class="page-link es-btn es-btn-secondary"
+                href="{{ url_for('main.my_orders', page=orders.next_num) }}"
+              >
+                <i class="fas fa-chevron-left"></i>
+              </a>
+            </li>
+            {% endif %}
+          </ul>
+        </nav>
+        {% endif %} {% else %}
+        <!-- رسالة عدم وجود طلبات -->
+        <div class="order-card">
+          <div class="no-orders">
+            <i class="fas fa-shopping-bag"></i>
+            <h3>لا توجد طلبات بعد</h3>
+            <p>لم تقم بإجراء أي طلبات حتى الآن. ابدأ التسوق الآن!</p>
+            <a href="{{ url_for('main.index') }}" class="es-btn es-btn-success">
+              <i class="fas fa-shopping-cart"></i>
+              ابدأ التسوق
+            </a>
+          </div>
+        </div>
+        {% endif %}
+      </div>
     </div>
 
     <script>
-    // تطبيق نفس تأثيرات الصفحة الرئيسية
-    document.addEventListener('DOMContentLoaded', function() {
+      // تطبيق نفس تأثيرات الصفحة الرئيسية
+      document.addEventListener("DOMContentLoaded", function () {
         // إنشاء الأيقونات المتحركة
         createFloatingIcons();
-        
+
         // تأثير ظهور البطاقات المتدرج مع تحسينات بصرية
-        const orderCards = document.querySelectorAll('.order-card');
+        const orderCards = document.querySelectorAll(".order-card");
         orderCards.forEach((card, index) => {
-            card.style.opacity = '0';
-            card.style.transform = 'translateY(30px) scale(0.95)';
-            
-            setTimeout(() => {
-                card.style.transition = 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)';
-                card.style.opacity = '1';
-                card.style.transform = 'translateY(0) scale(1)';
-            }, index * 150);
+          card.style.opacity = "0";
+          card.style.transform = "translateY(30px) scale(0.95)";
+
+          setTimeout(() => {
+            card.style.transition = "all 0.8s cubic-bezier(0.4, 0, 0.2, 1)";
+            card.style.opacity = "1";
+            card.style.transform = "translateY(0) scale(1)";
+          }, index * 150);
         });
 
         // تأثير الرأس مع تحسينات
-        const header = document.querySelector('.page-header');
+        const header = document.querySelector(".page-header");
         if (header) {
-            header.style.opacity = '0';
-            header.style.transform = 'translateY(-30px) scale(0.98)';
-            
-            setTimeout(() => {
-                header.style.transition = 'all 1s cubic-bezier(0.4, 0, 0.2, 1)';
-                header.style.opacity = '1';
-                header.style.transform = 'translateY(0) scale(1)';
-            }, 100);
+          header.style.opacity = "0";
+          header.style.transform = "translateY(-30px) scale(0.98)";
+
+          setTimeout(() => {
+            header.style.transition = "all 1s cubic-bezier(0.4, 0, 0.2, 1)";
+            header.style.opacity = "1";
+            header.style.transform = "translateY(0) scale(1)";
+          }, 100);
         }
 
         // تحسين الأداء - تأجيل التأثيرات للعناصر غير المرئية
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('animate');
-                    observer.unobserve(entry.target);
-                }
+        const observer = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              if (entry.isIntersecting) {
+                entry.target.classList.add("animate");
+                observer.unobserve(entry.target);
+              }
             });
-        }, {
-            rootMargin: '50px'
-        });
+          },
+          {
+            rootMargin: "50px",
+          }
+        );
 
         // مراقبة عناصر الصفحة للتأثيرات المؤجلة
-        document.querySelectorAll('.order-card, .summary-item, .order-item').forEach(element => {
+        document
+          .querySelectorAll(".order-card, .summary-item, .order-item")
+          .forEach((element) => {
             observer.observe(element);
-        });
+          });
 
         // إضافة تأثيرات تفاعلية للعناصر
         addInteractiveEffects();
-    });
+      });
 
-    // إنشاء الأيقونات المتحركة - نفس الكود من الصفحة الرئيسية
-    function createFloatingIcons() {
-        const floatingContainer = document.getElementById('floatingIcons');
+      // إنشاء الأيقونات المتحركة - نفس الكود من الصفحة الرئيسية
+      function createFloatingIcons() {
+        const floatingContainer = document.getElementById("floatingIcons");
         if (!floatingContainer) return;
-        
+
         // قائمة الأيقونات المتاحة
         const icons = [
-            '/static/images/assets/icons/icons8-joystick-30.png',
-            '/static/images/assets/icons/icons8-joystick-90.png',
-            '/static/images/assets/icons/icons8-minecraft-creeper-30.png',
-            '/static/images/assets/icons/icons8-minecraft-creeper-90.png',
-            '/static/images/assets/icons/icons8-pubg-32.png',
-            '/static/images/assets/icons/icons8-pubg-96.png',
-            '/static/images/assets/icons/icons8-xbox-controller-30.png',
-            '/static/images/assets/icons/icons8-xbox-controller-90.png',
-            '/static/images/assets/icons/icons8-xbox-cross-30.png',
-            '/static/images/assets/icons/icons8-xbox-cross-90.png'
+          "/static/images/assets/icons/icons8-joystick-30.png",
+          "/static/images/assets/icons/icons8-joystick-90.png",
+          "/static/images/assets/icons/icons8-minecraft-creeper-30.png",
+          "/static/images/assets/icons/icons8-minecraft-creeper-90.png",
+          "/static/images/assets/icons/icons8-pubg-32.png",
+          "/static/images/assets/icons/icons8-pubg-96.png",
+          "/static/images/assets/icons/icons8-xbox-controller-30.png",
+          "/static/images/assets/icons/icons8-xbox-controller-90.png",
+          "/static/images/assets/icons/icons8-xbox-cross-30.png",
+          "/static/images/assets/icons/icons8-xbox-cross-90.png",
         ];
-        
+
         // ألوان بيضاء للأيقونات
         const iconColors = [
-            'brightness(2) invert(1)',
-            'brightness(2.2) invert(1)',
-            'brightness(1.8) invert(1)',
-            'brightness(2.4) invert(1)',
-            'brightness(2.1) invert(1)',
-            'brightness(1.9) invert(1)'
+          "brightness(2) invert(1)",
+          "brightness(2.2) invert(1)",
+          "brightness(1.8) invert(1)",
+          "brightness(2.4) invert(1)",
+          "brightness(2.1) invert(1)",
+          "brightness(1.9) invert(1)",
         ];
-        
+
         // أنواع الحركة
-        const animations = ['float-up', 'float-diagonal', 'float-horizontal', 'float-rotate'];
-        
+        const animations = [
+          "float-up",
+          "float-diagonal",
+          "float-horizontal",
+          "float-rotate",
+        ];
+
         // أحجام الأيقونات
-        const sizes = ['icon-small', 'icon-medium', 'icon-large'];
-        
+        const sizes = ["icon-small", "icon-medium", "icon-large"];
+
         // إنشاء أيقونات أولية
         function createIcon() {
-            const icon = document.createElement('div');
-            icon.className = 'floating-icon';
-            
-            // اختيار أيقونة عشوائية
-            const randomIcon = icons[Math.floor(Math.random() * icons.length)];
-            
-            // اختيار حجم عشوائي
-            const randomSize = sizes[Math.floor(Math.random() * sizes.length)];
-            icon.classList.add(randomSize);
-            
-            // اختيار حركة عشوائية
-            const randomAnimation = animations[Math.floor(Math.random() * animations.length)];
-            icon.classList.add(randomAnimation);
-            
-            // إنشاء صورة
-            const img = document.createElement('img');
-            img.src = randomIcon;
-            img.alt = 'Gaming Icon';
-            img.onerror = function() {
-                // في حالة عدم وجود الصورة، استخدم أيقونة افتراضية
-                this.style.display = 'none';
-            };
-            
-            // إضافة لون أبيض
-            const randomColor = iconColors[Math.floor(Math.random() * iconColors.length)];
-            img.style.filter = randomColor + ' drop-shadow(0 0 15px rgba(255, 255, 255, 0.6))';
-            
-            // إضافة تأثير hover
-            img.style.transition = 'all 0.3s ease';
-            
-            icon.appendChild(img);
-            
-            // موضع بداية عشوائي - مركز في المنتصف
-            const centerX = window.innerWidth / 2;
-            const centerY = window.innerHeight / 2;
-            const radius = 200; // نطاق حول المنتصف
-            
-            if (randomAnimation === 'float-up') {
-                // من أسفل المنتصف إلى أعلى المنتصف
-                icon.style.left = (centerX - radius/2 + Math.random() * radius) + 'px';
-                icon.style.bottom = '-100px';
-            } else if (randomAnimation === 'float-diagonal') {
-                // من الزوايا القريبة من المنتصف
-                const side = Math.random() > 0.5 ? 1 : -1;
-                icon.style.left = (centerX + side * (radius + 50)) + 'px';
-                icon.style.top = (centerY + side * (radius + 50)) + 'px';
-            } else if (randomAnimation === 'float-horizontal') {
-                // من اليسار واليمين نحو المنتصف
-                if (Math.random() > 0.5) {
-                    icon.style.left = '-100px';
-                } else {
-                    icon.style.right = '-100px';
-                }
-                icon.style.top = (centerY - radius/2 + Math.random() * radius) + 'px';
-            } else if (randomAnimation === 'float-rotate') {
-                // حركة دائرية حول المنتصف
-                const angle = Math.random() * 360;
-                const startRadius = radius + 100;
-                icon.style.left = (centerX + Math.cos(angle) * startRadius) + 'px';
-                icon.style.top = (centerY + Math.sin(angle) * startRadius) + 'px';
+          const icon = document.createElement("div");
+          icon.className = "floating-icon";
+
+          // اختيار أيقونة عشوائية
+          const randomIcon = icons[Math.floor(Math.random() * icons.length)];
+
+          // اختيار حجم عشوائي
+          const randomSize = sizes[Math.floor(Math.random() * sizes.length)];
+          icon.classList.add(randomSize);
+
+          // اختيار حركة عشوائية
+          const randomAnimation =
+            animations[Math.floor(Math.random() * animations.length)];
+          icon.classList.add(randomAnimation);
+
+          // إنشاء صورة
+          const img = document.createElement("img");
+          img.src = randomIcon;
+          img.alt = "Gaming Icon";
+          img.onerror = function () {
+            // في حالة عدم وجود الصورة، استخدم أيقونة افتراضية
+            this.style.display = "none";
+          };
+
+          // إضافة لون أبيض
+          const randomColor =
+            iconColors[Math.floor(Math.random() * iconColors.length)];
+          img.style.filter =
+            randomColor + " drop-shadow(0 0 15px rgba(255, 255, 255, 0.6))";
+
+          // إضافة تأثير hover
+          img.style.transition = "all 0.3s ease";
+
+          icon.appendChild(img);
+
+          // موضع بداية عشوائي - مركز في المنتصف
+          const centerX = window.innerWidth / 2;
+          const centerY = window.innerHeight / 2;
+          const radius = 200; // نطاق حول المنتصف
+
+          if (randomAnimation === "float-up") {
+            // من أسفل المنتصف إلى أعلى المنتصف
+            icon.style.left =
+              centerX - radius / 2 + Math.random() * radius + "px";
+            icon.style.bottom = "-100px";
+          } else if (randomAnimation === "float-diagonal") {
+            // من الزوايا القريبة من المنتصف
+            const side = Math.random() > 0.5 ? 1 : -1;
+            icon.style.left = centerX + side * (radius + 50) + "px";
+            icon.style.top = centerY + side * (radius + 50) + "px";
+          } else if (randomAnimation === "float-horizontal") {
+            // من اليسار واليمين نحو المنتصف
+            if (Math.random() > 0.5) {
+              icon.style.left = "-100px";
+            } else {
+              icon.style.right = "-100px";
             }
-            
-            // مدة الحركة أقصر للكثافة أكثر (بين 8-15 ثانية)
-            const duration = 8 + Math.random() * 7;
-            icon.style.animationDuration = duration + 's';
-            
-            // تأخير أقل في البداية
-            const delay = Math.random() * 2;
-            icon.style.animationDelay = delay + 's';
-            
-            floatingContainer.appendChild(icon);
-            
-            // إزالة الأيقونة بعد انتهاء الحركة
-            setTimeout(() => {
-                if (icon.parentNode) {
-                    icon.parentNode.removeChild(icon);
-                }
-            }, (duration + delay) * 1000);
+            icon.style.top =
+              centerY - radius / 2 + Math.random() * radius + "px";
+          } else if (randomAnimation === "float-rotate") {
+            // حركة دائرية حول المنتصف
+            const angle = Math.random() * 360;
+            const startRadius = radius + 100;
+            icon.style.left = centerX + Math.cos(angle) * startRadius + "px";
+            icon.style.top = centerY + Math.sin(angle) * startRadius + "px";
+          }
+
+          // مدة الحركة أقصر للكثافة أكثر (بين 8-15 ثانية)
+          const duration = 8 + Math.random() * 7;
+          icon.style.animationDuration = duration + "s";
+
+          // تأخير أقل في البداية
+          const delay = Math.random() * 2;
+          icon.style.animationDelay = delay + "s";
+
+          floatingContainer.appendChild(icon);
+
+          // إزالة الأيقونة بعد انتهاء الحركة
+          setTimeout(() => {
+            if (icon.parentNode) {
+              icon.parentNode.removeChild(icon);
+            }
+          }, (duration + delay) * 1000);
         }
-        
+
         // إنشاء أيقونات بشكل متتالي
         function generateIcons() {
-            createIcon();
-            
-            // إنشاء أيقونة جديدة كل 0.5-1 ثانية (أكثر كثافة)
-            const nextIconDelay = 500 + Math.random() * 500;
-            setTimeout(generateIcons, nextIconDelay);
+          createIcon();
+
+          // إنشاء أيقونة جديدة كل 0.5-1 ثانية (أكثر كثافة)
+          const nextIconDelay = 500 + Math.random() * 500;
+          setTimeout(generateIcons, nextIconDelay);
         }
-        
+
         // بدء إنشاء الأيقونات
         generateIcons();
-        
+
         // إنشاء مجموعة أولية مكثفة من الأيقونات
         for (let i = 0; i < 12; i++) {
-            setTimeout(() => {
-                createIcon();
-            }, i * 300);
+          setTimeout(() => {
+            createIcon();
+          }, i * 300);
         }
-    }
+      }
 
-    // إضافة تأثيرات تفاعلية محسنة
-    function addInteractiveEffects() {
+      // إضافة تأثيرات تفاعلية محسنة
+      function addInteractiveEffects() {
         // تأثيرات للبطاقات
-        const orderCards = document.querySelectorAll('.order-card');
-        orderCards.forEach(card => {
-            card.addEventListener('mouseenter', function() {
-                this.style.filter = 'brightness(1.05)';
-            });
-            
-            card.addEventListener('mouseleave', function() {
-                this.style.filter = 'brightness(1)';
-            });
+        const orderCards = document.querySelectorAll(".order-card");
+        orderCards.forEach((card) => {
+          card.addEventListener("mouseenter", function () {
+            this.style.filter = "brightness(1.05)";
+          });
+
+          card.addEventListener("mouseleave", function () {
+            this.style.filter = "brightness(1)";
+          });
         });
 
         // تأثيرات للأزرار
-        const buttons = document.querySelectorAll('.es-btn');
-        buttons.forEach(button => {
-            button.addEventListener('mouseenter', function() {
-                if (!this.disabled) {
-                    this.style.filter = 'brightness(1.1) saturate(1.2)';
-                    this.style.transform = 'translateY(-2px) scale(1.02)';
-                }
-            });
-            
-            button.addEventListener('mouseleave', function() {
-                this.style.filter = 'brightness(1) saturate(1)';
-                this.style.transform = 'translateY(0) scale(1)';
-            });
-            
-            button.addEventListener('mousedown', function() {
-                if (!this.disabled) {
-                    this.style.transform = 'translateY(0) scale(0.98)';
-                }
-            });
-            
-            button.addEventListener('mouseup', function() {
-                if (!this.disabled) {
-                    this.style.transform = 'translateY(-2px) scale(1.02)';
-                }
-            });
+        const buttons = document.querySelectorAll(".es-btn");
+        buttons.forEach((button) => {
+          button.addEventListener("mouseenter", function () {
+            if (!this.disabled) {
+              this.style.filter = "brightness(1.1) saturate(1.2)";
+              this.style.transform = "translateY(-2px) scale(1.02)";
+            }
+          });
+
+          button.addEventListener("mouseleave", function () {
+            this.style.filter = "brightness(1) saturate(1)";
+            this.style.transform = "translateY(0) scale(1)";
+          });
+
+          button.addEventListener("mousedown", function () {
+            if (!this.disabled) {
+              this.style.transform = "translateY(0) scale(0.98)";
+            }
+          });
+
+          button.addEventListener("mouseup", function () {
+            if (!this.disabled) {
+              this.style.transform = "translateY(-2px) scale(1.02)";
+            }
+          });
         });
 
         // تأثيرات للعناصر التفاعلية
-        const summaryItems = document.querySelectorAll('.summary-item');
-        summaryItems.forEach(item => {
-            item.addEventListener('mouseenter', function() {
-                this.style.filter = 'brightness(1.08)';
-            });
-            
-            item.addEventListener('mouseleave', function() {
-                this.style.filter = 'brightness(1)';
-            });
+        const summaryItems = document.querySelectorAll(".summary-item");
+        summaryItems.forEach((item) => {
+          item.addEventListener("mouseenter", function () {
+            this.style.filter = "brightness(1.08)";
+          });
+
+          item.addEventListener("mouseleave", function () {
+            this.style.filter = "brightness(1)";
+          });
         });
 
         // تأثير النقر على العناصر
-        const orderItems = document.querySelectorAll('.order-item');
-        orderItems.forEach(item => {
-            item.addEventListener('click', function() {
-                // إضافة تأثير النقر
-                this.style.transform = 'scale(0.98)';
-                setTimeout(() => {
-                    this.style.transform = 'scale(1)';
-                }, 150);
-            });
+        const orderItems = document.querySelectorAll(".order-item");
+        orderItems.forEach((item) => {
+          item.addEventListener("click", function () {
+            // إضافة تأثير النقر
+            this.style.transform = "scale(0.98)";
+            setTimeout(() => {
+              this.style.transform = "scale(1)";
+            }, 150);
+          });
         });
-    }
+      }
 
-    // إضافة تأثيرات scroll
-    window.addEventListener('scroll', function() {
+      // إضافة تأثيرات scroll
+      window.addEventListener("scroll", function () {
         const scrolled = window.pageYOffset;
         const rate = scrolled * -0.5;
-        
-        // تأثير parallax للأيقونات المتحركة
-        const floatingIcons = document.getElementById('floatingIcons');
-        if (floatingIcons) {
-            floatingIcons.style.transform = `translateY(${rate}px)`;
-        }
-    });
 
-    // تحسين الأداء للشاشات الصغيرة
-    if (window.innerWidth <= 768) {
+        // تأثير parallax للأيقونات المتحركة
+        const floatingIcons = document.getElementById("floatingIcons");
+        if (floatingIcons) {
+          floatingIcons.style.transform = `translateY(${rate}px)`;
+        }
+      });
+
+      // تحسين الأداء للشاشات الصغيرة
+      if (window.innerWidth <= 768) {
         // تقليل عدد الأيقونات المتحركة على الشاشات الصغيرة
-        const style = document.createElement('style');
+        const style = document.createElement("style");
         style.textContent = `
             .floating-icon {
                 animation-duration: 10s !important;
             }
         `;
         document.head.appendChild(style);
-    }
+      }
 
-    // إضافة إشعارات تفاعلية
-    function showNotification(message, type = 'info') {
-        const notification = document.createElement('div');
+      // إضافة إشعارات تفاعلية
+      function showNotification(message, type = "info") {
+        const notification = document.createElement("div");
         notification.className = `notification ${type}`;
         notification.style.cssText = `
             position: fixed;
@@ -1539,33 +1558,35 @@ body {
         `;
         notification.textContent = message;
         document.body.appendChild(notification);
-        
+
         // إظهار الإشعار
         setTimeout(() => {
-            notification.style.transform = 'translateX(0)';
+          notification.style.transform = "translateX(0)";
         }, 100);
-        
+
         // إخفاء الإشعار
         setTimeout(() => {
-            notification.style.transform = 'translateX(100%)';
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.parentNode.removeChild(notification);
-                }
-            }, 400);
+          notification.style.transform = "translateX(100%)";
+          setTimeout(() => {
+            if (notification.parentNode) {
+              notification.parentNode.removeChild(notification);
+            }
+          }, 400);
         }, 3000);
-    }
+      }
 
-    // تفعيل الأداء المحسن عند التحميل
-    document.addEventListener('DOMContentLoaded', function() {
+      // تفعيل الأداء المحسن عند التحميل
+      document.addEventListener("DOMContentLoaded", function () {
         // تفعيل GPU acceleration للعناصر المتحركة
-        const animatedElements = document.querySelectorAll('.floating-icon, .order-card, .page-header');
-        animatedElements.forEach(element => {
-            element.style.willChange = 'transform, opacity';
-            element.style.backfaceVisibility = 'hidden';
-            element.style.perspective = '1000px';
+        const animatedElements = document.querySelectorAll(
+          ".floating-icon, .order-card, .page-header"
+        );
+        animatedElements.forEach((element) => {
+          element.style.willChange = "transform, opacity";
+          element.style.backfaceVisibility = "hidden";
+          element.style.perspective = "1000px";
         });
-    });
+      });
     </script>
-</body>
+  </body>
 </html>

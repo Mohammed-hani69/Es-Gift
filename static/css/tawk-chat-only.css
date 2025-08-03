@@ -24,68 +24,89 @@
 [class*="help-icon"],
 [data-chat],
 [data-support] {
-    display: none !important;
-    visibility: hidden !important;
-    opacity: 0 !important;
-    pointer-events: none !important;
-    position: absolute !important;
-    top: -9999px !important;
-    left: -9999px !important;
-    z-index: -1 !important;
-    width: 0 !important;
-    height: 0 !important;
-    overflow: hidden !important;
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  position: absolute !important;
+  top: -9999px !important;
+  left: -9999px !important;
+  z-index: -1 !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
 }
 
 /* ضمان ثبات أيقونة Tawk.to */
 #tawk-bubble,
 iframe[id*="tawk"],
 div[id*="tawk-widget"] {
-    position: fixed !important;
-    bottom: 20px !important;
-    right: 20px !important;
-    z-index: 999999 !important;
+  position: fixed !important;
+  bottom: 20px !important;
+  right: 20px !important;
+  z-index: 999999 !important;
 }
 
 /* منع أي تعديل على موقع Tawk.to */
 #tawk-bubble {
-    transform: translateZ(0) !important;
-    -webkit-transform: translateZ(0) !important;
-    will-change: transform, box-shadow !important;
-    backface-visibility: hidden !important;
-    -webkit-backface-visibility: hidden !important;
+  transform: translateZ(0) !important;
+  -webkit-transform: translateZ(0) !important;
+  will-change: transform, box-shadow !important;
+  backface-visibility: hidden !important;
+  -webkit-backface-visibility: hidden !important;
 }
 
 /* إخفاء أي عناصر CSS تحتوي على كلمات مفتاحية للشات */
 *[class*="chat"]:not([id*="tawk"]):not([class*="tawk"]),
 *[class*="support"]:not([id*="tawk"]):not([class*="tawk"]),
 *[class*="floating"]:not([id*="tawk"]):not([class*="tawk"]) {
-    display: none !important;
+  display: none !important;
 }
 
 /* استثناء عناصر Tawk.to فقط */
 *[id*="tawk"],
 *[class*="tawk"] {
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 
 /* تأكيد موقع Tawk.to في الشاشات المختلفة */
 @media (max-width: 768px) {
-    #tawk-bubble {
-        width: 55px !important;
-        height: 55px !important;
-        bottom: 15px !important;
-        right: 15px !important;
-    }
+  #tawk-bubble {
+    width: 55px !important;
+    height: 55px !important;
+    bottom: 15px !important;
+    right: 15px !important;
+  }
 }
 
 @media (max-width: 480px) {
-    #tawk-bubble {
-        width: 50px !important;
-        height: 50px !important;
-        bottom: 12px !important;
-        right: 12px !important;
-    }
+  #tawk-bubble {
+    width: 50px !important;
+    height: 50px !important;
+    bottom: 12px !important;
+    right: 12px !important;
+  }
+}
+.whatsapp-float-container {
+  position: absolute; /* أساسي ليثبت أثناء التمرير */
+  bottom: 1%;
+  right: 2%;
+  background: linear-gradient(45deg, #ff0033, #ff3366, #ff0033);
+  color: white;
+  font-size: 28px;
+  width: 60px;
+  height: 60px;
+  display: flex; /* لتوسيط الأيقونة داخليًا */
+  justify-content: center;
+  align-items: center;
+  border-radius: 50%;
+  z-index: 999999; /* أعلى قيمة */
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+}
+.whatsapp-float-container:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
 }

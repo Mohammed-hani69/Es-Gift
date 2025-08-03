@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/design-system.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/header-footer-enhanced.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tawk-simple.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tawk-chat-only.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css">
     
@@ -66,6 +67,7 @@
     
     <!-- أنماط عامة -->
     <style>
+        
         /* Flash messages styles */
         
         /* تحسينات زر تسجيل الدخول في الهيدر */
@@ -171,6 +173,32 @@
     {% block extra_css %}{% endblock %}
 </head>
 <body>
+    
+  <style>
+.whatsapp-float-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: linear-gradient(45deg, #ff0033, #ff3366, #ff0033);
+  color: white;
+  font-size: 28px;
+  width: 60px;
+  height: 60px;
+  justify-content: center;
+  align-items: center;
+  border-radius: 50%;
+  text-align: center;
+  z-index: 100000;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  transition: opacity 0.3s ease;
+}
+
+.whatsapp-float {
+  color: white;
+}
+</style>  
+
+
     <!-- Header -->
     <header class="header">
         <div class="top-bar">
@@ -299,7 +327,20 @@
         </nav>
 
 
-    </header>
+    </header
+    >
+
+ 
+    <div class="whatsapp-float-container">
+    <a href="https://wa.me/201234567890" 
+        class="whatsapp-float" 
+        target="_blank" 
+        id="whatsappBtn" 
+        title="راسلنا على واتساب"
+    >
+        <i class="fab fa-whatsapp"></i>
+    </a>
+</div>
 
     <!-- شريط البحث المنبثق -->
     <div id="searchOverlay" class="search-overlay">
@@ -340,6 +381,7 @@
     <main>
         {% block content %}{% endblock %}
     </main>
+    
 
     <!-- Footer -->
     <footer class="footer">
@@ -820,7 +862,7 @@
             }, 1000);
         }
     </script>
-
     {% block extra_js %}{% endblock %}
+    
 </body>
 </html>
