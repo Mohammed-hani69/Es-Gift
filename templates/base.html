@@ -331,16 +331,6 @@
     >
 
  
-    <div class="whatsapp-float-container">
-    <a href="https://wa.me/201234567890" 
-        class="whatsapp-float" 
-        target="_blank" 
-        id="whatsappBtn" 
-        title="راسلنا على واتساب"
-    >
-        <i class="fab fa-whatsapp"></i>
-    </a>
-</div>
 
     <!-- شريط البحث المنبثق -->
     <div id="searchOverlay" class="search-overlay">
@@ -862,7 +852,22 @@
             }, 1000);
         }
     </script>
+
+    <!-- chat icon -->
+    <script type="text/javascript">
+    var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
+    (function(){
+        var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
+        s1.async=true;
+        s1.src='https://embed.tawk.to/688fcddb8ba539192ec9cb4f/1j1oro983';
+        s1.charset='UTF-8';
+        s1.setAttribute('crossorigin','*');
+        s0.parentNode.insertBefore(s1,s0);
+    })();
+    </script>
+
     {% block extra_js %}{% endblock %}
     
+   
 </body>
 </html>

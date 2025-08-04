@@ -4,7 +4,7 @@
  */
 
 /* إخفاء جميع أيقونات الشات الأخرى */
-.floating-support-icon,
+ .floating-support-icon,
 .es-chat-floating-icon,
 .support-icon,
 .chat-icon,
@@ -109,4 +109,4 @@ div[id*="tawk-widget"] {
 .whatsapp-float-container:hover {
   transform: scale(1.1);
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
-}
+} 
