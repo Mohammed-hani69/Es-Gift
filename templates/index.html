@@ -168,16 +168,8 @@
             {% for product in api_products %}
             <div class="onecard-product-card swiper-slide">
                 <div class="onecard-product-image">
-                    {% if product.image_url and product.image_url != 'default-product.jpg' %}
-                        <img src="{{ product.image }}" 
-                             alt="{{ product.name }}" 
-                             loading="lazy"
-                             onerror="this.src='{{ url_for('static', filename='images/default-product.jpg') }}'; this.onerror=null;">
-                    {% else %}
-                        <img src="{{ url_for('static', filename='images/default-product.jpg') }}" 
-                             alt="{{ product.name }}"
-                             loading="lazy">
-                    {% endif %}
+                    <img src="{{ product.productImage }}" alt="{{ product.name }}" loading="lazy">
+
                     <!-- {% if product.is_fresh %}
                     <div class="fresh-badge">
                         <i class="fas fa-star"></i> جديد
