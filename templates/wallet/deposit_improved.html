@@ -777,7 +777,7 @@
 
         <div class="deposit-card">
             <form class="deposit-form" method="POST" enctype="multipart/form-data" id="depositForm">
-                {{ csrf_token() if csrf_token }}
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
                 
                 <div class="alert alert-info">
                     <i class="fas fa-info-circle"></i>

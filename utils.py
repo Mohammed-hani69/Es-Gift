@@ -1,6 +1,6 @@
 import json
 from flask import current_app
-from email_sender_pro_service import send_order_confirmation, send_custom_email
+from send_by_hostinger import send_order_confirmation, send_custom_email, send_email
 from models import Currency, db
 from datetime import datetime
 import time

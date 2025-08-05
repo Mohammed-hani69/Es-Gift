@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-خدمة التحقق من البريد الإلكتروني باستخدام Email Sender Pro
+خدمة التحقق من البريد الإلكتروني باستخدام Hostinger SMTP
 ========================================================
 
 هذه الخدمة تدير كامل عملية التحقق من البريد الإلكتروني للمستخدمين الجدد
-باستخدام Email Sender Pro API مع نظام أكواد التحقق من 6 خانات ونظام احتياطي
+باستخدام Hostinger SMTP مع نظام أكواد التحقق من 6 خانات ونظام احتياطي
 """
 
 import random
@@ -14,7 +14,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import Dict, Tuple, Optional
 from flask import current_app, session
-from email_sender_pro_service import send_verification_email, send_welcome_email
+from send_by_hostinger import send_verification_email, send_welcome_email
 from email_fallback_service import fallback_email_service
 from simple_email_service import simple_email_service
 
@@ -22,7 +22,7 @@ from simple_email_service import simple_email_service
 logger = logging.getLogger(__name__)
 
 class EmailProVerificationService:
-    """خدمة التحقق من البريد الإلكتروني باستخدام Email Sender Pro"""
+    """خدمة التحقق من البريد الإلكتروني باستخدام Hostinger SMTP"""
     
     def __init__(self):
         """تهيئة الخدمة"""
@@ -48,7 +48,7 @@ class EmailProVerificationService:
         try:
             logger.info(f"🔐 بدء إرسال كود التحقق إلى: {email}")
             
-            # محاولة إرسال كود التحقق عبر Email Sender Pro API
+            # محاولة إرسال كود التحقق عبر Hostinger SMTP
             success, message, verification_code = send_verification_email(email)
             
             # إذا فشلت الخدمة الرئيسية، استخدم النظام الاحتياطي

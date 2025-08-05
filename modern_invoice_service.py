@@ -19,7 +19,7 @@ from reportlab.graphics.shapes import Drawing, Rect, Line
 from reportlab.graphics import renderPDF
 
 from flask import current_app, url_for
-from email_sender_pro_service import send_custom_email, send_email
+from send_by_hostinger import send_custom_email, send_email
 
 from models import db, Invoice, Order, User
 from utils import send_email as utils_send_email
@@ -689,7 +689,7 @@ class ModernInvoiceService:
                     'invoice_date': invoice.invoice_date.strftime('%Y/%m/%d') if invoice.invoice_date else 'غير محدد'
                 }
                 
-                # إرسال الفاتورة باستخدام Email Sender Pro
+                # إرسال الفاتورة باستخدام Hostinger SMTP
                 invoice_subject = f"فاتورة رقم {invoice.invoice_number} - {invoice.customer_name}"
                 success, message = send_custom_email(
                     email=invoice.customer_email,

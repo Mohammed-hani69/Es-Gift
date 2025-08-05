@@ -793,10 +793,17 @@ document.getElementById('registerForm').addEventListener('submit', function(e) {
             btnText.textContent = 'تم إنشاء الحساب!';
             registerBtn.style.background = 'linear-gradient(135deg, #28a745, #20c997)';
             
-            // التوجيه لصفحة تسجيل الدخول
-            setTimeout(() => {
-                window.location.href = '/login';
-            }, 2000);
+            // التحقق من الحاجة للتحقق من البريد الإلكتروني
+            if (data.verification_required) {
+                setTimeout(() => {
+                    window.location.href = '/verify-email-code';
+                }, 2000);
+            } else {
+                // التوجيه للصفحة الرئيسية
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 2000);
+            }
         } else {
             showMessage(data.message, 'error');
             shakeButton();

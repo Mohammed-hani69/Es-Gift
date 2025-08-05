@@ -8,11 +8,15 @@ import requests
 import re
 import unicodedata
 import json
+import logging
 
 from models import *
 from utils import get_user_price, convert_currency, send_email, send_order_email, get_visible_products, send_order_confirmation_without_codes, generate_order_number
 from email_pro_verification_service import send_user_verification_code, verify_user_code, resend_user_verification_code, is_verification_pending
-from email_sender_pro_service import send_order_confirmation
+from send_by_hostinger import send_order_confirmation
+
+# إعداد التسجيل
+logger = logging.getLogger(__name__)
 
 def create_slug(text):
     """إنشاء slug من النص العربي أو الإنجليزي"""
@@ -416,6 +420,7 @@ def register():
             session['pending_user_id'] = user.id
             session['pending_user_email'] = email
             session['pending_user_name'] = user_display_name
+            session['pending_verification_email'] = email  # إضافة للتوافق مع صفحة التحقق
             
             success_msg = 'تم إنشاء الحساب بنجاح! تم إرسال كود التحقق إلى بريدك الإلكتروني'
             if request.is_json:
@@ -424,11 +429,11 @@ def register():
                     'message': success_msg,
                     'verification_required': True,
                     'email': email,
-                    'redirect_url': url_for('auth_routes.verify_email')
+                    'redirect_url': url_for('auth.verify_email_code_page')
                 })
             else:
                 flash(success_msg, 'success')
-                return redirect(url_for('auth_routes.verify_email'))
+                return redirect(url_for('auth.verify_email_code_page'))
         else:
             # في حالة فشل إرسال كود التحقق، نسجل الدخول مباشرة
             login_user(user)
@@ -453,6 +458,152 @@ def register():
 def logout():
     logout_user()
     return redirect(url_for('main.index'))
+
+@main.route('/verify-email-code')
+def verify_email_code_page():
+    """صفحة إدخال كود التحقق"""
+    user_email = session.get('pending_verification_email') or session.get('pending_user_email')
+    if not user_email:
+        flash('جلسة التحقق منتهية الصلاحية', 'warning')
+        return redirect(url_for('main.register'))
+    
+    return render_template('auth/verify_email_code.html', user_email=user_email)
+
+@main.route('/verify-email-code', methods=['POST'])
+def verify_email_code():
+    """التحقق من كود التحقق المرسل"""
+    try:
+        from email_pro_verification_service import verify_user_code
+        
+        data = request.get_json()
+        email = data.get('email')
+        code = data.get('code')
+        
+        if not email or not code:
+            return jsonify({
+                'success': False,
+                'message': 'البريد الإلكتروني وكود التحقق مطلوبان'
+            })
+        
+        # التحقق من الكود
+        success, message = verify_user_code(email, code)
+        
+        if success:
+            # البحث عن المستخدم وتفعيل الحساب
+            user = User.query.filter_by(email=email).first()
+            if user:
+                user.is_verified = True
+                db.session.commit()
+                
+                # تسجيل دخول المستخدم
+                login_user(user)
+                
+                # مسح بيانات الجلسة
+                session.pop('pending_verification_email', None)
+                session.pop('pending_user_id', None)
+                session.pop('pending_user_email', None)
+                session.pop('pending_user_name', None)
+                session.pop('verification_email', None)
+                session.pop('verification_pending', None)
+                
+                return jsonify({
+                    'success': True,
+                    'message': 'تم التحقق من البريد الإلكتروني بنجاح'
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'message': 'المستخدم غير موجود'
+                })
+        else:
+            return jsonify({
+                'success': False,
+                'message': message
+            })
+            
+    except Exception as e:
+        logger.error(f"خطأ في التحقق من الكود: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': 'حدث خطأ أثناء التحقق من الكود'
+        })
+
+@main.route('/resend-verification-code', methods=['POST'])
+def resend_verification_code():
+    """إعادة إرسال كود التحقق"""
+    try:
+        from email_pro_verification_service import resend_user_verification_code
+        
+        data = request.get_json()
+        email = data.get('email')
+        
+        if not email:
+            return jsonify({
+                'success': False,
+                'message': 'البريد الإلكتروني مطلوب'
+            })
+        
+        # البحث عن المستخدم
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            return jsonify({
+                'success': False,
+                'message': 'المستخدم غير موجود'
+            })
+        
+        # إرسال كود جديد
+        success, message = resend_user_verification_code(email)
+        
+        return jsonify({
+            'success': success,
+            'message': message
+        })
+            
+    except Exception as e:
+        logger.error(f"خطأ في إعادة إرسال الكود: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': 'حدث خطأ أثناء إعادة إرسال الكود'
+        })
+
+@main.route('/send-welcome-email', methods=['POST'])
+def send_welcome_email_route():
+    """إرسال رسالة ترحيبية للمستخدم الجديد"""
+    try:
+        from send_by_hostinger import send_welcome_email
+        
+        data = request.get_json()
+        email = data.get('email')
+        
+        if not email:
+            return jsonify({
+                'success': False,
+                'message': 'البريد الإلكتروني مطلوب'
+            })
+        
+        # البحث عن المستخدم
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            return jsonify({
+                'success': False,
+                'message': 'المستخدم غير موجود'
+            })
+        
+        # إرسال رسالة ترحيبية
+        customer_name = user.full_name or user.email.split('@')[0]
+        success, message = send_welcome_email(email, customer_name)
+        
+        return jsonify({
+            'success': success,
+            'message': message
+        })
+            
+    except Exception as e:
+        logger.error(f"خطأ في إرسال رسالة الترحيب: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': 'حدث خطأ أثناء إرسال رسالة الترحيب'
+        })
 
 @main.route('/verify-email/<token>')
 def verify_email(token):
@@ -1710,7 +1861,7 @@ def process_payment():
                 
                 # إرسال إشعار للإدارة (اختياري)
                 try:
-                    from email_sender_pro_service import send_custom_email
+                    from send_by_hostinger import send_custom_email
                     send_custom_email(
                         email="admin@es-gift.com",  # البريد الإداري
                         subject=f"طلب جديد يحتاج أكواد - #{order.order_number}",

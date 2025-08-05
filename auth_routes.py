@@ -9,7 +9,7 @@ Author: ES-Gift Development Team
 Created: 2025
 """
 
-from flask import Blueprint, request, redirect, url_for, flash, session, current_app, render_template
+from flask import Blueprint, request, redirect, url_for, flash, session, current_app, render_template, jsonify
 from flask_login import login_user, current_user
 from werkzeug.security import generate_password_hash
 from models import User, db
@@ -184,8 +184,7 @@ def verify_email_code_page():
 def verify_email_code():
     """التحقق من كود التحقق المرسل عبر Email Sender Pro"""
     try:
-        from flask import jsonify, render_template
-        from email_verification_service import EmailVerificationService
+        from email_pro_verification_service import verify_user_code
         
         data = request.get_json()
         email = data.get('email')
@@ -198,16 +197,35 @@ def verify_email_code():
             })
         
         # التحقق من الكود
-        success, message = EmailVerificationService.verify_code(email, code)
+        success, message = verify_user_code(email, code)
         
         if success:
-            # مسح جلسة التحقق
-            session.pop('pending_verification_email', None)
-            
-            return jsonify({
-                'success': True,
-                'message': message
-            })
+            # البحث عن المستخدم وتفعيل الحساب
+            user = User.query.filter_by(email=email).first()
+            if user:
+                user.is_verified = True
+                db.session.commit()
+                
+                # تسجيل دخول المستخدم
+                login_user(user)
+                
+                # مسح بيانات الجلسة
+                session.pop('pending_verification_email', None)
+                session.pop('pending_user_id', None)
+                session.pop('pending_user_email', None)
+                session.pop('pending_user_name', None)
+                session.pop('verification_email', None)
+                session.pop('verification_pending', None)
+                
+                return jsonify({
+                    'success': True,
+                    'message': 'تم التحقق من البريد الإلكتروني بنجاح'
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'message': 'المستخدم غير موجود'
+                })
         else:
             return jsonify({
                 'success': False,
@@ -225,8 +243,7 @@ def verify_email_code():
 def resend_verification_code():
     """إعادة إرسال كود التحقق"""
     try:
-        from flask import jsonify
-        from email_sender_pro_service import send_verification_email
+        from email_pro_verification_service import resend_user_verification_code
         
         data = request.get_json()
         email = data.get('email')
@@ -246,26 +263,12 @@ def resend_verification_code():
             })
         
         # إرسال كود جديد
-        success, message, verification_code = send_verification_email(email)
+        success, message = resend_user_verification_code(email)
         
-        if success:
-            # حفظ الكود الجديد
-            try:
-                user.email_verification_code = verification_code
-                user.email_verification_sent_at = datetime.utcnow()
-                db.session.commit()
-            except Exception as e:
-                logger.error(f"خطأ في حفظ الكود الجديد: {str(e)}")
-            
-            return jsonify({
-                'success': True,
-                'message': 'تم إرسال كود التحقق الجديد بنجاح'
-            })
-        else:
-            return jsonify({
-                'success': False,
-                'message': message
-            })
+        return jsonify({
+            'success': success,
+            'message': message
+        })
             
     except Exception as e:
         logger.error(f"خطأ في إعادة إرسال الكود: {str(e)}")
@@ -280,6 +283,7 @@ def send_welcome_email_route():
     try:
         from flask import jsonify
         from email_sender_pro_service import send_welcome_email
+        from send_by_hostinger import send_welcome_email as hostinger_send_welcome_email
         
         data = request.get_json()
         email = data.get('email')
@@ -299,7 +303,7 @@ def send_welcome_email_route():
             })
         
         # إرسال رسالة الترحيب
-        success, message = send_welcome_email(
+        success, message = hostinger_send_welcome_email(
             email=email,
             customer_name=user.name or user.username or 'عميل عزيز'
         )

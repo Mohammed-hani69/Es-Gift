@@ -276,7 +276,7 @@
             {% endwith %}
             
             <form method="POST" id="verificationForm">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
                 
                 <div class="code-input-container">
                     <input type="text" class="code-input" maxlength="1" pattern="[0-9]" inputmode="numeric" data-index="0">
@@ -422,7 +422,7 @@
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token() }}'
+                    'X-CSRFToken': '{{ csrf_token }}'
                 },
                 body: JSON.stringify({
                     email: '{{ email }}'

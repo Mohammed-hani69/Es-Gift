@@ -5,7 +5,7 @@
 ==================================================
 
 تكامل مع Email Sender Pro API لإرسال رسائل التحقق، الطلبات، والترحيب
-API Documentation: http://verifix-otp.escovfair.com
+API Documentation: https://verifix-otp.com
 """
 
 import requests
@@ -24,45 +24,51 @@ class EmailSenderProService:
     
     def __init__(self):
         """تهيئة الخدمة"""
-        self.base_url = "http://verifix-otp.escovfair.com/api"
-        self.api_key = "2cb88c9c5cfa46429d17b68b928321b9"
+        self.base_url = "https://verifix-otp.com"
+        self.api_key = "c7eb68558d0b400f94f077bb414a1d2b"
         self.headers = {
             "Content-Type": "application/json",
-            "X-API-Key": self.api_key
+            "X-API-Key": self.api_key,
+            "User-Agent": "ES-Gift/1.0"
         }
-        self.timeout = 30  # مهلة زمنية للطلبات
+        self.timeout = 30  # مهلة زمنية أطول
+        self.retry_count = 2  # عدد مرات المحاولة
         
     def _make_request(self, endpoint: str, data: Dict, method: str = "POST") -> Tuple[bool, Dict]:
         """إجراء طلب HTTP إلى API"""
         try:
-            url = f"{self.base_url}/{endpoint}"
+            url = f"{self.base_url}{endpoint}"
             
-            logger.info(f"📤 طلب API: {method} {endpoint}")
+            logger.info(f"📤 طلب API: {method} {url}")
+            logger.info(f"🔑 API Key: {self.api_key[:10]}...")
             logger.debug(f"البيانات: {json.dumps(data, ensure_ascii=False, indent=2)}")
             
-            if method.upper() == "GET":
-                response = requests.get(
-                    url, 
-                    headers=self.headers,
-                    params=data,
-                    timeout=self.timeout
-                )
-            else:
-                response = requests.post(
-                    url, 
-                    headers=self.headers, 
-                    json=data,
-                    timeout=self.timeout
-                )
+            # جميع طلبات API تستخدم POST method فقط
+            response = requests.post(
+                url, 
+                headers=self.headers, 
+                json=data,
+                timeout=self.timeout,
+                verify=True  # تأكيد SSL
+            )
             
             logger.info(f"📥 استجابة API: {response.status_code}")
+            logger.debug(f"📄 Response Headers: {dict(response.headers)}")
+            
+            # طباعة جزء من النص للتشخيص
+            response_preview = response.text[:200] if response.text else "فارغ"
+            logger.debug(f"📝 Response Preview: {response_preview}")
             
             if response.status_code == 200:
-                result = response.json()
-                logger.debug(f"النتيجة: {json.dumps(result, ensure_ascii=False, indent=2)}")
-                return True, result
+                try:
+                    result = response.json()
+                    logger.debug(f"النتيجة: {json.dumps(result, ensure_ascii=False, indent=2)}")
+                    return True, result
+                except json.JSONDecodeError:
+                    logger.error("❌ الاستجابة ليست JSON صالحة")
+                    return False, {"error": f"استجابة غير صالحة: {response.text[:100]}"}
             else:
-                error_msg = f"HTTP {response.status_code}: {response.text}"
+                error_msg = f"HTTP {response.status_code}: {response.text[:200]}"
                 logger.error(f"❌ خطأ API: {error_msg}")
                 return False, {"error": error_msg}
                 
@@ -96,13 +102,8 @@ class EmailSenderProService:
             
             data = {"email": email}
             
-            # جرب GET method أولاً
-            success, result = self._make_request("send-verification", data, "GET")
-            
-            # إذا فشل GET، جرب POST
-            if not success and "405" in str(result.get('error', '')):
-                logger.info("🔄 محاولة POST method...")
-                success, result = self._make_request("send-verification", data, "POST")
+            # استخدام POST method فقط كما هو مطلوب في API
+            success, result = self._make_request("/api/send-verification", data, "POST")
             
             if success and result.get('success'):
                 verification_code = result.get('verification_code')
@@ -153,7 +154,7 @@ class EmailSenderProService:
                 "order_status": order_status
             }
             
-            success, result = self._make_request("send-order", data)
+            success, result = self._make_request("/api/send-order", data)
             
             if success and result.get('success'):
                 logger.info(f"✅ تم إرسال تفاصيل الطلب بنجاح")
@@ -187,7 +188,7 @@ class EmailSenderProService:
                 "customer_name": customer_name
             }
             
-            success, result = self._make_request("send-welcome", data)
+            success, result = self._make_request("/api/send-welcome", data)
             
             if success and result.get('success'):
                 logger.info(f"✅ تم إرسال الرسالة الترحيبية بنجاح")
@@ -226,7 +227,7 @@ class EmailSenderProService:
                 "message_title": message_title or subject
             }
             
-            success, result = self._make_request("send-custom", data)
+            success, result = self._make_request("/api/send-custom", data)
             
             if success and result.get('success'):
                 logger.info(f"✅ تم إرسال الرسالة المخصصة بنجاح")
@@ -251,15 +252,14 @@ class EmailSenderProService:
         try:
             logger.info("💰 فحص الرصيد المتبقي...")
             
-            url = f"{self.base_url}/balance"
-            response = requests.get(url, headers=self.headers, timeout=self.timeout)
+            data = {}
+            success, result = self._make_request("/api/balance", data)
             
-            if response.status_code == 200:
-                result = response.json()
+            if success and result.get('success'):
                 logger.info(f"✅ تم جلب بيانات الرصيد بنجاح")
                 return True, result
             else:
-                error_msg = f"HTTP {response.status_code}: {response.text}"
+                error_msg = result.get('error', 'فشل في جلب الرصيد')
                 logger.error(f"❌ فشل جلب الرصيد: {error_msg}")
                 return False, {"error": error_msg}
                 
@@ -278,14 +278,22 @@ class EmailSenderProService:
         try:
             logger.info("🔌 اختبار الاتصال مع Email Sender Pro API...")
             
-            # اختبار بسيط للحصول على الرصيد
-            success, result = self.get_balance()
+            # اختبار أساسي للموقع
+            try:
+                import urllib.request
+                urllib.request.urlopen("https://verifix-otp.com", timeout=5)
+                logger.info("✅ الموقع الأساسي متاح")
+            except:
+                logger.warning("⚠️ صعوبة في الوصول للموقع الأساسي")
+            
+            # اختبار بإرسال كود تحقق لإيميل تجريبي
+            test_email = "test@example.com"
+            success, message, code = self.send_verification_code(test_email)
             
             if success:
-                balance = result.get('balance', 'غير متوفر')
-                return True, f"✅ الاتصال ناجح - الرصيد: {balance}"
+                return True, f"✅ الاتصال ناجح - تم إرسال كود التحقق: {code}"
             else:
-                return False, f"❌ فشل الاتصال: {result.get('error', 'خطأ غير محدد')}"
+                return False, f"❌ فشل الاتصال: {message}"
                 
         except Exception as e:
             error_msg = f"خطأ في اختبار الاتصال: {str(e)}"
