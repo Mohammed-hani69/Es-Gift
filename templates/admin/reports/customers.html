@@ -1,0 +1,1126 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}تقارير العملاء{% endblock %}
+
+{% block content %}
+<div class="customers-reports">
+    <div class="page-header">
+        <div class="header-content">
+            <h1 style="color: #ff0033; margin-bottom: 10px;">
+                <i class="fas fa-users"></i>
+                تقارير العملاء
+            </h1>
+            <p style="color: #ccc; margin-bottom: 20px;">
+                تحليل شامل لأداء العملاء العاديين والموثقين
+            </p>
+        </div>
+        <div class="header-actions">
+            <a href="{{ url_for('reports.reports_dashboard') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-right"></i>
+                العودة للتقارير
+            </a>
+            <button class="btn btn-success" onclick="exportReport()">
+                <i class="fas fa-download"></i>
+                تصدير التقرير
+            </button>
+        </div>
+    </div>
+
+    <!-- فلاتر التاريخ -->
+    <div class="filters-card">
+        <form method="GET" id="dateFilterForm">
+            <div class="filters-grid">
+                <div class="filter-group">
+                    <label>الفترة الزمنية:</label>
+                    <select name="period" id="periodSelect" onchange="handlePeriodChange()">
+                        <option value="today" {% if selected_period == 'today' %}selected{% endif %}>اليوم</option>
+                        <option value="week" {% if selected_period == 'week' %}selected{% endif %}>آخر أسبوع</option>
+                        <option value="month" {% if selected_period == 'month' %}selected{% endif %}>آخر شهر</option>
+                        <option value="year" {% if selected_period == 'year' %}selected{% endif %}>آخر سنة</option>
+                        <option value="custom" {% if selected_period == 'custom' %}selected{% endif %}>فترة مخصصة</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group custom-dates" style="display: {% if selected_period == 'custom' %}flex{% else %}none{% endif %};">
+                    <div>
+                        <label>من تاريخ:</label>
+                        <input type="date" name="start_date" value="{{ start_date or '' }}">
+                    </div>
+                    <div>
+                        <label>إلى تاريخ:</label>
+                        <input type="date" name="end_date" value="{{ end_date or '' }}">
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-search"></i>
+                    تطبيق الفلتر
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- المقارنة السريعة -->
+    <div class="comparison-overview">
+        <h3 style="color: #ff0033; margin-bottom: 20px;">
+            <i class="fas fa-balance-scale"></i>
+            مقارنة سريعة بين العملاء العاديين والموثقين
+        </h3>
+        <div class="comparison-grid">
+            <div class="comparison-card regular">
+                <div class="comparison-header">
+                    <div class="comparison-icon">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <h4>العملاء العاديين</h4>
+                </div>
+                <div class="comparison-stats">
+                    <div class="stat">
+                        <span class="value">{{ stats.regular.total_users }}</span>
+                        <span class="label">إجمالي العملاء</span>
+                    </div>
+                    <div class="stat">
+                        <span class="value">{{ stats.regular.active_users }}</span>
+                        <span class="label">نشط في الفترة</span>
+                    </div>
+                    <div class="stat">
+                        <span class="value">{{ "{:,.2f}".format(stats.regular.total_revenue) }} ر.س</span>
+                        <span class="label">إجمالي الإيرادات</span>
+                    </div>
+                    <div class="stat">
+                        <span class="value">{{ "{:,.2f}".format(stats.regular.avg_order_value) }} ر.س</span>
+                        <span class="label">متوسط الطلب</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="comparison-card kyc">
+                <div class="comparison-header">
+                    <div class="comparison-icon">
+                        <i class="fas fa-user-check"></i>
+                    </div>
+                    <h4>العملاء الموثقين</h4>
+                </div>
+                <div class="comparison-stats">
+                    <div class="stat">
+                        <span class="value">{{ stats.kyc.total_users }}</span>
+                        <span class="label">إجمالي العملاء</span>
+                    </div>
+                    <div class="stat">
+                        <span class="value">{{ stats.kyc.active_users }}</span>
+                        <span class="label">نشط في الفترة</span>
+                    </div>
+                    <div class="stat">
+                        <span class="value">{{ "{:,.2f}".format(stats.kyc.total_revenue) }} ر.س</span>
+                        <span class="label">إجمالي الإيرادات</span>
+                    </div>
+                    <div class="stat">
+                        <span class="value">{{ "{:,.2f}".format(stats.kyc.avg_order_value) }} ر.س</span>
+                        <span class="label">متوسط الطلب</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- إحصائيات تفصيلية -->
+    <div class="detailed-stats">
+        <div class="stats-tabs">
+            <button class="tab-btn active" onclick="showTab('regular')">
+                <i class="fas fa-user"></i>
+                العملاء العاديين
+            </button>
+            <button class="tab-btn" onclick="showTab('kyc')">
+                <i class="fas fa-user-check"></i>
+                العملاء الموثقين
+            </button>
+            <button class="tab-btn" onclick="showTab('combined')">
+                <i class="fas fa-chart-pie"></i>
+                التحليل المدمج
+            </button>
+        </div>
+
+        <!-- تبويب العملاء العاديين -->
+        <div id="regular-tab" class="tab-content active">
+            <div class="tab-header">
+                <h3>
+                    <i class="fas fa-user"></i>
+                    تحليل العملاء العاديين
+                </h3>
+            </div>
+            
+            <div class="stats-grid">
+                <div class="stat-card primary">
+                    <div class="stat-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value">{{ stats.regular.total_users }}</div>
+                        <div class="stat-label">إجمالي العملاء العاديين</div>
+                        <div class="stat-sublabel">{{ stats.regular.active_users }} نشط في هذه الفترة</div>
+                    </div>
+                </div>
+                
+                <div class="stat-card success">
+                    <div class="stat-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value">{{ "{:,.2f}".format(stats.regular.total_revenue) }} ر.س</div>
+                        <div class="stat-label">إجمالي الإيرادات</div>
+                        <div class="stat-sublabel">من {{ stats.regular.paid_orders }} طلب مدفوع</div>
+                    </div>
+                </div>
+                
+                <div class="stat-card warning">
+                    <div class="stat-icon">
+                        <i class="fas fa-coins"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value">{{ "{:,.2f}".format(stats.regular.total_profit) }} ر.س</div>
+                        <div class="stat-label">إجمالي الأرباح</div>
+                        <div class="stat-sublabel">من العملاء العاديين</div>
+                    </div>
+                </div>
+                
+                <div class="stat-card info">
+                    <div class="stat-icon">
+                        <i class="fas fa-shopping-cart"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value">{{ stats.regular.total_orders }}</div>
+                        <div class="stat-label">إجمالي الطلبات</div>
+                        <div class="stat-sublabel">{{ stats.regular.completed_orders }} مكتمل</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <h4>المبيعات الشهرية - العملاء العاديين</h4>
+                    <div style="height: 300px;">
+                        <canvas id="regularMonthlySalesChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="chart-card">
+                    <h4>أكثر المنتجات مبيعاً - العملاء العاديين</h4>
+                    <div style="height: 300px;">
+                        <canvas id="regularTopProductsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="table-card">
+                <h4>أفضل المنتجات للعملاء العاديين</h4>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>المنتج</th>
+                                <th>الكمية المباعة</th>
+                                <th>الإيرادات</th>
+                                <th>متوسط السعر</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for product in stats.regular.top_products %}
+                            <tr>
+                                <td>{{ product.name }}</td>
+                                <td>{{ product.total_sold }}</td>
+                                <td>{{ "{:,.2f}".format(product.total_revenue) }} ر.س</td>
+                                <td>{{ "{:,.2f}".format(product.total_revenue / product.total_sold) }} ر.س</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- تبويب العملاء الموثقين -->
+        <div id="kyc-tab" class="tab-content">
+            <div class="tab-header">
+                <h3>
+                    <i class="fas fa-user-check"></i>
+                    تحليل العملاء الموثقين
+                </h3>
+            </div>
+            
+            <div class="stats-grid">
+                <div class="stat-card primary">
+                    <div class="stat-icon">
+                        <i class="fas fa-user-check"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value">{{ stats.kyc.total_users }}</div>
+                        <div class="stat-label">إجمالي العملاء الموثقين</div>
+                        <div class="stat-sublabel">{{ stats.kyc.active_users }} نشط في هذه الفترة</div>
+                    </div>
+                </div>
+                
+                <div class="stat-card success">
+                    <div class="stat-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value">{{ "{:,.2f}".format(stats.kyc.total_revenue) }} ر.س</div>
+                        <div class="stat-label">إجمالي الإيرادات</div>
+                        <div class="stat-sublabel">من {{ stats.kyc.paid_orders }} طلب مدفوع</div>
+                    </div>
+                </div>
+                
+                <div class="stat-card warning">
+                    <div class="stat-icon">
+                        <i class="fas fa-coins"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value">{{ "{:,.2f}".format(stats.kyc.total_profit) }} ر.س</div>
+                        <div class="stat-label">إجمالي الأرباح</div>
+                        <div class="stat-sublabel">من العملاء الموثقين</div>
+                    </div>
+                </div>
+                
+                <div class="stat-card info">
+                    <div class="stat-icon">
+                        <i class="fas fa-shopping-cart"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value">{{ stats.kyc.total_orders }}</div>
+                        <div class="stat-label">إجمالي الطلبات</div>
+                        <div class="stat-sublabel">{{ stats.kyc.completed_orders }} مكتمل</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <h4>المبيعات الشهرية - العملاء الموثقين</h4>
+                    <div style="height: 300px;">
+                        <canvas id="kycMonthlySalesChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="chart-card">
+                    <h4>أكثر المنتجات مبيعاً - العملاء الموثقين</h4>
+                    <div style="height: 300px;">
+                        <canvas id="kycTopProductsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="table-card">
+                <h4>أفضل المنتجات للعملاء الموثقين</h4>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>المنتج</th>
+                                <th>الكمية المباعة</th>
+                                <th>الإيرادات</th>
+                                <th>متوسط السعر</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for product in stats.kyc.top_products %}
+                            <tr>
+                                <td>{{ product.name }}</td>
+                                <td>{{ product.total_sold }}</td>
+                                <td>{{ "{:,.2f}".format(product.total_revenue) }} ر.س</td>
+                                <td>{{ "{:,.2f}".format(product.total_revenue / product.total_sold) }} ر.س</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- تبويب التحليل المدمج -->
+        <div id="combined-tab" class="tab-content">
+            <div class="tab-header">
+                <h3>
+                    <i class="fas fa-chart-pie"></i>
+                    التحليل المقارن المدمج
+                </h3>
+            </div>
+            
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <h4>مقارنة المبيعات الشهرية</h4>
+                    <div style="height: 350px;">
+                        <canvas id="combinedMonthlySalesChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="chart-card">
+                    <h4>توزيع الإيرادات بين الفئتين</h4>
+                    <div style="height: 350px;">
+                        <canvas id="revenueDistributionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="chart-card full-width">
+                <h4>مقارنة الأداء العام</h4>
+                <div style="height: 400px;">
+                    <canvas id="performanceComparisonChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.customers-reports {
+    padding: 20px;
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.header-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.filters-card {
+    background: linear-gradient(135deg, #1e1e1e, #2a2a2a);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 30px;
+    border: 1px solid #333;
+}
+
+.filters-grid {
+    display: flex;
+    align-items: end;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.filter-group label {
+    color: #ccc;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.filter-group select,
+.filter-group input[type="date"] {
+    background: #333;
+    border: 1px solid #555;
+    border-radius: 6px;
+    padding: 8px 12px;
+    color: #fff;
+    font-size: 14px;
+}
+
+.custom-dates {
+    display: flex;
+    gap: 15px;
+}
+
+.comparison-overview {
+    margin-bottom: 40px;
+}
+
+.comparison-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 25px;
+}
+
+.comparison-card {
+    background: linear-gradient(135deg, #1e1e1e, #2a2a2a);
+    border-radius: 15px;
+    padding: 25px;
+    border: 1px solid #333;
+    position: relative;
+    overflow: hidden;
+}
+
+.comparison-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+}
+
+.comparison-card.regular::before {
+    background: linear-gradient(90deg, #007bff, #0056b3);
+}
+
+.comparison-card.kyc::before {
+    background: linear-gradient(90deg, #28a745, #1e7e34);
+}
+
+.comparison-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.comparison-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: white;
+}
+
+.comparison-card.regular .comparison-icon {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+}
+
+.comparison-card.kyc .comparison-icon {
+    background: linear-gradient(135deg, #28a745, #1e7e34);
+}
+
+.comparison-header h4 {
+    color: #fff;
+    margin: 0;
+    font-size: 18px;
+}
+
+.comparison-stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+}
+
+.comparison-stats .stat {
+    text-align: center;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+}
+
+.comparison-stats .value {
+    display: block;
+    font-size: 20px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 5px;
+}
+
+.comparison-stats .label {
+    display: block;
+    font-size: 12px;
+    color: #ccc;
+}
+
+.detailed-stats {
+    margin-bottom: 40px;
+}
+
+.stats-tabs {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 30px;
+    background: #1e1e1e;
+    padding: 5px;
+    border-radius: 10px;
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 12px 20px;
+    background: transparent;
+    border: none;
+    color: #ccc;
+    font-size: 14px;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.tab-btn.active {
+    background: linear-gradient(135deg, #ff0033, #ff3366);
+    color: white;
+}
+
+.tab-btn:hover:not(.active) {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+.tab-header {
+    margin-bottom: 25px;
+}
+
+.tab-header h3 {
+    color: #ff0033;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.stat-card {
+    background: linear-gradient(135deg, #1e1e1e, #2a2a2a);
+    border-radius: 12px;
+    padding: 20px;
+    border: 1px solid #333;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    transition: transform 0.3s ease;
+}
+
+.stat-card.primary::before { background: linear-gradient(90deg, #007bff, #0056b3); }
+.stat-card.success::before { background: linear-gradient(90deg, #28a745, #1e7e34); }
+.stat-card.warning::before { background: linear-gradient(90deg, #ffc107, #e0a800); }
+.stat-card.info::before { background: linear-gradient(90deg, #17a2b8, #138496); }
+
+.stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+}
+
+.stat-card:hover::before {
+    transform: scaleX(1);
+}
+
+.stat-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: white;
+    flex-shrink: 0;
+}
+
+.stat-card.primary .stat-icon { background: linear-gradient(135deg, #007bff, #0056b3); }
+.stat-card.success .stat-icon { background: linear-gradient(135deg, #28a745, #1e7e34); }
+.stat-card.warning .stat-icon { background: linear-gradient(135deg, #ffc107, #e0a800); }
+.stat-card.info .stat-icon { background: linear-gradient(135deg, #17a2b8, #138496); }
+
+.stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 5px;
+    line-height: 1;
+}
+
+.stat-label {
+    font-size: 16px;
+    color: #fff;
+    font-weight: 500;
+    margin-bottom: 3px;
+}
+
+.stat-sublabel {
+    font-size: 12px;
+    color: #999;
+}
+
+.charts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+    gap: 30px;
+    margin-bottom: 30px;
+}
+
+.chart-card {
+    background: linear-gradient(135deg, #1e1e1e, #2a2a2a);
+    border-radius: 15px;
+    padding: 25px;
+    border: 1px solid #333;
+}
+
+.chart-card.full-width {
+    grid-column: 1 / -1;
+}
+
+.chart-card h4 {
+    color: #ff0033;
+    margin-bottom: 20px;
+    font-size: 16px;
+}
+
+.table-card {
+    background: linear-gradient(135deg, #1e1e1e, #2a2a2a);
+    border-radius: 15px;
+    padding: 25px;
+    border: 1px solid #333;
+    margin-bottom: 30px;
+}
+
+.table-card h4 {
+    color: #ff0033;
+    margin-bottom: 20px;
+    font-size: 16px;
+}
+
+.table-container {
+    overflow-x: auto;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    color: #fff;
+}
+
+.data-table th,
+.data-table td {
+    padding: 12px;
+    text-align: right;
+    border-bottom: 1px solid #333;
+}
+
+.data-table th {
+    background: #333;
+    font-weight: 600;
+    color: #ff0033;
+}
+
+.data-table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+/* تحسين responsive */
+@media (max-width: 768px) {
+    .page-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .filters-grid {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .comparison-grid,
+    .stats-grid,
+    .charts-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .custom-dates {
+        flex-direction: column;
+    }
+    
+    .stats-tabs {
+        flex-direction: column;
+    }
+    
+    .comparison-stats {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// متغيرات البيانات
+const statsData = {{ stats | tojson }};
+
+document.addEventListener('DOMContentLoaded', function() {
+    initializeCharts();
+});
+
+function handlePeriodChange() {
+    const periodSelect = document.getElementById('periodSelect');
+    const customDates = document.querySelector('.custom-dates');
+    
+    if (periodSelect.value === 'custom') {
+        customDates.style.display = 'flex';
+    } else {
+        customDates.style.display = 'none';
+    }
+}
+
+function showTab(tabName) {
+    // إخفاء جميع التبويبات
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    
+    // إزالة active من جميع الأزرار
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // إظهار التبويب المحدد
+    document.getElementById(tabName + '-tab').classList.add('active');
+    
+    // تفعيل الزر المحدد
+    event.target.classList.add('active');
+    
+    // إعادة تحديث الرسوم البيانية
+    setTimeout(() => {
+        initializeCharts();
+    }, 100);
+}
+
+function initializeCharts() {
+    // رسوم العملاء العاديين
+    createRegularMonthlySalesChart();
+    createRegularTopProductsChart();
+    
+    // رسوم العملاء الموثقين
+    createKycMonthlySalesChart();
+    createKycTopProductsChart();
+    
+    // رسوم مدمجة
+    createCombinedMonthlySalesChart();
+    createRevenueDistributionChart();
+    createPerformanceComparisonChart();
+}
+
+function createRegularMonthlySalesChart() {
+    const ctx = document.getElementById('regularMonthlySalesChart');
+    if (!ctx) return;
+    
+    const monthlyData = statsData.regular.monthly_sales || [];
+    const labels = monthlyData.map(item => {
+        const date = new Date(item.year, item.month - 1);
+        return date.toLocaleDateString('ar-SA', { month: 'long' });
+    });
+    
+    const revenueData = monthlyData.map(item => item.revenue);
+    
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'الإيرادات (ر.س)',
+                data: revenueData,
+                borderColor: '#007bff',
+                backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { labels: { color: '#fff' } }
+            },
+            scales: {
+                y: {
+                    ticks: { color: '#ccc' },
+                    grid: { color: '#333' }
+                },
+                x: {
+                    ticks: { color: '#ccc' },
+                    grid: { color: '#333' }
+                }
+            }
+        }
+    });
+}
+
+function createRegularTopProductsChart() {
+    const ctx = document.getElementById('regularTopProductsChart');
+    if (!ctx) return;
+    
+    const topProducts = statsData.regular.top_products || [];
+    const labels = topProducts.slice(0, 5).map(item => item.name);
+    const data = topProducts.slice(0, 5).map(item => item.total_sold);
+    
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: data,
+                backgroundColor: ['#007bff', '#28a745', '#ffc107', '#17a2b8', '#6f42c1'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { labels: { color: '#fff' } }
+            }
+        }
+    });
+}
+
+function createKycMonthlySalesChart() {
+    const ctx = document.getElementById('kycMonthlySalesChart');
+    if (!ctx) return;
+    
+    const monthlyData = statsData.kyc.monthly_sales || [];
+    const labels = monthlyData.map(item => {
+        const date = new Date(item.year, item.month - 1);
+        return date.toLocaleDateString('ar-SA', { month: 'long' });
+    });
+    
+    const revenueData = monthlyData.map(item => item.revenue);
+    
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'الإيرادات (ر.س)',
+                data: revenueData,
+                borderColor: '#28a745',
+                backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { labels: { color: '#fff' } }
+            },
+            scales: {
+                y: {
+                    ticks: { color: '#ccc' },
+                    grid: { color: '#333' }
+                },
+                x: {
+                    ticks: { color: '#ccc' },
+                    grid: { color: '#333' }
+                }
+            }
+        }
+    });
+}
+
+function createKycTopProductsChart() {
+    const ctx = document.getElementById('kycTopProductsChart');
+    if (!ctx) return;
+    
+    const topProducts = statsData.kyc.top_products || [];
+    const labels = topProducts.slice(0, 5).map(item => item.name);
+    const data = topProducts.slice(0, 5).map(item => item.total_sold);
+    
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: data,
+                backgroundColor: ['#28a745', '#ffc107', '#17a2b8', '#6f42c1', '#e83e8c'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { labels: { color: '#fff' } }
+            }
+        }
+    });
+}
+
+function createCombinedMonthlySalesChart() {
+    const ctx = document.getElementById('combinedMonthlySalesChart');
+    if (!ctx) return;
+    
+    const regularData = statsData.regular.monthly_sales || [];
+    const kycData = statsData.kyc.monthly_sales || [];
+    
+    // دمج البيانات
+    const allMonths = new Set();
+    regularData.forEach(item => allMonths.add(`${item.year}-${item.month}`));
+    kycData.forEach(item => allMonths.add(`${item.year}-${item.month}`));
+    
+    const sortedMonths = Array.from(allMonths).sort();
+    const labels = sortedMonths.map(month => {
+        const [year, monthNum] = month.split('-');
+        const date = new Date(year, monthNum - 1);
+        return date.toLocaleDateString('ar-SA', { month: 'long', year: 'numeric' });
+    });
+    
+    const regularRevenue = sortedMonths.map(month => {
+        const [year, monthNum] = month.split('-');
+        const found = regularData.find(item => item.year == year && item.month == monthNum);
+        return found ? found.revenue : 0;
+    });
+    
+    const kycRevenue = sortedMonths.map(month => {
+        const [year, monthNum] = month.split('-');
+        const found = kycData.find(item => item.year == year && item.month == monthNum);
+        return found ? found.revenue : 0;
+    });
+    
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'العملاء العاديين',
+                data: regularRevenue,
+                backgroundColor: 'rgba(0, 123, 255, 0.8)',
+                borderColor: '#007bff',
+                borderWidth: 1
+            }, {
+                label: 'العملاء الموثقين',
+                data: kycRevenue,
+                backgroundColor: 'rgba(40, 167, 69, 0.8)',
+                borderColor: '#28a745',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { labels: { color: '#fff' } }
+            },
+            scales: {
+                y: {
+                    ticks: { color: '#ccc' },
+                    grid: { color: '#333' }
+                },
+                x: {
+                    ticks: { color: '#ccc' },
+                    grid: { color: '#333' }
+                }
+            }
+        }
+    });
+}
+
+function createRevenueDistributionChart() {
+    const ctx = document.getElementById('revenueDistributionChart');
+    if (!ctx) return;
+    
+    const regularRevenue = statsData.regular.total_revenue || 0;
+    const kycRevenue = statsData.kyc.total_revenue || 0;
+    
+    new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: ['العملاء العاديين', 'العملاء الموثقين'],
+            datasets: [{
+                data: [regularRevenue, kycRevenue],
+                backgroundColor: ['#007bff', '#28a745'],
+                borderWidth: 2,
+                borderColor: '#333'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { labels: { color: '#fff' } }
+            }
+        }
+    });
+}
+
+function createPerformanceComparisonChart() {
+    const ctx = document.getElementById('performanceComparisonChart');
+    if (!ctx) return;
+    
+    const categories = ['إجمالي العملاء', 'العملاء النشطين', 'إجمالي الطلبات', 'الطلبات المكتملة'];
+    const regularData = [
+        statsData.regular.total_users,
+        statsData.regular.active_users,
+        statsData.regular.total_orders,
+        statsData.regular.completed_orders
+    ];
+    const kycData = [
+        statsData.kyc.total_users,
+        statsData.kyc.active_users,
+        statsData.kyc.total_orders,
+        statsData.kyc.completed_orders
+    ];
+    
+    new Chart(ctx, {
+        type: 'radar',
+        data: {
+            labels: categories,
+            datasets: [{
+                label: 'العملاء العاديين',
+                data: regularData,
+                borderColor: '#007bff',
+                backgroundColor: 'rgba(0, 123, 255, 0.2)',
+                borderWidth: 2
+            }, {
+                label: 'العملاء الموثقين',
+                data: kycData,
+                borderColor: '#28a745',
+                backgroundColor: 'rgba(40, 167, 69, 0.2)',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { labels: { color: '#fff' } }
+            },
+            scales: {
+                r: {
+                    ticks: { color: '#ccc' },
+                    grid: { color: '#333' },
+                    pointLabels: { color: '#ccc' }
+                }
+            }
+        }
+    });
+}
+
+function exportReport() {
+    alert('ميزة التصدير قيد التطوير');
+}
+</script>
+{% endblock %}

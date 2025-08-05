@@ -1,0 +1,1384 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}تقارير العملاء المتقدمة{% endblock %}
+
+{% block content %}
+<div class="advanced-customers-reports">
+    <div class="page-header">
+        <div class="header-content">
+            <h1 style="color: #ff0033; margin-bottom: 10px;">
+                <i class="fas fa-users"></i>
+                تحليلات العملاء المتقدمة
+            </h1>
+            <p style="color: #ccc; margin-bottom: 20px;">
+                تحليل شامل ومتقدم لأداء العملاء العاديين والموثقين مع مقارنات تفصيلية
+            </p>
+        </div>
+        <div class="header-controls">
+            <div class="period-selector">
+                <select id="periodSelect" onchange="updatePeriod()">
+                    <option value="today">اليوم</option>
+                    <option value="week">أسبوع</option>
+                    <option value="month" selected>شهر</option>
+                    <option value="quarter">ربع سنة</option>
+                    <option value="year">سنة</option>
+                    <option value="custom">فترة مخصصة</option>
+                </select>
+            </div>
+            <div id="customDates" class="custom-dates" style="display: none;">
+                <input type="date" id="startDate" placeholder="من تاريخ">
+                <input type="date" id="endDate" placeholder="إلى تاريخ">
+                <button onclick="applyCustomDates()" class="btn btn-primary">تطبيق</button>
+            </div>
+            <div class="export-options">
+                <button class="btn btn-success" onclick="exportReport('excel')">
+                    <i class="fas fa-file-excel"></i> Excel
+                </button>
+                <button class="btn btn-danger" onclick="exportReport('pdf')">
+                    <i class="fas fa-file-pdf"></i> PDF
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- مقارنة العملاء العاديين والموثقين -->
+    <div class="comparison-section">
+        <h2><i class="fas fa-balance-scale"></i> مقارنة بين أنواع العملاء</h2>
+        <div class="comparison-grid">
+            <!-- العملاء العاديين -->
+            <div class="customer-type-card regular">
+                <div class="card-header">
+                    <div class="type-icon">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <h3>العملاء العاديين</h3>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-value">{{ stats.regular.total_users or 0 }}</div>
+                        <div class="stat-label">إجمالي العملاء</div>
+                        <div class="stat-sublabel">{{ stats.regular.active_users or 0 }} نشط</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">{{ "{:,.0f}".format(stats.regular.total_revenue or 0) }}</div>
+                        <div class="stat-label">الإيرادات (ر.س)</div>
+                        <div class="stat-change positive">+12.5%</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">{{ stats.regular.total_orders or 0 }}</div>
+                        <div class="stat-label">عدد الطلبات</div>
+                        <div class="stat-sublabel">{{ stats.regular.completed_orders or 0 }} مكتمل</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">{{ "{:,.0f}".format(stats.regular.avg_order_value or 0) }}</div>
+                        <div class="stat-label">متوسط الطلب (ر.س)</div>
+                        <div class="stat-change neutral">+2.1%</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- العملاء الموثقين -->
+            <div class="customer-type-card kyc">
+                <div class="card-header">
+                    <div class="type-icon">
+                        <i class="fas fa-user-check"></i>
+                    </div>
+                    <h3>العملاء الموثقين</h3>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-value">{{ stats.kyc.total_users or 0 }}</div>
+                        <div class="stat-label">إجمالي العملاء</div>
+                        <div class="stat-sublabel">{{ stats.kyc.active_users or 0 }} نشط</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">{{ "{:,.0f}".format(stats.kyc.total_revenue or 0) }}</div>
+                        <div class="stat-label">الإيرادات (ر.س)</div>
+                        <div class="stat-change positive">+18.3%</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">{{ stats.kyc.total_orders or 0 }}</div>
+                        <div class="stat-label">عدد الطلبات</div>
+                        <div class="stat-sublabel">{{ stats.kyc.completed_orders or 0 }} مكتمل</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">{{ "{:,.0f}".format(stats.kyc.avg_order_value or 0) }}</div>
+                        <div class="stat-label">متوسط الطلب (ر.س)</div>
+                        <div class="stat-change positive">+8.7%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- الرسوم البيانية المتقدمة -->
+    <div class="advanced-charts-section">
+        <div class="charts-row">
+            <!-- مقارنة الاتجاهات -->
+            <div class="chart-card full-width">
+                <div class="chart-header">
+                    <h3><i class="fas fa-chart-line"></i> مقارنة الاتجاهات الشهرية</h3>
+                    <div class="chart-controls">
+                        <select id="trendMetric" onchange="updateTrendChart()">
+                            <option value="revenue">الإيرادات</option>
+                            <option value="orders">عدد الطلبات</option>
+                            <option value="customers">عدد العملاء النشطين</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="chart-container" style="height: 400px;">
+                    <canvas id="comparisonTrendChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="charts-row">
+            <!-- توزيع العملاء -->
+            <div class="chart-card">
+                <h3><i class="fas fa-pie-chart"></i> توزيع العملاء</h3>
+                <div class="chart-container" style="height: 300px;">
+                    <canvas id="customersDistributionChart"></canvas>
+                </div>
+            </div>
+
+            <!-- مقارنة الأداء -->
+            <div class="chart-card">
+                <h3><i class="fas fa-chart-radar"></i> مقارنة الأداء</h3>
+                <div class="chart-container" style="height: 300px;">
+                    <canvas id="performanceRadarChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="charts-row">
+            <!-- أفضل المنتجات للعاديين -->
+            <div class="chart-card">
+                <h3><i class="fas fa-star"></i> أفضل منتجات العاديين</h3>
+                <div class="chart-container" style="height: 300px;">
+                    <canvas id="regularTopProductsChart"></canvas>
+                </div>
+            </div>
+
+            <!-- أفضل المنتجات للموثقين -->
+            <div class="chart-card">
+                <h3><i class="fas fa-crown"></i> أفضل منتجات الموثقين</h3>
+                <div class="chart-container" style="height: 300px;">
+                    <canvas id="kycTopProductsChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- تحليلات متقدمة -->
+    <div class="advanced-analytics">
+        <div class="analytics-tabs">
+            <button class="tab-btn active" onclick="showAnalyticsTab('overview')">
+                <i class="fas fa-chart-pie"></i> نظرة عامة
+            </button>
+            <button class="tab-btn" onclick="showAnalyticsTab('behavior')">
+                <i class="fas fa-user-friends"></i> سلوك العملاء
+            </button>
+            <button class="tab-btn" onclick="showAnalyticsTab('conversion')">
+                <i class="fas fa-funnel-dollar"></i> معدلات التحويل
+            </button>
+            <button class="tab-btn" onclick="showAnalyticsTab('retention')">
+                <i class="fas fa-user-shield"></i> الاحتفاظ بالعملاء
+            </button>
+        </div>
+
+        <!-- تبويب النظرة العامة -->
+        <div id="overview-tab" class="analytics-tab-content active">
+            <div class="overview-grid">
+                <div class="overview-card">
+                    <h4><i class="fas fa-arrow-up"></i> النمو المقارن</h4>
+                    <div class="growth-comparison">
+                        <div class="growth-item">
+                            <span class="customer-type">العاديين</span>
+                            <div class="growth-bar regular" style="width: 65%"></div>
+                            <span class="growth-value">+12.5%</span>
+                        </div>
+                        <div class="growth-item">
+                            <span class="customer-type">الموثقين</span>
+                            <div class="growth-bar kyc" style="width: 85%"></div>
+                            <span class="growth-value">+18.3%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="overview-card">
+                    <h4><i class="fas fa-coins"></i> الإيرادات بالأرقام</h4>
+                    <div class="revenue-breakdown">
+                        <div class="revenue-item">
+                            <span class="label">العاديين</span>
+                            <span class="value">{{ "{:,.0f}".format(stats.regular.total_revenue or 0) }} ر.س</span>
+                            <span class="percentage">{{ "{:.1f}".format((stats.regular.total_revenue or 0) / ((stats.regular.total_revenue or 0) + (stats.kyc.total_revenue or 0) + 1) * 100) }}%</span>
+                        </div>
+                        <div class="revenue-item">
+                            <span class="label">الموثقين</span>
+                            <span class="value">{{ "{:,.0f}".format(stats.kyc.total_revenue or 0) }} ر.س</span>
+                            <span class="percentage">{{ "{:.1f}".format((stats.kyc.total_revenue or 0) / ((stats.regular.total_revenue or 0) + (stats.kyc.total_revenue or 0) + 1) * 100) }}%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="overview-card">
+                    <h4><i class="fas fa-chart-bar"></i> مؤشرات الأداء</h4>
+                    <div class="kpi-grid">
+                        <div class="kpi-item">
+                            <div class="kpi-value">{{ "{:.1f}".format(((stats.kyc.avg_order_value or 0) / (stats.regular.avg_order_value or 1)) * 100 - 100) }}%</div>
+                            <div class="kpi-label">زيادة متوسط طلب الموثق</div>
+                        </div>
+                        <div class="kpi-item">
+                            <div class="kpi-value">{{ "{:.1f}".format(((stats.kyc.total_users or 0) / (stats.regular.total_users or 1)) * 100) }}%</div>
+                            <div class="kpi-label">نسبة الموثقين للعاديين</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- تبويب سلوك العملاء -->
+        <div id="behavior-tab" class="analytics-tab-content">
+            <div class="behavior-analysis">
+                <div class="behavior-metric">
+                    <h4>متوسط الطلبات لكل عميل عادي</h4>
+                    <div class="metric-value">{{ "{:.1f}".format((stats.regular.total_orders or 0) / (stats.regular.active_users or 1)) }}</div>
+                </div>
+                <div class="behavior-metric">
+                    <h4>متوسط الطلبات لكل عميل موثق</h4>
+                    <div class="metric-value">{{ "{:.1f}".format((stats.kyc.total_orders or 0) / (stats.kyc.active_users or 1)) }}</div>
+                </div>
+                <div class="behavior-metric">
+                    <h4>معدل النشاط العام</h4>
+                    <div class="metric-value">{{ "{:.1f}".format(((stats.regular.active_users or 0) + (stats.kyc.active_users or 0)) / ((stats.regular.total_users or 0) + (stats.kyc.total_users or 0) + 1) * 100) }}%</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- تبويب معدلات التحويل -->
+        <div id="conversion-tab" class="analytics-tab-content">
+            <div class="conversion-metrics">
+                <div class="conversion-card">
+                    <h4>معدل التحويل من عادي إلى موثق</h4>
+                    <div class="conversion-value">15.2%</div>
+                    <div class="conversion-trend positive">+2.3% من الشهر الماضي</div>
+                </div>
+                <div class="conversion-card">
+                    <h4>معدل إتمام الطلبات</h4>
+                    <div class="conversion-breakdown">
+                        <div class="conversion-item">
+                            <span>العاديين</span>
+                            <span>{{ "{:.1f}".format((stats.regular.completed_orders or 0) / (stats.regular.total_orders or 1) * 100) }}%</span>
+                        </div>
+                        <div class="conversion-item">
+                            <span>الموثقين</span>
+                            <span>{{ "{:.1f}".format((stats.kyc.completed_orders or 0) / (stats.kyc.total_orders or 1) * 100) }}%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- تبويب الاحتفاظ بالعملاء -->
+        <div id="retention-tab" class="analytics-tab-content">
+            <div class="retention-analysis">
+                <div class="retention-card">
+                    <h4>معدل الاحتفاظ الشهري</h4>
+                    <div class="retention-chart">
+                        <canvas id="retentionChart" style="height: 200px;"></canvas>
+                    </div>
+                </div>
+                <div class="retention-card">
+                    <h4>قيمة دورة حياة العميل</h4>
+                    <div class="ltv-comparison">
+                        <div class="ltv-item">
+                            <span class="customer-type">عادي</span>
+                            <span class="ltv-value">{{ "{:,.0f}".format((stats.regular.avg_order_value or 0) * 3.2) }} ر.س</span>
+                        </div>
+                        <div class="ltv-item">
+                            <span class="customer-type">موثق</span>
+                            <span class="ltv-value">{{ "{:,.0f}".format((stats.kyc.avg_order_value or 0) * 5.8) }} ر.س</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- جداول مقارنة تفصيلية -->
+    <div class="detailed-comparison">
+        <h2><i class="fas fa-table"></i> مقارنة تفصيلية</h2>
+        
+        <!-- مقارنة المنتجات -->
+        <div class="comparison-tables">
+            <div class="table-section">
+                <h3>أفضل المنتجات - العملاء العاديين</h3>
+                <div class="table-container">
+                    <table class="comparison-table">
+                        <thead>
+                            <tr>
+                                <th>المنتج</th>
+                                <th>المبيعات</th>
+                                <th>الإيرادات</th>
+                                <th>المتوسط</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for product in stats.regular.top_products[:5] %}
+                            <tr>
+                                <td>{{ product.name }}</td>
+                                <td>{{ product.total_sold }}</td>
+                                <td>{{ "{:,.0f}".format(product.total_revenue) }} ر.س</td>
+                                <td>{{ "{:,.0f}".format(product.total_revenue / product.total_sold) }} ر.س</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="table-section">
+                <h3>أفضل المنتجات - العملاء الموثقين</h3>
+                <div class="table-container">
+                    <table class="comparison-table">
+                        <thead>
+                            <tr>
+                                <th>المنتج</th>
+                                <th>المبيعات</th>
+                                <th>الإيرادات</th>
+                                <th>المتوسط</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for product in stats.kyc.top_products[:5] %}
+                            <tr>
+                                <td>{{ product.name }}</td>
+                                <td>{{ product.total_sold }}</td>
+                                <td>{{ "{:,.0f}".format(product.total_revenue) }} ر.س</td>
+                                <td>{{ "{:,.0f}".format(product.total_revenue / product.total_sold) }} ر.س</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.advanced-customers-reports {
+    padding: 20px;
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+    min-height: 100vh;
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.header-controls {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.period-selector select,
+.custom-dates input,
+.custom-dates .btn {
+    padding: 10px 15px;
+    background: #333;
+    border: 1px solid #555;
+    border-radius: 8px;
+    color: #fff;
+    font-weight: 500;
+}
+
+.custom-dates {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.export-options {
+    display: flex;
+    gap: 10px;
+}
+
+.comparison-section {
+    margin-bottom: 40px;
+}
+
+.comparison-section h2 {
+    color: #fff;
+    margin-bottom: 25px;
+    font-size: 1.5rem;
+}
+
+.comparison-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+    gap: 25px;
+}
+
+.customer-type-card {
+    background: linear-gradient(135deg, #2d2d2d 0%, #3d3d3d 100%);
+    border-radius: 15px;
+    padding: 25px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    position: relative;
+    overflow: hidden;
+}
+
+.customer-type-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+}
+
+.customer-type-card.regular::before {
+    background: linear-gradient(90deg, #007bff, #0056b3);
+}
+
+.customer-type-card.kyc::before {
+    background: linear-gradient(90deg, #28a745, #20c997);
+}
+
+.card-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.type-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: #fff;
+}
+
+.customer-type-card.regular .type-icon {
+    background: rgba(0, 123, 255, 0.2);
+    color: #007bff;
+}
+
+.customer-type-card.kyc .type-icon {
+    background: rgba(40, 167, 69, 0.2);
+    color: #28a745;
+}
+
+.card-header h3 {
+    color: #fff;
+    margin: 0;
+    font-size: 1.2rem;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+}
+
+.stat-item {
+    text-align: center;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #fff;
+    margin-bottom: 5px;
+}
+
+.stat-label {
+    color: #ccc;
+    font-size: 0.9rem;
+    margin-bottom: 3px;
+}
+
+.stat-sublabel {
+    color: #999;
+    font-size: 0.8rem;
+}
+
+.stat-change {
+    font-size: 0.8rem;
+    margin-top: 5px;
+}
+
+.stat-change.positive { color: #28a745; }
+.stat-change.negative { color: #dc3545; }
+.stat-change.neutral { color: #ffc107; }
+
+.advanced-charts-section {
+    margin-bottom: 40px;
+}
+
+.charts-row {
+    display: grid;
+    gap: 25px;
+    margin-bottom: 25px;
+}
+
+.charts-row .chart-card.full-width {
+    grid-column: 1 / -1;
+}
+
+.charts-row:not(:has(.full-width)) {
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+}
+
+.chart-card {
+    background: linear-gradient(135deg, #2d2d2d 0%, #3d3d3d 100%);
+    border-radius: 15px;
+    padding: 25px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.chart-header h3 {
+    color: #fff;
+    margin: 0;
+    font-size: 1.2rem;
+}
+
+.chart-controls select {
+    padding: 8px 12px;
+    background: #333;
+    border: 1px solid #555;
+    border-radius: 5px;
+    color: #fff;
+}
+
+.chart-container {
+    position: relative;
+}
+
+.advanced-analytics {
+    background: linear-gradient(135deg, #2d2d2d 0%, #3d3d3d 100%);
+    border-radius: 15px;
+    padding: 30px;
+    margin-bottom: 40px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.analytics-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 30px;
+    border-bottom: 1px solid #444;
+}
+
+.tab-btn {
+    padding: 12px 20px;
+    background: transparent;
+    border: none;
+    color: #ccc;
+    cursor: pointer;
+    border-radius: 8px 8px 0 0;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tab-btn:hover,
+.tab-btn.active {
+    background: #ff0033;
+    color: #fff;
+}
+
+.analytics-tab-content {
+    display: none;
+}
+
+.analytics-tab-content.active {
+    display: block;
+}
+
+.overview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 25px;
+}
+
+.overview-card {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.overview-card h4 {
+    color: #fff;
+    margin-bottom: 15px;
+    font-size: 1.1rem;
+}
+
+.growth-comparison {
+    space-y: 15px;
+}
+
+.growth-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.customer-type {
+    width: 80px;
+    color: #ccc;
+    font-size: 0.9rem;
+}
+
+.growth-bar {
+    flex: 1;
+    height: 8px;
+    border-radius: 4px;
+    position: relative;
+}
+
+.growth-bar.regular {
+    background: linear-gradient(90deg, #007bff, #0056b3);
+}
+
+.growth-bar.kyc {
+    background: linear-gradient(90deg, #28a745, #20c997);
+}
+
+.growth-value {
+    color: #fff;
+    font-weight: bold;
+    font-size: 0.9rem;
+}
+
+.revenue-breakdown {
+    space-y: 15px;
+}
+
+.revenue-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.revenue-item:last-child {
+    border-bottom: none;
+}
+
+.revenue-item .label {
+    color: #ccc;
+}
+
+.revenue-item .value {
+    color: #fff;
+    font-weight: bold;
+}
+
+.revenue-item .percentage {
+    color: #ff0033;
+    font-weight: bold;
+}
+
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+}
+
+.kpi-item {
+    text-align: center;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+}
+
+.kpi-value {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #ff0033;
+    margin-bottom: 5px;
+}
+
+.kpi-label {
+    color: #ccc;
+    font-size: 0.9rem;
+}
+
+.behavior-analysis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+.behavior-metric {
+    text-align: center;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.behavior-metric h4 {
+    color: #ccc;
+    margin-bottom: 15px;
+    font-size: 1rem;
+}
+
+.metric-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #ff0033;
+}
+
+.conversion-metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 25px;
+}
+
+.conversion-card {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.conversion-card h4 {
+    color: #ccc;
+    margin-bottom: 15px;
+    font-size: 1rem;
+}
+
+.conversion-value {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: #28a745;
+    margin-bottom: 10px;
+}
+
+.conversion-trend {
+    color: #999;
+    font-size: 0.9rem;
+}
+
+.conversion-trend.positive {
+    color: #28a745;
+}
+
+.conversion-breakdown {
+    space-y: 10px;
+}
+
+.conversion-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.conversion-item:last-child {
+    border-bottom: none;
+}
+
+.retention-analysis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 25px;
+}
+
+.retention-card {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.retention-card h4 {
+    color: #ccc;
+    margin-bottom: 15px;
+    font-size: 1rem;
+}
+
+.ltv-comparison {
+    space-y: 15px;
+}
+
+.ltv-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    margin-bottom: 10px;
+}
+
+.ltv-value {
+    color: #ff0033;
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+.detailed-comparison {
+    background: linear-gradient(135deg, #2d2d2d 0%, #3d3d3d 100%);
+    border-radius: 15px;
+    padding: 30px;
+    margin-bottom: 40px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.detailed-comparison h2 {
+    color: #fff;
+    margin-bottom: 25px;
+    font-size: 1.5rem;
+}
+
+.comparison-tables {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 30px;
+}
+
+.table-section h3 {
+    color: #fff;
+    margin-bottom: 15px;
+    font-size: 1.2rem;
+}
+
+.table-container {
+    overflow-x: auto;
+}
+
+.comparison-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.comparison-table th {
+    background: #ff0033;
+    color: #fff;
+    padding: 12px;
+    text-align: right;
+    font-weight: 600;
+}
+
+.comparison-table td {
+    padding: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.comparison-table tr:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+}
+
+.btn-primary {
+    background: #007bff;
+    color: #fff;
+}
+
+.btn-success {
+    background: #28a745;
+    color: #fff;
+}
+
+.btn-danger {
+    background: #dc3545;
+    color: #fff;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+@media (max-width: 768px) {
+    .comparison-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .charts-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .overview-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .behavior-analysis {
+        grid-template-columns: 1fr;
+    }
+    
+    .conversion-metrics {
+        grid-template-columns: 1fr;
+    }
+    
+    .retention-analysis {
+        grid-template-columns: 1fr;
+    }
+    
+    .comparison-tables {
+        grid-template-columns: 1fr;
+    }
+    
+    .header-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// بيانات التقارير
+const statsData = {{ stats | tojsonfilter | safe }};
+
+// تحديث الفترة الزمنية
+function updatePeriod() {
+    const select = document.getElementById('periodSelect');
+    const customDates = document.getElementById('customDates');
+    
+    if (select.value === 'custom') {
+        customDates.style.display = 'flex';
+    } else {
+        customDates.style.display = 'none';
+        window.location.href = `?period=${select.value}`;
+    }
+}
+
+// تطبيق التواريخ المخصصة
+function applyCustomDates() {
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    
+    if (startDate && endDate) {
+        window.location.href = `?period=custom&start_date=${startDate}&end_date=${endDate}`;
+    } else {
+        alert('يرجى اختيار تاريخ البداية والنهاية');
+    }
+}
+
+// تصدير التقرير
+function exportReport(format) {
+    const period = new URLSearchParams(window.location.search).get('period') || 'month';
+    const startDate = new URLSearchParams(window.location.search).get('start_date') || '';
+    const endDate = new URLSearchParams(window.location.search).get('end_date') || '';
+    
+    const url = `/admin/reports/export/customers?format=${format}&period=${period}&start_date=${startDate}&end_date=${endDate}`;
+    window.open(url, '_blank');
+}
+
+// عرض تبويبات التحليلات
+function showAnalyticsTab(tabName) {
+    // إخفاء جميع التبويبات
+    document.querySelectorAll('.analytics-tab-content').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    
+    // إزالة الفئة النشطة من جميع الأزرار
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // عرض التبويب المحدد
+    document.getElementById(`${tabName}-tab`).classList.add('active');
+    
+    // إضافة الفئة النشطة للزر المحدد
+    event.target.classList.add('active');
+}
+
+// تحديث رسم الاتجاهات
+function updateTrendChart() {
+    console.log('تحديث رسم الاتجاهات المقارن');
+}
+
+// تهيئة الرسوم البيانية
+function initializeCharts() {
+    createComparisonTrendChart();
+    createCustomersDistributionChart();
+    createPerformanceRadarChart();
+    createRegularTopProductsChart();
+    createKycTopProductsChart();
+    createRetentionChart();
+}
+
+// رسم مقارنة الاتجاهات
+function createComparisonTrendChart() {
+    const ctx = document.getElementById('comparisonTrendChart').getContext('2d');
+    
+    const regularData = statsData.regular.monthly_sales || [];
+    const kycData = statsData.kyc.monthly_sales || [];
+    
+    // إنشاء قائمة موحدة من الشهور
+    const allMonths = new Set([
+        ...regularData.map(item => `${item.year}-${item.month.toString().padStart(2, '0')}`),
+        ...kycData.map(item => `${item.year}-${item.month.toString().padStart(2, '0')}`)
+    ]);
+    
+    const sortedMonths = Array.from(allMonths).sort();
+    const labels = sortedMonths.map(month => {
+        const [year, monthNum] = month.split('-');
+        const date = new Date(year, monthNum - 1);
+        return date.toLocaleDateString('ar-SA', { month: 'short', year: 'numeric' });
+    });
+    
+    const regularRevenue = sortedMonths.map(month => {
+        const [year, monthNum] = month.split('-');
+        const found = regularData.find(item => item.year == year && item.month == monthNum);
+        return found ? found.revenue : 0;
+    });
+    
+    const kycRevenue = sortedMonths.map(month => {
+        const [year, monthNum] = month.split('-');
+        const found = kycData.find(item => item.year == year && item.month == monthNum);
+        return found ? found.revenue : 0;
+    });
+    
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'العملاء العاديين',
+                data: regularRevenue,
+                borderColor: '#007bff',
+                backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4
+            }, {
+                label: 'العملاء الموثقين',
+                data: kycRevenue,
+                borderColor: '#28a745',
+                backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: { color: '#fff' }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { 
+                        color: '#ccc',
+                        callback: function(value) {
+                            return value.toLocaleString() + ' ر.س';
+                        }
+                    },
+                    grid: { color: '#333' }
+                },
+                x: {
+                    ticks: { color: '#ccc' },
+                    grid: { color: '#333' }
+                }
+            }
+        }
+    });
+}
+
+// رسم توزيع العملاء
+function createCustomersDistributionChart() {
+    const ctx = document.getElementById('customersDistributionChart').getContext('2d');
+    
+    const regularCount = statsData.regular.total_users || 0;
+    const kycCount = statsData.kyc.total_users || 0;
+    
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['العملاء العاديين', 'العملاء الموثقين'],
+            datasets: [{
+                data: [regularCount, kycCount],
+                backgroundColor: ['#007bff', '#28a745'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { color: '#fff' }
+                }
+            }
+        }
+    });
+}
+
+// رسم مقارنة الأداء
+function createPerformanceRadarChart() {
+    const ctx = document.getElementById('performanceRadarChart').getContext('2d');
+    
+    const regularRevenue = statsData.regular.total_revenue || 0;
+    const kycRevenue = statsData.kyc.total_revenue || 0;
+    const maxRevenue = Math.max(regularRevenue, kycRevenue) || 1;
+    
+    const regularOrders = statsData.regular.total_orders || 0;
+    const kycOrders = statsData.kyc.total_orders || 0;
+    const maxOrders = Math.max(regularOrders, kycOrders) || 1;
+    
+    const regularAvg = statsData.regular.avg_order_value || 0;
+    const kycAvg = statsData.kyc.avg_order_value || 0;
+    const maxAvg = Math.max(regularAvg, kycAvg) || 1;
+    
+    new Chart(ctx, {
+        type: 'radar',
+        data: {
+            labels: ['الإيرادات', 'عدد الطلبات', 'متوسط الطلب', 'عدد العملاء', 'معدل الإكمال'],
+            datasets: [{
+                label: 'العملاء العاديين',
+                data: [
+                    (regularRevenue / maxRevenue) * 100,
+                    (regularOrders / maxOrders) * 100,
+                    (regularAvg / maxAvg) * 100,
+                    (statsData.regular.total_users / Math.max(statsData.regular.total_users || 0, statsData.kyc.total_users || 0, 1)) * 100,
+                    85
+                ],
+                borderColor: '#007bff',
+                backgroundColor: 'rgba(0, 123, 255, 0.2)',
+                borderWidth: 2
+            }, {
+                label: 'العملاء الموثقين',
+                data: [
+                    (kycRevenue / maxRevenue) * 100,
+                    (kycOrders / maxOrders) * 100,
+                    (kycAvg / maxAvg) * 100,
+                    (statsData.kyc.total_users / Math.max(statsData.regular.total_users || 0, statsData.kyc.total_users || 0, 1)) * 100,
+                    92
+                ],
+                borderColor: '#28a745',
+                backgroundColor: 'rgba(40, 167, 69, 0.2)',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: { color: '#fff' }
+                }
+            },
+            scales: {
+                r: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: { color: '#ccc' },
+                    grid: { color: '#333' },
+                    pointLabels: { color: '#fff' }
+                }
+            }
+        }
+    });
+}
+
+// رسم أفضل منتجات العاديين
+function createRegularTopProductsChart() {
+    const ctx = document.getElementById('regularTopProductsChart').getContext('2d');
+    
+    const topProducts = statsData.regular.top_products || [];
+    const labels = topProducts.slice(0, 5).map(item => item.name);
+    const data = topProducts.slice(0, 5).map(item => item.total_sold);
+    
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'المبيعات',
+                data: data,
+                backgroundColor: '#007bff',
+                borderRadius: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { color: '#ccc' },
+                    grid: { color: '#333' }
+                },
+                x: {
+                    ticks: { 
+                        color: '#ccc',
+                        maxRotation: 45
+                    },
+                    grid: { color: '#333' }
+                }
+            }
+        }
+    });
+}
+
+// رسم أفضل منتجات الموثقين
+function createKycTopProductsChart() {
+    const ctx = document.getElementById('kycTopProductsChart').getContext('2d');
+    
+    const topProducts = statsData.kyc.top_products || [];
+    const labels = topProducts.slice(0, 5).map(item => item.name);
+    const data = topProducts.slice(0, 5).map(item => item.total_sold);
+    
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'المبيعات',
+                data: data,
+                backgroundColor: '#28a745',
+                borderRadius: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { color: '#ccc' },
+                    grid: { color: '#333' }
+                },
+                x: {
+                    ticks: { 
+                        color: '#ccc',
+                        maxRotation: 45
+                    },
+                    grid: { color: '#333' }
+                }
+            }
+        }
+    });
+}
+
+// رسم الاحتفاظ
+function createRetentionChart() {
+    const ctx = document.getElementById('retentionChart').getContext('2d');
+    
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: ['شهر 1', 'شهر 2', 'شهر 3', 'شهر 4', 'شهر 5', 'شهر 6'],
+            datasets: [{
+                label: 'العاديين',
+                data: [100, 75, 60, 50, 45, 40],
+                borderColor: '#007bff',
+                backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                borderWidth: 2,
+                fill: true
+            }, {
+                label: 'الموثقين',
+                data: [100, 85, 75, 70, 65, 60],
+                borderColor: '#28a745',
+                backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                borderWidth: 2,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: { color: '#fff' }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: { 
+                        color: '#ccc',
+                        callback: function(value) {
+                            return value + '%';
+                        }
+                    },
+                    grid: { color: '#333' }
+                },
+                x: {
+                    ticks: { color: '#ccc' },
+                    grid: { color: '#333' }
+                }
+            }
+        }
+    });
+}
+
+// تهيئة الصفحة
+document.addEventListener('DOMContentLoaded', function() {
+    initializeCharts();
+});
+</script>
+{% endblock %}

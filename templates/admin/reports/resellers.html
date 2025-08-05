@@ -1,0 +1,710 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}تقارير الموزعين{% endblock %}
+
+{% block content %}
+<div class="resellers-reports">
+    <div class="page-header">
+        <div class="header-content">
+            <h1 style="color: #ff0033; margin-bottom: 10px;">
+                <i class="fas fa-store"></i>
+                تقارير الموزعين
+            </h1>
+            <p style="color: #ccc; margin-bottom: 20px;">
+                تحليل شامل لأداء الموزعين والأرباح المحققة منهم
+            </p>
+        </div>
+        <div class="header-actions">
+            <a href="{{ url_for('reports.reports_dashboard') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-right"></i>
+                العودة للتقارير
+            </a>
+            <button class="btn btn-success" onclick="exportReport()">
+                <i class="fas fa-download"></i>
+                تصدير التقرير
+            </button>
+        </div>
+    </div>
+
+    <!-- فلاتر التاريخ -->
+    <div class="filters-card">
+        <form method="GET" id="dateFilterForm">
+            <div class="filters-grid">
+                <div class="filter-group">
+                    <label>الفترة الزمنية:</label>
+                    <select name="period" id="periodSelect" onchange="handlePeriodChange()">
+                        <option value="today" {% if selected_period == 'today' %}selected{% endif %}>اليوم</option>
+                        <option value="week" {% if selected_period == 'week' %}selected{% endif %}>آخر أسبوع</option>
+                        <option value="month" {% if selected_period == 'month' %}selected{% endif %}>آخر شهر</option>
+                        <option value="year" {% if selected_period == 'year' %}selected{% endif %}>آخر سنة</option>
+                        <option value="custom" {% if selected_period == 'custom' %}selected{% endif %}>فترة مخصصة</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group custom-dates" style="display: {% if selected_period == 'custom' %}flex{% else %}none{% endif %};">
+                    <div>
+                        <label>من تاريخ:</label>
+                        <input type="date" name="start_date" value="{{ start_date or '' }}">
+                    </div>
+                    <div>
+                        <label>إلى تاريخ:</label>
+                        <input type="date" name="end_date" value="{{ end_date or '' }}">
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-search"></i>
+                    تطبيق الفلتر
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- إحصائيات رئيسية -->
+    <div class="stats-overview">
+        <div class="stats-grid">
+            <div class="stat-card primary">
+                <div class="stat-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value">{{ stats.total_resellers }}</div>
+                    <div class="stat-label">إجمالي الموزعين</div>
+                    <div class="stat-sublabel">{{ stats.active_resellers }} نشط في هذه الفترة</div>
+                </div>
+            </div>
+            
+            <div class="stat-card success">
+                <div class="stat-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value">{{ "{:,.2f}".format(stats.total_revenue) }} ر.س</div>
+                    <div class="stat-label">إجمالي الإيرادات</div>
+                    <div class="stat-sublabel">من {{ stats.paid_orders }} طلب مدفوع</div>
+                </div>
+            </div>
+            
+            <div class="stat-card warning">
+                <div class="stat-icon">
+                    <i class="fas fa-coins"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value">{{ "{:,.2f}".format(stats.total_profit) }} ر.س</div>
+                    <div class="stat-label">إجمالي الأرباح</div>
+                    <div class="stat-sublabel">هامش الربح: {{ "{:.1f}".format(stats.profit_margin) }}%</div>
+                </div>
+            </div>
+            
+            <div class="stat-card info">
+                <div class="stat-icon">
+                    <i class="fas fa-shopping-cart"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value">{{ stats.total_orders }}</div>
+                    <div class="stat-label">إجمالي الطلبات</div>
+                    <div class="stat-sublabel">{{ stats.completed_orders }} مكتمل، {{ stats.pending_orders }} معلق</div>
+                </div>
+            </div>
+            
+            <div class="stat-card danger">
+                <div class="stat-icon">
+                    <i class="fas fa-calculator"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value">{{ "{:,.2f}".format(stats.avg_order_value) }} ر.س</div>
+                    <div class="stat-label">متوسط قيمة الطلب</div>
+                    <div class="stat-sublabel">للموزعين</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- الرسوم البيانية -->
+    <div class="charts-section">
+        <div class="charts-grid">
+            <!-- رسم المبيعات الشهرية -->
+            <div class="chart-card">
+                <h3>
+                    <i class="fas fa-chart-area"></i>
+                    المبيعات الشهرية للموزعين
+                </h3>
+                <div style="height: 350px;">
+                    <canvas id="monthlySalesChart"></canvas>
+                </div>
+            </div>
+            
+            <!-- رسم أفضل المنتجات -->
+            <div class="chart-card">
+                <h3>
+                    <i class="fas fa-chart-bar"></i>
+                    أكثر المنتجات مبيعاً
+                </h3>
+                <div style="height: 350px;">
+                    <canvas id="topProductsChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- رسم أفضل الموزعين -->
+        <div class="chart-card full-width">
+            <h3>
+                <i class="fas fa-trophy"></i>
+                أفضل الموزعين في هذه الفترة
+            </h3>
+            <div style="height: 400px;">
+                <canvas id="topResellersChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- جداول تفصيلية -->
+    <div class="tables-section">
+        <div class="tables-grid">
+            <!-- جدول أفضل المنتجات -->
+            <div class="table-card">
+                <h3>
+                    <i class="fas fa-star"></i>
+                    أفضل المنتجات (تفصيلي)
+                </h3>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>المنتج</th>
+                                <th>الكمية المباعة</th>
+                                <th>الإيرادات</th>
+                                <th>المتوسط</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for product in stats.top_products %}
+                            <tr>
+                                <td>{{ product.name }}</td>
+                                <td>{{ product.total_sold }}</td>
+                                <td>{{ "{:,.2f}".format(product.total_revenue) }} ر.س</td>
+                                <td>{{ "{:,.2f}".format(product.total_revenue / product.total_sold) }} ر.س</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- جدول أفضل الموزعين -->
+            <div class="table-card">
+                <h3>
+                    <i class="fas fa-crown"></i>
+                    أفضل الموزعين (تفصيلي)
+                </h3>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>الموزع</th>
+                                <th>عدد الطلبات</th>
+                                <th>إجمالي المبيعات</th>
+                                <th>متوسط الطلب</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for reseller in stats.top_resellers %}
+                            <tr>
+                                <td>
+                                    <div class="reseller-info">
+                                        <strong>{{ reseller.full_name or 'غير محدد' }}</strong>
+                                        <small>{{ reseller.email }}</small>
+                                    </div>
+                                </td>
+                                <td>{{ reseller.total_orders }}</td>
+                                <td>{{ "{:,.2f}".format(reseller.total_spent) }} ر.س</td>
+                                <td>{{ "{:,.2f}".format(reseller.total_spent / reseller.total_orders) }} ر.س</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.resellers-reports {
+    padding: 20px;
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.header-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.filters-card {
+    background: linear-gradient(135deg, #1e1e1e, #2a2a2a);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 30px;
+    border: 1px solid #333;
+}
+
+.filters-grid {
+    display: flex;
+    align-items: end;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.filter-group label {
+    color: #ccc;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.filter-group select,
+.filter-group input[type="date"] {
+    background: #333;
+    border: 1px solid #555;
+    border-radius: 6px;
+    padding: 8px 12px;
+    color: #fff;
+    font-size: 14px;
+}
+
+.custom-dates {
+    display: flex;
+    gap: 15px;
+}
+
+.stats-overview {
+    margin-bottom: 40px;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+}
+
+.stat-card {
+    background: linear-gradient(135deg, #1e1e1e, #2a2a2a);
+    border-radius: 12px;
+    padding: 20px;
+    border: 1px solid #333;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    transition: transform 0.3s ease;
+}
+
+.stat-card.primary::before { background: linear-gradient(90deg, #007bff, #0056b3); }
+.stat-card.success::before { background: linear-gradient(90deg, #28a745, #1e7e34); }
+.stat-card.warning::before { background: linear-gradient(90deg, #ffc107, #e0a800); }
+.stat-card.info::before { background: linear-gradient(90deg, #17a2b8, #138496); }
+.stat-card.danger::before { background: linear-gradient(90deg, #dc3545, #c82333); }
+
+.stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+}
+
+.stat-card:hover::before {
+    transform: scaleX(1);
+}
+
+.stat-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: white;
+    flex-shrink: 0;
+}
+
+.stat-card.primary .stat-icon { background: linear-gradient(135deg, #007bff, #0056b3); }
+.stat-card.success .stat-icon { background: linear-gradient(135deg, #28a745, #1e7e34); }
+.stat-card.warning .stat-icon { background: linear-gradient(135deg, #ffc107, #e0a800); }
+.stat-card.info .stat-icon { background: linear-gradient(135deg, #17a2b8, #138496); }
+.stat-card.danger .stat-icon { background: linear-gradient(135deg, #dc3545, #c82333); }
+
+.stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 5px;
+    line-height: 1;
+}
+
+.stat-label {
+    font-size: 16px;
+    color: #fff;
+    font-weight: 500;
+    margin-bottom: 3px;
+}
+
+.stat-sublabel {
+    font-size: 12px;
+    color: #999;
+}
+
+.charts-section {
+    margin-bottom: 40px;
+}
+
+.charts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+    gap: 30px;
+    margin-bottom: 30px;
+}
+
+.chart-card {
+    background: linear-gradient(135deg, #1e1e1e, #2a2a2a);
+    border-radius: 15px;
+    padding: 25px;
+    border: 1px solid #333;
+}
+
+.chart-card.full-width {
+    grid-column: 1 / -1;
+}
+
+.chart-card h3 {
+    color: #ff0033;
+    margin-bottom: 20px;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.tables-section {
+    margin-bottom: 40px;
+}
+
+.tables-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+    gap: 30px;
+}
+
+.table-card {
+    background: linear-gradient(135deg, #1e1e1e, #2a2a2a);
+    border-radius: 15px;
+    padding: 25px;
+    border: 1px solid #333;
+}
+
+.table-card h3 {
+    color: #ff0033;
+    margin-bottom: 20px;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.table-container {
+    overflow-x: auto;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    color: #fff;
+}
+
+.data-table th,
+.data-table td {
+    padding: 12px;
+    text-align: right;
+    border-bottom: 1px solid #333;
+}
+
+.data-table th {
+    background: #333;
+    font-weight: 600;
+    color: #ff0033;
+}
+
+.data-table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.reseller-info strong {
+    display: block;
+    color: #fff;
+}
+
+.reseller-info small {
+    color: #999;
+    font-size: 12px;
+}
+
+/* تحسين responsive */
+@media (max-width: 768px) {
+    .page-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .filters-grid {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .charts-grid,
+    .tables-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .custom-dates {
+        flex-direction: column;
+    }
+}
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// متغيرات البيانات
+const statsData = {{ stats | tojson }};
+
+document.addEventListener('DOMContentLoaded', function() {
+    initializeCharts();
+});
+
+function handlePeriodChange() {
+    const periodSelect = document.getElementById('periodSelect');
+    const customDates = document.querySelector('.custom-dates');
+    
+    if (periodSelect.value === 'custom') {
+        customDates.style.display = 'flex';
+    } else {
+        customDates.style.display = 'none';
+    }
+}
+
+function initializeCharts() {
+    // رسم المبيعات الشهرية
+    createMonthlySalesChart();
+    
+    // رسم أفضل المنتجات
+    createTopProductsChart();
+    
+    // رسم أفضل الموزعين
+    createTopResellersChart();
+}
+
+function createMonthlySalesChart() {
+    const ctx = document.getElementById('monthlySalesChart').getContext('2d');
+    
+    const monthlyData = statsData.monthly_sales || [];
+    const labels = monthlyData.map(item => {
+        const date = new Date(item.year, item.month - 1);
+        return date.toLocaleDateString('ar-SA', { month: 'long', year: 'numeric' });
+    });
+    
+    const revenueData = monthlyData.map(item => item.revenue);
+    const ordersData = monthlyData.map(item => item.orders);
+    
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'الإيرادات (ر.س)',
+                data: revenueData,
+                borderColor: '#ff0033',
+                backgroundColor: 'rgba(255, 0, 51, 0.1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4,
+                yAxisID: 'y'
+            }, {
+                label: 'عدد الطلبات',
+                data: ordersData,
+                borderColor: '#28a745',
+                backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                borderWidth: 3,
+                fill: false,
+                tension: 0.4,
+                yAxisID: 'y1'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: { color: '#fff' }
+                }
+            },
+            scales: {
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    ticks: {
+                        color: '#ccc',
+                        callback: function(value) {
+                            return value.toLocaleString() + ' ر.س';
+                        }
+                    },
+                    grid: { color: '#333' }
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    ticks: {
+                        color: '#ccc',
+                        callback: function(value) {
+                            return value + ' طلب';
+                        }
+                    },
+                    grid: { drawOnChartArea: false, color: '#333' }
+                },
+                x: {
+                    ticks: { color: '#ccc' },
+                    grid: { color: '#333' }
+                }
+            }
+        }
+    });
+}
+
+function createTopProductsChart() {
+    const ctx = document.getElementById('topProductsChart').getContext('2d');
+    
+    const topProducts = statsData.top_products || [];
+    const labels = topProducts.slice(0, 10).map(item => item.name);
+    const data = topProducts.slice(0, 10).map(item => item.total_sold);
+    
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'الكمية المباعة',
+                data: data,
+                backgroundColor: [
+                    '#ff0033', '#28a745', '#ffc107', '#17a2b8', '#6f42c1',
+                    '#e83e8c', '#fd7e14', '#20c997', '#6610f2', '#dc3545'
+                ],
+                borderWidth: 0,
+                borderRadius: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: { color: '#fff' }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { color: '#ccc' },
+                    grid: { color: '#333' }
+                },
+                x: {
+                    ticks: { 
+                        color: '#ccc',
+                        maxRotation: 45
+                    },
+                    grid: { color: '#333' }
+                }
+            }
+        }
+    });
+}
+
+function createTopResellersChart() {
+    const ctx = document.getElementById('topResellersChart').getContext('2d');
+    
+    const topResellers = statsData.top_resellers || [];
+    const labels = topResellers.slice(0, 10).map(item => item.full_name || item.email);
+    const data = topResellers.slice(0, 10).map(item => item.total_spent);
+    
+    new Chart(ctx, {
+        type: 'horizontalBar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'إجمالي المبيعات (ر.س)',
+                data: data,
+                backgroundColor: 'rgba(255, 0, 51, 0.8)',
+                borderColor: '#ff0033',
+                borderWidth: 2,
+                borderRadius: 8
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: { color: '#fff' }
+                }
+            },
+            scales: {
+                y: {
+                    ticks: { color: '#ccc' },
+                    grid: { color: '#333' }
+                },
+                x: {
+                    ticks: {
+                        color: '#ccc',
+                        callback: function(value) {
+                            return value.toLocaleString() + ' ر.س';
+                        }
+                    },
+                    grid: { color: '#333' }
+                }
+            }
+        }
+    });
+}
+
+function exportReport() {
+    // يمكن تطوير هذه الوظيفة لاحقاً
+    alert('ميزة التصدير قيد التطوير');
+}
+</script>
+{% endblock %}

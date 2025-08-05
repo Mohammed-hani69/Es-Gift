@@ -62,14 +62,24 @@ def products():
         if not employee:
             return redirect(url_for('main.index'))
     
-    products = Product.query.all()
+    # فلتر حالة المنتجات
+    status_filter = request.args.get('status', 'active')
+    
+    if status_filter == 'all':
+        products = Product.query.all()
+    elif status_filter == 'inactive':
+        products = Product.query.filter_by(is_active=False).all()
+    else:  # active or default
+        products = Product.query.filter_by(is_active=True).all()
+    
     categories = Category.query.filter_by(is_active=True).order_by(Category.display_order, Category.name).all()
     subcategories = Subcategory.query.filter_by(is_active=True).order_by(Subcategory.display_order, Subcategory.name).all()
     
     return render_template('admin/products.html', 
                          products=products, 
                          categories=categories, 
-                         subcategories=subcategories)
+                         subcategories=subcategories,
+                         status_filter=status_filter)
 
 @admin.route('/users')
 @login_required
@@ -2506,9 +2516,12 @@ def api_settings():
 @admin.route('/reports')
 @login_required
 def reports():
-    """التقارير والإحصائيات المتقدمة"""
+    """إعادة توجيه إلى نظام التقارير الجديد"""
     if not current_user.is_admin:
         return redirect(url_for('main.index'))
+    
+    # إعادة توجيه إلى نظام التقارير الجديد
+    return redirect(url_for('reports.reports_dashboard'))
     
     try:
         # الإحصائيات الأساسية
@@ -2935,6 +2948,7 @@ def add_product():
         category = request.form.get('category')  # الفئة القديمة للتوافق
         region = request.form.get('region', '')
         value = request.form.get('value', '')
+        purchase_price = request.form.get('purchase_price')
         regular_price = request.form.get('regular_price')
         kyc_price = request.form.get('kyc_price') or regular_price
         reseller_price = request.form.get('reseller_price') or regular_price
@@ -2943,9 +2957,12 @@ def add_product():
         expiry_date = request.form.get('expiry_date')
         is_active = request.form.get('is_active') == 'on'
         
+        # جلب أنواع المستخدمين المختارة
+        user_type_visibility = request.form.get('user_type_visibility', 'regular,kyc,reseller')
+        
         # التحقق من البيانات المطلوبة
-        if not name or not regular_price:
-            flash('الحقول المطلوبة: اسم المنتج، السعر العادي', 'error')
+        if not name or not regular_price or not purchase_price:
+            flash('الحقول المطلوبة: اسم المنتج، سعر الشراء، السعر العادي', 'error')
             return redirect(url_for('admin.products'))
         
         # التحقق من وجود قسم رئيسي أو فئة قديمة
@@ -2955,6 +2972,7 @@ def add_product():
         
         # التحقق من صحة الأسعار
         try:
+            purchase_price_float = float(purchase_price)
             regular_price_float = float(regular_price)
             kyc_price_float = float(kyc_price) if kyc_price else regular_price_float
             reseller_price_float = float(reseller_price) if reseller_price else regular_price_float
@@ -3015,6 +3033,7 @@ def add_product():
             category=category,  # الفئة القديمة للتوافق
             region=region,
             value=value,
+            purchase_price=purchase_price_float,
             regular_price=regular_price_float,
             kyc_price=kyc_price_float,
             reseller_price=reseller_price_float,
@@ -3022,7 +3041,8 @@ def add_product():
             instructions=instructions,
             expiry_date=expiry_date_obj,
             image_url=image_url,
-            is_active=is_active
+            is_active=is_active,
+            user_type_visibility=user_type_visibility
         )
         
         # معالجة البيانات المتقدمة
@@ -3112,12 +3132,17 @@ def update_product(product_id):
         
         product.region = request.form.get('region')
         product.value = request.form.get('value')
+        product.purchase_price = float(request.form.get('purchase_price', 0))
         product.regular_price = float(request.form.get('regular_price', 0))
         product.kyc_price = float(request.form.get('kyc_price', 0))
         product.reseller_price = float(request.form.get('reseller_price', 0))
         product.stock_quantity = int(request.form.get('stock_quantity', 0))
         product.instructions = request.form.get('instructions')
         product.is_active = request.form.get('is_active') == 'on'
+        
+        # تحديث أنواع المستخدمين المسموح لهم
+        user_type_visibility = request.form.get('user_type_visibility', 'regular,kyc,reseller')
+        product.user_type_visibility = user_type_visibility
         
         # تحديث تاريخ الانتهاء
         expiry_date = request.form.get('expiry_date')
@@ -3226,36 +3251,38 @@ def update_product(product_id):
 @admin.route('/products/<int:product_id>', methods=['DELETE'])
 @login_required
 def delete_product(product_id):
-    """حذف منتج"""
+    """تعطيل منتج بدلاً من حذفه"""
     if not current_user.is_admin:
         return jsonify({'success': False, 'message': 'غير مصرح'})
     
     try:
         product = Product.query.get_or_404(product_id)
         
-        # حذف الصورة
-        if product.image_url:
-            image_path = os.path.join(current_app.root_path, 'static', 'uploads', product.image_url)
-            if os.path.exists(image_path):
-                try:
-                    os.remove(image_path)
-                except:
-                    pass
-        
-        # حذف الأكواد المرتبطة
-        ProductCode.query.filter_by(product_id=product_id).delete()
-        
-        # حذف صلاحيات الوصول
-        ProductUserAccess.query.filter_by(product_id=product_id).delete()
-        
-        # حذف الأسعار المخصصة
-        ProductCustomPrice.query.filter_by(product_id=product_id).delete()
-        
-        # حذف المنتج
-        db.session.delete(product)
+        # تعطيل المنتج بدلاً من حذفه
+        product.is_active = False
         db.session.commit()
         
-        return jsonify({'success': True, 'message': 'تم حذف المنتج بنجاح'})
+        return jsonify({'success': True, 'message': 'تم تعطيل المنتج بنجاح وإخفاؤه من الموقع'})
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'حدث خطأ: {str(e)}'})
+
+@admin.route('/products/<int:product_id>/activate', methods=['POST'])
+@login_required
+def activate_product(product_id):
+    """إعادة تفعيل منتج معطل"""
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'غير مصرح'})
+    
+    try:
+        product = Product.query.get_or_404(product_id)
+        
+        # إعادة تفعيل المنتج
+        product.is_active = True
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': 'تم إعادة تفعيل المنتج بنجاح'})
         
     except Exception as e:
         db.session.rollback()
@@ -3300,6 +3327,7 @@ def get_product(product_id):
             'subcategory_id': product.subcategory_id,
             'region': product.region,
             'value': product.value,
+            'purchase_price': product.purchase_price,
             'regular_price': product.regular_price,
             'kyc_price': product.kyc_price,
             'reseller_price': product.reseller_price,
@@ -3309,6 +3337,7 @@ def get_product(product_id):
             'image_url': product.image_url,
             'is_active': product.is_active,
             'visibility': visibility,
+            'user_type_visibility': product.user_type_visibility,
             'restricted_emails': restricted_emails,
             'custom_prices': custom_prices
         }

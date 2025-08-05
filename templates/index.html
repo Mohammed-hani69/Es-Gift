@@ -169,7 +169,7 @@
             <div class="onecard-product-card swiper-slide">
                 <div class="onecard-product-image">
                     {% if product.image_url and product.image_url != 'default-product.jpg' %}
-                        <img src="{{ product.image_url }}" 
+                        <img src="{{ product.image }}" 
                              alt="{{ product.name }}" 
                              loading="lazy"
                              onerror="this.src='{{ url_for('static', filename='images/default-product.jpg') }}'; this.onerror=null;">
@@ -178,11 +178,11 @@
                              alt="{{ product.name }}"
                              loading="lazy">
                     {% endif %}
-                    {% if product.is_fresh %}
+                    <!-- {% if product.is_fresh %}
                     <div class="fresh-badge">
                         <i class="fas fa-star"></i> جديد
                     </div>
-                    {% endif %}
+                    {% endif %} -->
                     {% if not product.stock_status %}
                     <div class="out-of-stock-overlay">
                         <i class="fas fa-times-circle"></i>
@@ -309,17 +309,17 @@
     position: relative;
 }
 
-.recently-added-section .section-title {
+/* .recently-added-section .section-title {
     text-align: center;
     color: #2c3e50;
     font-size: 28px;
     font-weight: 700;
     margin-bottom: 30px;
     position: relative;
-}
+} */
 
 .recently-added-section .section-title::after {
-    content: '';
+    /* content: '';
     position: absolute;
     bottom: -10px;
     left: 50%;
@@ -327,14 +327,13 @@
     width: 80px;
     height: 4px;
     background: linear-gradient(45deg, #007bff, #0056b3);
-    border-radius: 2px;
+    border-radius: 2px; */
 }
 
 .onecard-products-container {
     position: relative;
     max-width: 1400px;
     margin: 0 auto;
-    overflow: hidden;
 }
 
 .onecard-products-wrapper {
@@ -342,7 +341,7 @@
     gap: 15px;
     overflow-x: auto;
     scroll-behavior: smooth;
-    padding: 10px 5px 20px 5px;
+    padding: 30px 10px;
     scrollbar-width: none;
     -ms-overflow-style: none;
     scroll-snap-type: x mandatory;
@@ -353,7 +352,7 @@
 }
 
 .onecard-product-card {
-    flex: 0 0 32% !important;
+    flex: 0 0 23% !important;
     background: #111111;
     border-radius: 20px;
     box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
@@ -370,16 +369,15 @@
 .onecard-product-card:hover {
     transform: translateY(-8px) scale(1.02);
     box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
-    border-color: #007bff;
+    /* border-color: #007bff; */
 }
 
 .onecard-product-image {
     position: relative;
-    width: 80%;
+    width: 100%;
     height: 180px;
     overflow: hidden;
     background: linear-gradient(135deg, #f1f3f4, #e8eaed);
-    border-radius: 20px 20px 0 0;
 }
 
 .onecard-product-image img {
@@ -444,7 +442,7 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    width: 80%;
+    width: 100%;
 }
 
 .onecard-product-title {
@@ -570,8 +568,7 @@
     padding: 10px 15px 15px 15px;
     display: flex;
     gap: 8px;
-    background: #f8f9fa;
-    width: 70%;
+    width: 100%;
     justify-content: space-around;
 }
 
@@ -636,13 +633,13 @@
 }
 
 .onecard-btn-login {
-    background: linear-gradient(45deg, #007bff, #0056b3);
+    background: linear-gradient(135deg, #ff0033, #ff3366);
     color: white;
     flex: 1;
 }
 
 .onecard-btn-login:hover {
-    background: linear-gradient(45deg, #0056b3, #004085);
+    background: linear-gradient(135deg, #ff0033, #ff0040);
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
 }

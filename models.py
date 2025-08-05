@@ -58,6 +58,7 @@ class Product(db.Model):
     subcategory_id = db.Column(db.Integer, db.ForeignKey('subcategory.id'))  # القسم الفرعي
     region = db.Column(db.String(50))
     value = db.Column(db.String(50))
+    purchase_price = db.Column(db.Numeric(10, 2))  # سعر الشراء
     regular_price = db.Column(db.Numeric(10, 2))
     sale_price = db.Column(db.Numeric(10, 2))  # سعر العرض
     kyc_price = db.Column(db.Numeric(10, 2))
@@ -72,6 +73,7 @@ class Product(db.Model):
     is_featured = db.Column(db.Boolean, default=False)  # منتج مميز
     # إضافة ميزات التحكم في الظهور والأسعار المخصصة
     visibility = db.Column(db.String(20), default='public')  # public, restricted
+    user_type_visibility = db.Column(db.String(200), default='regular,kyc,reseller')  # أنواع المستخدمين المسموح لهم
     restricted_visibility = db.Column(db.Boolean, default=False)  # للتوافق مع النظام القديم
     has_custom_pricing = db.Column(db.Boolean, default=False)  # أسعار مخصصة
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

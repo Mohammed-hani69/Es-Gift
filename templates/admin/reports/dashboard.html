@@ -1,0 +1,604 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}لوحة التقارير{% endblock %}
+
+{% block content %}
+<div class="reports-dashboard">
+    <div class="page-header">
+        <h1 style="color: #ff0033; margin-bottom: 10px;">
+            <i class="fas fa-chart-bar"></i>
+            لوحة التقارير والإحصائيات
+        </h1>
+        <p style="color: #ccc; margin-bottom: 30px;">
+            تحليل شامل لأداء النظام والمبيعات حسب أنواع المستخدمين
+        </p>
+    </div>
+
+    <!-- بطاقات الوصول السريع -->
+    <div class="reports-grid">
+        <div class="report-card" onclick="window.location.href='{{ url_for('reports.resellers_reports') }}'">
+            <div class="report-icon reseller">
+                <i class="fas fa-store"></i>
+            </div>
+            <div class="report-content">
+                <h3>تقارير الموزعين</h3>
+                <p>تحليل مفصل لأداء الموزعين والأرباح المحققة منهم</p>
+                <ul class="report-features">
+                    <li><i class="fas fa-chart-line"></i> تحليل الإيرادات والأرباح</li>
+                    <li><i class="fas fa-users"></i> إحصائيات الموزعين النشطين</li>
+                    <li><i class="fas fa-shopping-cart"></i> تحليل المبيعات والطلبات</li>
+                    <li><i class="fas fa-trophy"></i> أفضل الموزعين والمنتجات</li>
+                </ul>
+            </div>
+            <div class="report-arrow">
+                <i class="fas fa-chevron-left"></i>
+            </div>
+        </div>
+
+        <div class="report-card" onclick="window.location.href='{{ url_for('reports.customers_reports') }}'">
+            <div class="report-icon customers">
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="report-content">
+                <h3>تقارير العملاء</h3>
+                <p>تحليل أداء العملاء العاديين والموثقين</p>
+                <ul class="report-features">
+                    <li><i class="fas fa-user"></i> إحصائيات العملاء العاديين</li>
+                    <li><i class="fas fa-user-check"></i> إحصائيات العملاء الموثقين</li>
+                    <li><i class="fas fa-chart-pie"></i> مقارنة الأداء بين الفئتين</li>
+                    <li><i class="fas fa-star"></i> أكثر المنتجات مبيعاً</li>
+                </ul>
+            </div>
+            <div class="report-arrow">
+                <i class="fas fa-chevron-left"></i>
+            </div>
+        </div>
+
+        <div class="report-card" onclick="window.location.href='{{ url_for('reports.comparison_reports') }}'">
+            <div class="report-icon comparison">
+                <i class="fas fa-balance-scale"></i>
+            </div>
+            <div class="report-content">
+                <h3>تقارير المقارنة</h3>
+                <p>مقارنة شاملة بين جميع أنواع المستخدمين</p>
+                <ul class="report-features">
+                    <li><i class="fas fa-chart-bar"></i> مقارنة الإيرادات</li>
+                    <li><i class="fas fa-shopping-bag"></i> مقارنة الطلبات</li>
+                    <li><i class="fas fa-percentage"></i> معدلات النمو</li>
+                    <li><i class="fas fa-analytics"></i> تحليل الاتجاهات</li>
+                </ul>
+            </div>
+            <div class="report-arrow">
+                <i class="fas fa-chevron-left"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- التقارير المتقدمة -->
+    <div class="advanced-reports-section">
+        <h3 style="color: #ff0033; margin-bottom: 20px;">
+            <i class="fas fa-chart-area"></i>
+            التقارير والتحليلات المتقدمة
+        </h3>
+        <div class="advanced-reports-grid">
+            <div class="advanced-report-card" onclick="window.location.href='{{ url_for('reports.resellers_advanced_reports') }}'">
+                <div class="advanced-icon reseller-advanced">
+                    <i class="fas fa-store-alt"></i>
+                </div>
+                <div class="advanced-content">
+                    <h4>تحليلات الموزعين المتقدمة</h4>
+                    <p>تحليل شامل مع رسوم بيانية تفاعلية ومقاييس متقدمة</p>
+                    <div class="advanced-features">
+                        <span class="feature-tag"><i class="fas fa-chart-line"></i> رسوم بيانية</span>
+                        <span class="feature-tag"><i class="fas fa-filter"></i> فلاتر متقدمة</span>
+                        <span class="feature-tag"><i class="fas fa-download"></i> تصدير Excel/PDF</span>
+                    </div>
+                </div>
+                <div class="premium-badge">
+                    <i class="fas fa-star"></i>
+                    متقدم
+                </div>
+            </div>
+
+            <div class="advanced-report-card" onclick="window.location.href='{{ url_for('reports.customers_advanced_reports') }}'">
+                <div class="advanced-icon customers-advanced">
+                    <i class="fas fa-users-cog"></i>
+                </div>
+                <div class="advanced-content">
+                    <h4>تحليلات العملاء المتقدمة</h4>
+                    <p>مقارنة تفصيلية بين العملاء العاديين والموثقين مع تحليل السلوك</p>
+                    <div class="advanced-features">
+                        <span class="feature-tag"><i class="fas fa-brain"></i> تحليل السلوك</span>
+                        <span class="feature-tag"><i class="fas fa-balance-scale"></i> مقارنات</span>
+                        <span class="feature-tag"><i class="fas fa-clock"></i> تحليل الأوقات</span>
+                    </div>
+                </div>
+                <div class="premium-badge">
+                    <i class="fas fa-star"></i>
+                    متقدم
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- إحصائيات سريعة -->
+    <div class="quick-stats">
+        <h3 style="color: #ff0033; margin-bottom: 20px;">
+            <i class="fas fa-tachometer-alt"></i>
+            نظرة سريعة
+        </h3>
+        <div class="stats-row">
+            <div class="stat-card primary">
+                <div class="stat-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" id="totalRevenue">0 ر.س</div>
+                    <div class="stat-label">إجمالي الإيرادات (هذا الشهر)</div>
+                </div>
+            </div>
+            
+            <div class="stat-card success">
+                <div class="stat-icon">
+                    <i class="fas fa-shopping-cart"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" id="totalOrders">0</div>
+                    <div class="stat-label">إجمالي الطلبات</div>
+                </div>
+            </div>
+            
+            <div class="stat-card warning">
+                <div class="stat-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" id="activeUsers">0</div>
+                    <div class="stat-label">المستخدمين النشطين</div>
+                </div>
+            </div>
+            
+            <div class="stat-card info">
+                <div class="stat-icon">
+                    <i class="fas fa-coins"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" id="totalProfit">0 ر.س</div>
+                    <div class="stat-label">إجمالي الأرباح</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- رسم بياني سريع -->
+    <div class="content-card">
+        <h3 style="color: #ff0033; margin-bottom: 20px;">
+            <i class="fas fa-chart-area"></i>
+            اتجاه المبيعات (آخر 7 أيام)
+        </h3>
+        <div style="height: 300px;">
+            <canvas id="quickSalesChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<style>
+.reports-dashboard {
+    padding: 20px;
+}
+
+.reports-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 25px;
+    margin-bottom: 40px;
+}
+
+.report-card {
+    background: linear-gradient(135deg, #1e1e1e, #2a2a2a);
+    border-radius: 15px;
+    padding: 25px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 1px solid #333;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    position: relative;
+    overflow: hidden;
+}
+
+.report-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #ff0033, #ff3366);
+    transform: scaleX(0);
+    transition: transform 0.3s ease;
+}
+
+.report-card:hover::before {
+    transform: scaleX(1);
+}
+
+.report-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 40px rgba(255, 0, 51, 0.2);
+    border-color: #ff0033;
+}
+
+.report-icon {
+    width: 70px;
+    height: 70px;
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    color: white;
+    flex-shrink: 0;
+}
+
+.report-icon.reseller {
+    background: linear-gradient(135deg, #ffc107, #fd7e14);
+}
+
+.report-icon.customers {
+    background: linear-gradient(135deg, #28a745, #20c997);
+}
+
+.report-icon.comparison {
+    background: linear-gradient(135deg, #6f42c1, #e83e8c);
+}
+
+.report-content {
+    flex: 1;
+}
+
+.report-content h3 {
+    color: #fff;
+    margin: 0 0 10px 0;
+    font-size: 22px;
+    font-weight: 600;
+}
+
+.report-content p {
+    color: #ccc;
+    margin: 0 0 15px 0;
+    font-size: 14px;
+}
+
+.report-features {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.report-features li {
+    color: #bbb;
+    font-size: 13px;
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.report-features i {
+    color: #ff0033;
+    font-size: 12px;
+    width: 12px;
+}
+
+.report-arrow {
+    color: #ff0033;
+    font-size: 24px;
+    opacity: 0.7;
+    transition: all 0.3s ease;
+}
+
+.report-card:hover .report-arrow {
+    opacity: 1;
+    transform: translateX(-5px);
+}
+
+.quick-stats {
+    margin-bottom: 40px;
+}
+
+.stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+.stat-card {
+    background: linear-gradient(135deg, #1e1e1e, #2a2a2a);
+    border-radius: 12px;
+    padding: 20px;
+    border: 1px solid #333;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+}
+
+.stat-card.primary { border-left: 4px solid #007bff; }
+.stat-card.success { border-left: 4px solid #28a745; }
+.stat-card.warning { border-left: 4px solid #ffc107; }
+.stat-card.info { border-left: 4px solid #17a2b8; }
+
+.stat-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: white;
+}
+
+.stat-card.primary .stat-icon { background: linear-gradient(135deg, #007bff, #0056b3); }
+.stat-card.success .stat-icon { background: linear-gradient(135deg, #28a745, #1e7e34); }
+.stat-card.warning .stat-icon { background: linear-gradient(135deg, #ffc107, #e0a800); }
+.stat-card.info .stat-icon { background: linear-gradient(135deg, #17a2b8, #138496); }
+
+.stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 5px;
+}
+
+.stat-label {
+    font-size: 14px;
+    color: #ccc;
+}
+
+.content-card {
+    background: linear-gradient(135deg, #1e1e1e, #2a2a2a);
+    border-radius: 15px;
+    padding: 25px;
+    border: 1px solid #333;
+    margin-bottom: 20px;
+}
+
+/* تحسين responsive */
+@media (max-width: 768px) {
+    .reports-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .stats-row {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    }
+    
+    .report-card {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .report-arrow {
+        transform: rotate(90deg);
+    }
+}
+
+/* التقارير المتقدمة */
+.advanced-reports-section {
+    margin: 40px 0;
+}
+
+.advanced-reports-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 25px;
+    margin-top: 20px;
+}
+
+.advanced-report-card {
+    background: linear-gradient(135deg, #2d2d2d 0%, #3d3d3d 100%);
+    border-radius: 15px;
+    padding: 25px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+}
+
+.advanced-report-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 40px rgba(255, 0, 51, 0.2);
+    border-color: rgba(255, 0, 51, 0.3);
+}
+
+.advanced-report-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #ff0033, #cc0029);
+}
+
+.advanced-icon {
+    width: 70px;
+    height: 70px;
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    color: #fff;
+    flex-shrink: 0;
+}
+
+.advanced-icon.reseller-advanced {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+}
+
+.advanced-icon.customers-advanced {
+    background: linear-gradient(135deg, #28a745, #20c997);
+}
+
+.advanced-content {
+    flex: 1;
+}
+
+.advanced-content h4 {
+    color: #fff;
+    margin-bottom: 10px;
+    font-size: 1.3rem;
+    font-weight: 600;
+}
+
+.advanced-content p {
+    color: #ccc;
+    margin-bottom: 15px;
+    line-height: 1.5;
+}
+
+.advanced-features {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.feature-tag {
+    background: rgba(255, 0, 51, 0.1);
+    border: 1px solid rgba(255, 0, 51, 0.3);
+    color: #ff0033;
+    padding: 4px 10px;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.premium-badge {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: linear-gradient(135deg, #ffd700, #ffb300);
+    color: #000;
+    padding: 5px 12px;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+@media (max-width: 768px) {
+    .advanced-reports-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .advanced-report-card {
+        flex-direction: column;
+        text-align: center;
+    }
+}
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // تحميل الإحصائيات السريعة
+    loadQuickStats();
+    
+    // تحميل الرسم البياني السريع
+    loadQuickChart();
+});
+
+async function loadQuickStats() {
+    try {
+        // يمكن إضافة API لجلب الإحصائيات السريعة
+        // للتبسيط سنضع قيم ثابتة
+        document.getElementById('totalRevenue').textContent = '125,450 ر.س';
+        document.getElementById('totalOrders').textContent = '342';
+        document.getElementById('activeUsers').textContent = '89';
+        document.getElementById('totalProfit').textContent = '45,230 ر.س';
+    } catch (error) {
+        console.error('خطأ في تحميل الإحصائيات:', error);
+    }
+}
+
+function loadQuickChart() {
+    const ctx = document.getElementById('quickSalesChart').getContext('2d');
+    
+    // بيانات وهمية للرسم البياني
+    const data = {
+        labels: ['اليوم', 'أمس', 'قبل يومين', 'قبل 3 أيام', 'قبل 4 أيام', 'قبل 5 أيام', 'قبل 6 أيام'],
+        datasets: [{
+            label: 'المبيعات (ر.س)',
+            data: [12450, 19230, 15670, 22340, 18900, 16780, 21200],
+            borderColor: '#ff0033',
+            backgroundColor: 'rgba(255, 0, 51, 0.1)',
+            borderWidth: 3,
+            fill: true,
+            tension: 0.4
+        }]
+    };
+
+    new Chart(ctx, {
+        type: 'line',
+        data: data,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: {
+                        color: '#fff'
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        color: '#ccc',
+                        callback: function(value) {
+                            return value.toLocaleString() + ' ر.س';
+                        }
+                    },
+                    grid: {
+                        color: '#333'
+                    }
+                },
+                x: {
+                    ticks: {
+                        color: '#ccc'
+                    },
+                    grid: {
+                        color: '#333'
+                    }
+                }
+            },
+            elements: {
+                point: {
+                    radius: 6,
+                    hoverRadius: 8
+                }
+            }
+        }
+    });
+}
+</script>
+{% endblock %}

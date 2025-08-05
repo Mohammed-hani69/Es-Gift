@@ -216,6 +216,10 @@ def create_app():
     from roles_routes import roles_bp
     app.register_blueprint(roles_bp)
     
+    # تسجيل blueprint التقارير
+    from reports_routes import reports_bp
+    app.register_blueprint(reports_bp)
+    
     # تهيئة Google OAuth Service
     from google_auth import google_auth_service
     google_auth_service.init_app(app)

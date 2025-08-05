@@ -31,6 +31,7 @@
             <option value="">جميع الحالات</option>
             <option value="active">نشط</option>
             <option value="inactive">غير نشط</option>
+            <option value="all">عرض الكل</option>
         </select>
     </div>
 
@@ -42,17 +43,19 @@
                     <th>الصورة</th>
                     <th>اسم المنتج</th>
                     <th>الفئة</th>
+                    <th>سعر الشراء</th>
                     <th>السعر العادي</th>
                     <th>سعر الموثق</th>
                     <th>سعر الموزع</th>
                     <th>الكمية</th>
+                    <th>أنواع المستخدمين</th>
                     <th>الحالة</th>
                     <th>الإجراءات</th>
                 </tr>
             </thead>
             <tbody id="productsTableBody">
                 {% for product in products %}
-                <tr>
+                <tr data-product-id="{{ product.id }}" {% if not product.is_active %}style="background-color: rgba(255, 0, 0, 0.1);"{% endif %}>
                     <td>
                         <img src="/static/uploads/gift-cards/{{ product.image_url }}" 
                              alt="{{ product.name }}" 
@@ -76,6 +79,7 @@
                             غير محدد
                         {% endif %}
                     </td>
+                    <td>{{ product.purchase_price or '0' }} ر.س</td>
                     <td>{{ product.regular_price }} ر.س</td>
                     <td>{{ product.kyc_price }} ر.س</td>
                     <td>{{ product.reseller_price }} ر.س</td>
@@ -85,6 +89,22 @@
                         {% else %}
                             <span class="badge badge-danger">نفدت</span>
                         {% endif %}
+                    </td>
+                    <td>
+                        {% set user_types = product.user_type_visibility.split(',') if product.user_type_visibility else ['regular', 'kyc', 'reseller'] %}
+                        {% for user_type in user_types %}
+                            <span class="badge badge-info" style="margin: 2px;">
+                                {% if user_type.strip() == 'regular' %}
+                                    عادي
+                                {% elif user_type.strip() == 'kyc' %}
+                                    موثق
+                                {% elif user_type.strip() == 'reseller' %}
+                                    موزع
+                                {% else %}
+                                    {{ user_type.strip() }}
+                                {% endif %}
+                            </span>
+                        {% endfor %}
                     </td>
                     <td>
                         {% if product.is_active %}
@@ -101,9 +121,15 @@
                             <a href="#" class="btn btn-success btn-sm" onclick="manageCodes({{ product.id }})">
                                 <i class="fas fa-key"></i>
                             </a>
-                            <a href="#" class="btn btn-danger btn-sm" onclick="deleteProduct({{ product.id }})">
-                                <i class="fas fa-trash"></i>
-                            </a>
+                            {% if product.is_active %}
+                                <a href="#" class="btn btn-warning btn-sm" onclick="deactivateProduct({{ product.id }})" title="تعطيل المنتج">
+                                    <i class="fas fa-eye-slash"></i>
+                                </a>
+                            {% else %}
+                                <a href="#" class="btn btn-success btn-sm" onclick="activateProduct({{ product.id }})" title="إعادة تفعيل المنتج">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                            {% endif %}
                         </div>
                     </td>
                 </tr>
@@ -232,6 +258,22 @@
                     
                     <div class="form-grid">
                         <div class="form-group">
+                            <label for="purchasePrice">
+                                <i class="fas fa-shopping-cart"></i>
+                                سعر الشراء *
+                            </label>
+                            <div class="input-group">
+                                <input type="number" id="purchasePrice" name="purchase_price" class="form-input" 
+                                       step="0.01" required placeholder="0.00">
+                                <span class="input-addon">ر.س</span>
+                            </div>
+                            <small class="helper-text">
+                                <i class="fas fa-info-circle"></i>
+                                سعر شراء المنتج من المورد
+                            </small>
+                        </div>
+                        
+                        <div class="form-group">
                             <label for="regularPrice">
                                 <i class="fas fa-user"></i>
                                 السعر العادي *
@@ -354,12 +396,48 @@
                             <i class="fas fa-eye"></i>
                             <h3>التحكم في الرؤية</h3>
                         </div>
+                        
+                        <!-- اختيار أنواع المستخدمين -->
+                        <div class="user-types-section">
+                            <div class="section-header">
+                                <i class="fas fa-users"></i>
+                                <h3>أنواع المستخدمين المسموح لهم</h3>
+                            </div>
+                            <div class="user-types-checkboxes">
+                                <div class="checkbox-wrapper">
+                                    <input type="checkbox" id="userTypeRegular" name="user_types" value="regular" checked>
+                                    <label for="userTypeRegular" class="checkbox-label">
+                                        <i class="fas fa-user"></i>
+                                        المستخدمين العاديين
+                                    </label>
+                                </div>
+                                <div class="checkbox-wrapper">
+                                    <input type="checkbox" id="userTypeKyc" name="user_types" value="kyc" checked>
+                                    <label for="userTypeKyc" class="checkbox-label">
+                                        <i class="fas fa-user-check"></i>
+                                        المستخدمين الموثقين (KYC)
+                                    </label>
+                                </div>
+                                <div class="checkbox-wrapper">
+                                    <input type="checkbox" id="userTypeReseller" name="user_types" value="reseller" checked>
+                                    <label for="userTypeReseller" class="checkbox-label">
+                                        <i class="fas fa-store"></i>
+                                        الموزعين
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="helper-text">
+                                <i class="fas fa-info-circle"></i>
+                                اختر أنواع المستخدمين الذين يمكنهم رؤية هذا المنتج
+                            </div>
+                        </div>
+                        
                         <div class="visibility-options">
                             <div class="radio-option">
                                 <input type="radio" id="visibilityPublic" name="visibility" value="public" checked>
                                 <label for="visibilityPublic">
                                     <i class="fas fa-globe"></i>
-                                    عام - مرئي لجميع المستخدمين
+                                    عام - مرئي للأنواع المختارة من المستخدمين
                                 </label>
                             </div>
                             <div class="radio-option">
@@ -949,6 +1027,43 @@
     margin: 0;
 }
 
+/* تنسيق أنواع المستخدمين */
+.user-types-section {
+    margin-bottom: 25px;
+    padding: 20px;
+    background: rgba(255, 0, 51, 0.05);
+    border: 1px solid rgba(255, 0, 51, 0.2);
+    border-radius: 12px;
+}
+
+.user-types-checkboxes {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.user-types-checkboxes .checkbox-wrapper {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 15px;
+    transition: all 0.3s ease;
+}
+
+.user-types-checkboxes .checkbox-wrapper:hover {
+    background: rgba(255, 0, 51, 0.1);
+    border-color: rgba(255, 0, 51, 0.3);
+}
+
+.user-types-checkboxes .checkbox-wrapper input[type="checkbox"]:checked + label {
+    color: #ff0033;
+}
+
+.user-types-checkboxes .checkbox-wrapper input[type="checkbox"]:checked + label i {
+    color: #ff0033;
+}
+
 .restricted-users-section {
     display: none;
     margin-top: 20px;
@@ -1197,6 +1312,43 @@
 
 .helper-text i {
     color: #ff0033;
+}
+
+/* أنماط badges أنواع المستخدمين */
+.badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: none;
+    white-space: nowrap;
+    display: inline-block;
+    margin: 1px;
+}
+
+.badge-info {
+    background-color: #17a2b8;
+    color: white;
+}
+
+.badge-success {
+    background-color: #28a745;
+    color: white;
+}
+
+.badge-danger {
+    background-color: #dc3545;
+    color: white;
+}
+
+/* تحسين عرض الجدول */
+.data-table th:nth-child(9) {
+    min-width: 150px;
+}
+
+.data-table td:nth-child(9) {
+    max-width: 150px;
+    overflow: hidden;
 }
 
 @media (max-width: 768px) {
@@ -1662,6 +1814,7 @@ function editProduct(productId) {
                 document.getElementById('productName').value = product.name || '';
                 document.getElementById('productRegion').value = product.region || '';
                 document.getElementById('productValue').value = product.value || '';
+                document.getElementById('purchasePrice').value = product.purchase_price || '';
                 document.getElementById('regularPrice').value = product.regular_price || '';
                 document.getElementById('kycPrice').value = product.kyc_price || '';
                 document.getElementById('resellerPrice').value = product.reseller_price || '';
@@ -1669,6 +1822,21 @@ function editProduct(productId) {
                 document.getElementById('productDescription').value = product.description || '';
                 document.getElementById('productInstructions').value = product.instructions || '';
                 document.getElementById('isActive').checked = product.is_active;
+                
+                // ملء أنواع المستخدمين المسموح لهم
+                const userTypeVisibility = product.user_type_visibility || 'regular,kyc,reseller';
+                const allowedUserTypes = userTypeVisibility.split(',');
+                
+                // إعادة تعيين جميع checkboxes أولاً
+                document.querySelectorAll('input[name="user_types"]').forEach(cb => cb.checked = false);
+                
+                // تحديد الـ checkboxes المناسبة
+                allowedUserTypes.forEach(userType => {
+                    const checkbox = document.querySelector(`input[name="user_types"][value="${userType.trim()}"]`);
+                    if (checkbox) {
+                        checkbox.checked = true;
+                    }
+                });
                 
                 // تاريخ الانتهاء
                 if (product.expiry_date) {
@@ -1762,21 +1930,87 @@ function editProduct(productId) {
         });
 }
 
-function deleteProduct(productId) {
-    if (confirm('هل أنت متأكد من حذف هذا المنتج؟')) {
+function deactivateProduct(productId) {
+    if (confirm('هل أنت متأكد من تعطيل هذا المنتج وإخفاؤه من الموقع؟')) {
         fetch(`/admin/products/${productId}`, {
             method: 'DELETE'
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                location.reload();
+                // إخفاء المنتج من الجدول فوراً
+                const productRow = document.querySelector(`tr[data-product-id="${productId}"]`);
+                if (productRow) {
+                    productRow.style.transition = 'opacity 0.3s';
+                    productRow.style.opacity = '0';
+                    setTimeout(() => {
+                        productRow.remove();
+                        // تحديث الإحصائيات
+                        updateProductStats();
+                    }, 300);
+                } else {
+                    location.reload();
+                }
+                alert(data.message);
             } else {
-                alert('حدث خطأ في حذف المنتج');
+                alert('حدث خطأ في تعطيل المنتج: ' + data.message);
             }
         })
-        .catch(error => console.error('Error:', error));
+        .catch(error => {
+            console.error('Error:', error);
+            alert('حدث خطأ في الاتصال');
+        });
     }
+}
+
+function activateProduct(productId) {
+    if (confirm('هل أنت متأكد من إعادة تفعيل هذا المنتج؟')) {
+        fetch(`/admin/products/${productId}/activate`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload(); // إعادة تحميل الصفحة لإظهار التغييرات
+            } else {
+                alert('حدث خطأ في إعادة تفعيل المنتج: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('حدث خطأ في الاتصال');
+        });
+    }
+}
+
+// إبقاء دالة deleteProduct للتوافق مع الكود القديم
+function deleteProduct(productId) {
+    deactivateProduct(productId);
+}
+
+// دالة تحديث إحصائيات المنتجات
+function updateProductStats() {
+    const allRows = document.querySelectorAll('#productsTableBody tr');
+    const activeRows = Array.from(allRows).filter(row => {
+        const statusBadge = row.querySelector('td:nth-last-child(2) .badge');
+        return statusBadge && statusBadge.textContent.trim() === 'نشط';
+    });
+    const outOfStockRows = Array.from(allRows).filter(row => {
+        const stockBadge = row.querySelector('td:nth-child(8) .badge');
+        return stockBadge && stockBadge.textContent.trim() === 'نفدت';
+    });
+    
+    // تحديث الأرقام
+    const totalStat = document.querySelector('.stat-card.success .stat-number');
+    const activeStat = document.querySelector('.stat-card.info .stat-number');
+    const outOfStockStat = document.querySelector('.stat-card.warning .stat-number');
+    const inactiveStat = document.querySelector('.stat-card.danger .stat-number');
+    
+    if (totalStat) totalStat.textContent = allRows.length;
+    if (activeStat) activeStat.textContent = activeRows.length;
+    if (outOfStockStat) outOfStockStat.textContent = outOfStockRows.length;
+    if (inactiveStat) inactiveStat.textContent = allRows.length - activeRows.length;
 }
 
 function manageCodes(productId) {
@@ -1786,6 +2020,25 @@ function manageCodes(productId) {
 // إغلاق النموذج عند النقر خارجه
 document.addEventListener('DOMContentLoaded', function() {
     const modal = document.getElementById('productModal');
+    
+    // إضافة معالج لفلتر الحالة
+    const statusFilter = document.getElementById('statusFilter');
+    if (statusFilter) {
+        statusFilter.addEventListener('change', function() {
+            const currentUrl = new URL(window.location);
+            if (this.value) {
+                currentUrl.searchParams.set('status', this.value);
+            } else {
+                currentUrl.searchParams.delete('status');
+            }
+            window.location.href = currentUrl.toString();
+        });
+        
+        // تعيين القيمة الحالية للفلتر
+        const urlParams = new URLSearchParams(window.location.search);
+        const currentStatus = urlParams.get('status') || 'active';
+        statusFilter.value = currentStatus;
+    }
     
     if (modal) {
         modal.addEventListener('click', function(e) {
@@ -2027,6 +2280,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const name = document.getElementById('productName').value.trim();
             const categoryId = document.getElementById('productCategory').value;
             const regularPrice = document.getElementById('regularPrice').value;
+            const purchasePrice = document.getElementById('purchasePrice').value;
             
             if (!name) {
                 e.preventDefault();
@@ -2040,11 +2294,35 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
+            if (!purchasePrice || parseFloat(purchasePrice) <= 0) {
+                e.preventDefault();
+                alert('يرجى إدخال سعر الشراء');
+                return;
+            }
+            
             if (!regularPrice || parseFloat(regularPrice) <= 0) {
                 e.preventDefault();
                 alert('يرجى إدخال سعر صحيح');
                 return;
             }
+            
+            // جمع أنواع المستخدمين المختارة
+            const selectedUserTypes = [];
+            const userTypeCheckboxes = document.querySelectorAll('input[name="user_types"]:checked');
+            userTypeCheckboxes.forEach(checkbox => {
+                selectedUserTypes.push(checkbox.value);
+            });
+            
+            // إضافة حقل مخفي لأنواع المستخدمين
+            let userTypesInput = document.getElementById('userTypesInput');
+            if (!userTypesInput) {
+                userTypesInput = document.createElement('input');
+                userTypesInput.type = 'hidden';
+                userTypesInput.id = 'userTypesInput';
+                userTypesInput.name = 'user_type_visibility';
+                productForm.appendChild(userTypesInput);
+            }
+            userTypesInput.value = selectedUserTypes.join(',');
         });
     }
     
