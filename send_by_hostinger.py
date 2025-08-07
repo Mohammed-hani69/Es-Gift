@@ -23,45 +23,126 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class HostingerEmailService:
-    """خدمة إرسال الرسائل عبر Hostinger SMTP"""
+    """خدمة إرسال الرسائل عبر Hostinger SMTP مع إعدادات بديلة"""
     
     def __init__(self):
-        """تهيئة الخدمة"""
-        self.smtp_server = "smtp.hostinger.com"
-        self.smtp_port = 465
-        self.sender_email = "business@es-gift.com"
-        self.sender_password = "Abdo@2002@"
-        self.sender_name = "ES-Gift"
+        """تهيئة الخدمة مع إعدادات أساسية وبديلة"""
+        # الإعدادات الأساسية (Hostinger)
+        self.primary_smtp_server = "smtp.hostinger.com"
+        self.primary_smtp_port = 465
+        self.primary_sender_email = "business@es-gift.com"
+        self.primary_sender_password = "Abdo@2002@"
+        
+        # الإعدادات البديلة (Gmail)
+        self.fallback_smtp_server = "smtp.gmail.com"
+        self.fallback_smtp_port = 587
+        self.fallback_sender_email = "esgiftscard@gmail.com"
+        self.fallback_sender_password = "xopq ikac efpj rdif"
+        
+        # الإعدادات الحالية (تبدأ بالأساسية)
+        self.smtp_server = self.primary_smtp_server
+        self.smtp_port = self.primary_smtp_port
+        self.sender_email = self.primary_sender_email
+        self.sender_password = self.primary_sender_password
+        self.sender_name = "ES-GIFT"
+        self.using_fallback = False
+        
+    def _switch_to_fallback(self):
+        """التبديل إلى الإعدادات البديلة"""
+        if not self.using_fallback:
+            logger.warning("🔄 التبديل إلى الإعدادات البديلة (Gmail)")
+            logger.info(f"📧 استخدام الإعدادات البديلة: {self.fallback_sender_email}")
+            self.smtp_server = self.fallback_smtp_server
+            self.smtp_port = self.fallback_smtp_port
+            self.sender_email = self.fallback_sender_email
+            self.sender_password = self.fallback_sender_password
+            self.using_fallback = True
+            return True
+        return False
+    
+    def _reset_to_primary(self):
+        """العودة إلى الإعدادات الأساسية"""
+        if self.using_fallback:
+            logger.info("🔄 العودة إلى الإعدادات الأساسية (Hostinger)")
+            self.smtp_server = self.primary_smtp_server
+            self.smtp_port = self.primary_smtp_port
+            self.sender_email = self.primary_sender_email
+            self.sender_password = self.primary_sender_password
+            self.using_fallback = False
         
     def _create_smtp_connection(self) -> Tuple[bool, object]:
-        """إنشاء اتصال SMTP آمن"""
+        """إنشاء اتصال SMTP آمن مع دعم الإعدادات البديلة"""
         try:
-            # إنشاء SSL context آمن
-            context = ssl.create_default_context()
+            logger.info(f"📧 محاولة الاتصال بـ {self.smtp_server}:{self.smtp_port}")
             
-            # إنشاء اتصال SMTP مع SSL
-            server = smtplib.SMTP_SSL(self.smtp_server, self.smtp_port, context=context)
+            if self.using_fallback or self.smtp_server == "smtp.gmail.com":
+                # إعدادات Gmail (TLS)
+                server = smtplib.SMTP(self.smtp_server, self.smtp_port)
+                server.starttls()
+                server.login(self.sender_email, self.sender_password)
+                logger.info(f"✅ تم الاتصال بنجاح مع Gmail: {self.sender_email}")
+            else:
+                # إعدادات Hostinger (SSL)
+                server = smtplib.SMTP_SSL(self.smtp_server, self.smtp_port)
+                server.login(self.sender_email, self.sender_password)
+                logger.info(f"✅ تم الاتصال بنجاح مع Hostinger: {self.sender_email}")
+            
+            return True, server
+            
+        except smtplib.SMTPAuthenticationError as e:
+            error_msg = f"فشل التوثيق: {str(e)}"
+            logger.error(f"❌ {error_msg}")
+            return False, error_msg
+        except smtplib.SMTPConnectError as e:
+            error_msg = f"فشل الاتصال: {str(e)}"
+            logger.error(f"❌ {error_msg}")
+            return False, error_msg
+        except Exception as e:
+            error_msg = f"خطأ في إنشاء اتصال SMTP: {str(e)}"
+            logger.error(f"❌ {error_msg}")
+            return False, error_msg
+            logger.info(f"📧 محاولة الاتصال بـ {self.smtp_server}:{self.smtp_port}")
+            
+            if self.smtp_port == 465:
+                # SSL connection for Hostinger
+                import ssl
+                context = ssl.create_default_context()
+                server = smtplib.SMTP_SSL(self.smtp_server, self.smtp_port, context=context)
+            else:
+                # TLS connection for Gmail
+                server = smtplib.SMTP(self.smtp_server, self.smtp_port)
+                server.starttls()
             
             # تسجيل الدخول
             server.login(self.sender_email, self.sender_password)
             
-            logger.info(f"✅ تم الاتصال بخادم Hostinger SMTP بنجاح")
+            logger.info(f"✅ تم الاتصال بنجاح مع {self.smtp_server}")
             return True, server
             
         except Exception as e:
-            logger.error(f"❌ خطأ في الاتصال بخادم SMTP: {str(e)}")
-            return False, None
+            error_msg = f"فشل الاتصال مع {self.smtp_server}: {str(e)}"
+            logger.error(f"❌ {error_msg}")
+            return False, error_msg
     
     def _send_email(self, to_email: str, subject: str, html_content: str, text_content: str = None) -> Tuple[bool, str]:
-        """إرسال رسالة إلكترونية"""
+        """إرسال رسالة إلكترونية مع دعم الإعدادات البديلة"""
         try:
             logger.info(f"📧 إرسال رسالة إلى: {to_email}")
             logger.info(f"📋 الموضوع: {subject}")
             
-            # إنشاء اتصال SMTP
-            success, server = self._create_smtp_connection()
+            # محاولة إرسال بالإعدادات الحالية
+            success, server_or_error = self._create_smtp_connection()
+            
+            # إذا فشلت الإعدادات الأساسية، جرب البديلة
+            if not success and not self.using_fallback:
+                logger.warning("❌ فشل في الإعدادات الأساسية، محاولة الإعدادات البديلة...")
+                if self._switch_to_fallback():
+                    success, server_or_error = self._create_smtp_connection()
+            
             if not success:
-                return False, "فشل في الاتصال بخادم البريد الإلكتروني"
+                return False, f"فشل في الاتصال بخادم البريد الإلكتروني: {server_or_error}"
+            
+            server = server_or_error
             
             try:
                 # إنشاء الرسالة مع تشفير UTF-8
@@ -95,8 +176,9 @@ class HostingerEmailService:
                     # محاولة إرسال بدون تشفير إضافي
                     server.sendmail(self.sender_email, to_email, message.as_string())
                 
-                logger.info(f"✅ تم إرسال الرسالة بنجاح إلى: {to_email}")
-                return True, "تم إرسال الرسالة بنجاح"
+                service_type = "البديل (Gmail)" if self.using_fallback else "الأساسي (Hostinger)"
+                logger.info(f"✅ تم إرسال الرسالة بنجاح إلى: {to_email} عبر {service_type}")
+                return True, f"تم إرسال الرسالة بنجاح عبر {service_type}"
                 
             finally:
                 # إغلاق الاتصال
@@ -725,6 +807,88 @@ def send_email(to_email: str, subject: str, body: str) -> bool:
         return success
     except Exception as e:
         logger.error(f"❌ خطأ في send_email: {str(e)}")
+        return False
+
+def send_invoice_email_hostinger(to_email: str, subject: str, html_content: str, 
+                                pdf_attachment_path: str, pdf_filename: str) -> bool:
+    """إرسال فاتورة عبر البريد الإلكتروني مع مرفق PDF والإعدادات البديلة"""
+    try:
+        from email.mime.base import MIMEBase
+        from email import encoders
+        import os
+        
+        logger.info(f"📧 إرسال فاتورة إلى: {to_email}")
+        
+        # محاولة الإرسال بالإعدادات الأساسية أولاً
+        success = _try_send_invoice_with_current_settings(to_email, subject, html_content, pdf_attachment_path, pdf_filename)
+        
+        if not success and not hostinger_email_service.using_fallback:
+            # التبديل إلى الإعدادات البديلة والمحاولة مرة أخرى
+            logger.warning("🔄 التبديل إلى الإعدادات البديلة (Gmail)")
+            hostinger_email_service._switch_to_fallback()
+            success = _try_send_invoice_with_current_settings(to_email, subject, html_content, pdf_attachment_path, pdf_filename)
+        
+        return success
+        
+    except Exception as e:
+        logger.error(f"❌ خطأ في إرسال الفاتورة: {str(e)}")
+        return False
+
+def _try_send_invoice_with_current_settings(to_email: str, subject: str, html_content: str, 
+                                           pdf_attachment_path: str, pdf_filename: str) -> bool:
+    """محاولة إرسال الفاتورة بالإعدادات الحالية"""
+    try:
+        from email.mime.base import MIMEBase
+        from email import encoders
+        import os
+        
+        # إنشاء اتصال SMTP
+        success, server = hostinger_email_service._create_smtp_connection()
+        if not success:
+            return False
+        
+        try:
+            # إنشاء الرسالة مع تشفير UTF-8
+            message = MIMEMultipart("mixed", charset='utf-8')
+            message["Subject"] = Header(subject, 'utf-8')
+            message["From"] = Header(f"{hostinger_email_service.sender_name} <{hostinger_email_service.sender_email}>", 'utf-8')
+            message["To"] = to_email
+            
+            # إضافة HTML content
+            html_part = MIMEText(html_content, "html", "utf-8")
+            message.attach(html_part)
+            
+            # إضافة مرفق PDF إذا كان موجوداً
+            if pdf_attachment_path and os.path.exists(pdf_attachment_path):
+                with open(pdf_attachment_path, "rb") as attachment:
+                    part = MIMEBase('application', 'octet-stream')
+                    part.set_payload(attachment.read())
+                    
+                encoders.encode_base64(part)
+                part.add_header(
+                    'Content-Disposition',
+                    f'attachment; filename= {pdf_filename}',
+                )
+                message.attach(part)
+            
+            # إرسال الرسالة
+            text = message.as_string()
+            if isinstance(text, str):
+                text_bytes = text.encode('utf-8')
+            else:
+                text_bytes = text
+            server.sendmail(hostinger_email_service.sender_email, to_email, text_bytes)
+            
+            settings_type = "البديلة (Gmail)" if hostinger_email_service.using_fallback else "الأساسية (Hostinger)"
+            logger.info(f"✅ تم إرسال الفاتورة بنجاح عبر الإعدادات {settings_type} إلى: {to_email}")
+            return True
+            
+        finally:
+            server.quit()
+            
+    except Exception as e:
+        settings_type = "البديلة (Gmail)" if hostinger_email_service.using_fallback else "الأساسية (Hostinger)"
+        logger.error(f"❌ فشل الإرسال عبر الإعدادات {settings_type}: {str(e)}")
         return False
 
 def test_email_connection() -> Tuple[bool, str]:

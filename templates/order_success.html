@@ -419,7 +419,7 @@
                     رقم الفاتورة: {{ invoice.invoice_number }}
                 </div>
                 {% if invoice.pdf_file_path %}
-                <a href="{{ url_for('static', filename=invoice.pdf_file_path) }}" 
+                <a href="{{ url_for('main.download_invoice', invoice_id=invoice.id) }}" 
                    target="_blank" 
                    class="download-invoice">
                     <i class="fas fa-download"></i>

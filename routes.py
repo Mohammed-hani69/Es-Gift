@@ -2284,7 +2284,7 @@ def download_invoice(invoice_id):
         if not invoice.pdf_file_path:
             # إنشاء الفاتورة إذا لم تكن موجودة
             from modern_invoice_service import ModernInvoiceService
-            pdf_path = ModernInvoiceService.generate_modern_pdf(invoice)
+            pdf_path = ModernInvoiceService.generate_enhanced_pdf(invoice)
             if pdf_path:
                 invoice.pdf_file_path = pdf_path
                 db.session.commit()
@@ -2298,7 +2298,7 @@ def download_invoice(invoice_id):
         if not os.path.exists(pdf_full_path):
             # إعادة إنشاء الملف إذا لم يكن موجوداً
             from modern_invoice_service import ModernInvoiceService
-            pdf_path = ModernInvoiceService.generate_modern_pdf(invoice)
+            pdf_path = ModernInvoiceService.generate_enhanced_pdf(invoice)
             if pdf_path:
                 invoice.pdf_file_path = pdf_path
                 db.session.commit()

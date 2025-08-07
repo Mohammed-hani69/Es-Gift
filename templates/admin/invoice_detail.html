@@ -726,7 +726,17 @@ function regenerateInvoicePDF(invoiceId) {
 }
 
 function sendInvoiceEmail(invoiceId) {
-    if (!confirm('هل أنت متأكد من إرسال الفاتورة عبر البريد الإلكتروني؟')) {
+    // إظهار نافذة إدخال الإيميل
+    const email = prompt('أدخل البريد الإلكتروني لإرسال الفاتورة إليه:', '');
+    
+    if (!email) {
+        return; // المستخدم ألغى العملية
+    }
+    
+    // التحقق من صحة الإيميل
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        showNotification('يرجى إدخال بريد إلكتروني صحيح', 'error');
         return;
     }
     
@@ -739,7 +749,10 @@ function sendInvoiceEmail(invoiceId) {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-        }
+        },
+        body: JSON.stringify({
+            email: email
+        })
     })
     .then(response => response.json())
     .then(data => {

@@ -32,8 +32,8 @@ class Config:
     MAIL_USE_SSL = os.getenv('MAIL_USE_SSL', 'False').lower() == 'true'  # دعم SSL
     MAIL_USERNAME = os.getenv('MAIL_USERNAME', '932dac001@smtp-brevo.com')  # افتراضي Brevo SMTP
     MAIL_PASSWORD = os.getenv('MAIL_PASSWORD', 'O6RxAm3kJYp0BzE2')  # افتراضي Brevo SMTP
-    MAIL_DEFAULT_SENDER = os.getenv('MAIL_DEFAULT_SENDER', 'mohamedeloker9@gmail.com')
-    MAIL_DEFAULT_SENDER = os.getenv('MAIL_DEFAULT_SENDER') or os.getenv('MAIL_USERNAME')
+    MAIL_DEFAULT_SENDER = ('ES-GIFT', os.getenv('MAIL_DEFAULT_SENDER', 'mohamedeloker9@gmail.com'))
+    MAIL_DEFAULT_SENDER_EMAIL = os.getenv('MAIL_DEFAULT_SENDER') or os.getenv('MAIL_USERNAME')
     
     # إعدادات Google OAuth
     GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', '712420880804-hi84lrcs4igfplrm7mgp647v19g8sggk.apps.googleusercontent.com')

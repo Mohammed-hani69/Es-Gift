@@ -8,9 +8,13 @@ from flask import Blueprint, render_template, request, jsonify, redirect, url_fo
 from flask_login import login_required, current_user
 from datetime import datetime
 from decimal import Decimal
+import logging
 
 from models import db, User, UserLimits, GlobalLimits, WalletTransaction, UserBalance
 from employee_utils import requires_permission, log_activity
+
+# إعداد التسجيل
+logger = logging.getLogger(__name__)
 
 # إنشاء Blueprint منفصل للحدود المالية
 financial_bp = Blueprint('financial', __name__, url_prefix='/admin/financial')
@@ -432,21 +436,59 @@ def get_user_limits_details(user_id):
 def update_user_limits_json(user_id):
     """تحديث حدود المستخدم عبر JSON"""
     try:
+        logger.info(f"تحديث حدود المستخدم {user_id} - بدء المعالجة")
         data = request.get_json()
+        logger.info(f"البيانات المستلمة: {data}")
         
-        daily_limit = float(data['daily_limit'])
-        monthly_limit = float(data['monthly_limit'])
+        # التحقق من وجود البيانات
+        if not data:
+            logger.warning("لم يتم إرسال بيانات")
+            return jsonify({
+                'success': False,
+                'message': 'لم يتم إرسال بيانات'
+            }), 400
+        
+        # التحقق من وجود الحقول المطلوبة
+        if 'daily_limit' not in data or 'monthly_limit' not in data:
+            logger.warning(f"الحقول المطلوبة مفقودة. البيانات المرسلة: {list(data.keys())}")
+            return jsonify({
+                'success': False,
+                'message': 'الحقول المطلوبة مفقودة'
+            }), 400
+        
+        try:
+            daily_limit = float(data['daily_limit'])
+            monthly_limit = float(data['monthly_limit'])
+            logger.info(f"الحدود المحولة: يومي={daily_limit}, شهري={monthly_limit}")
+        except (ValueError, TypeError) as e:
+            logger.error(f"خطأ في تحويل القيم: {e}")
+            return jsonify({
+                'success': False,
+                'message': 'قيم الحدود يجب أن تكون أرقام صحيحة'
+            }), 400
+            
         notes = data.get('notes', '')
         reset_spending = data.get('reset_spending', False)
         
         # التحقق من صحة البيانات
         if daily_limit <= 0 or monthly_limit <= 0:
+            logger.warning(f"قيم حدود غير صحيحة: يومي={daily_limit}, شهري={monthly_limit}")
             return jsonify({
                 'success': False,
                 'message': 'الحدود يجب أن تكون أكبر من الصفر'
             }), 400
         
+        # التحقق من وجود المستخدم
+        user = User.query.get(user_id)
+        if not user:
+            logger.warning(f"المستخدم {user_id} غير موجود")
+            return jsonify({
+                'success': False,
+                'message': 'المستخدم غير موجود'
+            }), 404
+        
         # تحديث الحدود
+        logger.info(f"استدعاء update_user_limits للمستخدم {user_id}")
         from wallet_utils import update_user_limits
         success = update_user_limits(
             user_id=user_id,
@@ -457,39 +499,53 @@ def update_user_limits_json(user_id):
         )
         
         if not success:
+            logger.error(f"فشل في تحديث الحدود للمستخدم {user_id}")
             return jsonify({
                 'success': False,
                 'message': 'فشل في تحديث الحدود'
             }), 500
+
+        logger.info(f"تم تحديث الحدود بنجاح للمستخدم {user_id}")
         
         # إعادة تعيين المنفق إذا طُلب ذلك
         if reset_spending:
+            logger.info(f"إعادة تعيين المبالغ المنفقة للمستخدم {user_id}")
             user_limits = UserLimits.query.filter_by(user_id=user_id).first()
             if user_limits:
                 user_limits.daily_spent_usd = 0.00
                 user_limits.monthly_spent_usd = 0.00
                 db.session.commit()
-        
+                logger.info(f"تم إعادة تعيين المبالغ المنفقة للمستخدم {user_id}")
+
         # تسجيل النشاط
-        user = User.query.get(user_id)
-        log_activity(
-            employee_id=current_user.id,
-            action='update_user_limits',
-            details=f'تحديث حدود المستخدم {user.email}: يومي {daily_limit}$، شهري {monthly_limit}$'
-        )
+        try:
+            # البحث عن سجل الموظف للمستخدم الحالي
+            from models import Employee
+            employee = Employee.query.filter_by(user_id=current_user.id).first()
+            if employee:
+                log_activity(
+                    employee_or_id=employee.id,
+                    action='update_user_limits',
+                    description=f'تحديث حدود المستخدم {user.email}: يومي {daily_limit}$، شهري {monthly_limit}$'
+                )
+            else:
+                logger.warning(f"لم يتم العثور على سجل موظف للمستخدم {current_user.id}")
+        except Exception as log_error:
+            logger.error(f"خطأ في تسجيل النشاط: {str(log_error)}")
+            # لا نريد أن يؤثر خطأ التسجيل على العملية الأساسية
         
+        logger.info(f"تم إكمال تحديث حدود المستخدم {user_id} بنجاح")
         return jsonify({
             'success': True,
             'message': 'تم تحديث حدود المستخدم بنجاح'
         })
         
     except Exception as e:
+        logger.error(f"خطأ في تحديث حدود المستخدم {user_id}: {str(e)}", exc_info=True)
         return jsonify({
             'success': False,
             'message': f'خطأ في تحديث الحدود: {str(e)}'
-        }), 500
-
-@financial_bp.route('/users/<int:user_id>/limits/reset', methods=['POST'])
+        }), 500@financial_bp.route('/users/<int:user_id>/limits/reset', methods=['POST'])
 @login_required
 @requires_permission('users.update')
 def reset_user_limits_to_default(user_id):

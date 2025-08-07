@@ -53,14 +53,14 @@
     <div class="content-card">
         <form method="GET" class="filters-form">
             <div class="filter-group">
-                <label>البحث:</label>
+                <label><i class="fas fa-search"></i> البحث:</label>
                 <input type="text" name="search" value="{{ search_query }}" 
                        placeholder="رقم الفاتورة، اسم العميل، أو البريد الإلكتروني"
                        class="form-control">
             </div>
             
             <div class="filter-group">
-                <label>حالة الدفع:</label>
+                <label><i class="fas fa-money-check-alt"></i> حالة الدفع:</label>
                 <select name="status" class="form-control">
                     <option value="">جميع الحالات</option>
                     <option value="completed" {% if status_filter == 'completed' %}selected{% endif %}>مدفوعة</option>
@@ -69,16 +69,53 @@
                 </select>
             </div>
             
-            <button type="submit" class="btn btn-primary">
-                <i class="fas fa-search"></i>
-                بحث
-            </button>
+            <div class="filter-group">
+                <label><i class="fas fa-user-tag"></i> نوع العميل:</label>
+                <select name="customer_type" class="form-control">
+                    <option value="">جميع الأنواع</option>
+                    <option value="regular" {% if customer_type_filter == 'regular' %}selected{% endif %}>عادي</option>
+                    <option value="kyc" {% if customer_type_filter == 'kyc' %}selected{% endif %}>موثق</option>
+                    <option value="reseller" {% if customer_type_filter == 'reseller' %}selected{% endif %}>موزع</option>
+                </select>
+            </div>
             
-            <a href="{{ url_for('admin.invoices') }}" class="btn btn-secondary">
-                <i class="fas fa-refresh"></i>
-                إعادة تعيين
-            </a>
+            <div class="filter-buttons">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-search"></i>
+                    بحث
+                </button>
+                
+                <a href="{{ url_for('admin.invoices') }}" class="btn btn-secondary">
+                    <i class="fas fa-refresh"></i>
+                    إعادة تعيين
+                </a>
+            </div>
         </form>
+    </div>
+    
+    <!-- أدوات إضافية للفواتير -->
+    <div class="content-card">
+        <div class="bulk-actions">
+            <div class="bulk-selection">
+                <input type="checkbox" id="select-all" onchange="toggleAllInvoices()">
+                <label for="select-all">تحديد الكل</label>
+                <span id="selected-count">0 فاتورة محددة</span>
+            </div>
+            
+            <div class="bulk-buttons">
+                <button type="button" class="btn btn-success" onclick="downloadSelectedPDFs()" 
+                        id="download-selected" disabled>
+                    <i class="fas fa-download"></i>
+                    تحميل PDF المحددة
+                </button>
+                
+                <button type="button" class="btn btn-info" onclick="emailSelectedInvoices()" 
+                        id="email-selected" disabled>
+                    <i class="fas fa-envelope"></i>
+                    إرسال المحددة بالإيميل
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- جدول الفواتير -->
@@ -88,8 +125,12 @@
             <table class="data-table">
                 <thead>
                     <tr>
+                        <th>
+                            <input type="checkbox" id="select-all-header" onchange="toggleAllInvoices()">
+                        </th>
                         <th>رقم الفاتورة</th>
                         <th>العميل</th>
+                        <th>نوع العميل</th>
                         <th>رقم الطلب</th>
                         <th>المبلغ</th>
                         <th>العملة</th>
@@ -100,7 +141,10 @@
                 </thead>
                 <tbody>
                 {% for invoice in invoices.items %}
-                <tr>
+                <tr data-invoice-id="{{ invoice.id }}">
+                    <td>
+                        <input type="checkbox" class="invoice-checkbox" value="{{ invoice.id }}">
+                    </td>
                     <td>
                         <span class="invoice-number">{{ invoice.invoice_number }}</span>
                     </td>
@@ -109,6 +153,17 @@
                             <span class="customer-name">{{ invoice.customer_name or 'غير محدد' }}</span>
                             <small class="customer-email">{{ invoice.customer_email }}</small>
                         </div>
+                    </td>
+                    <td>
+                        <span class="badge badge-{{ 'info' if invoice.customer_type == 'kyc' else 'warning' if invoice.customer_type == 'reseller' else 'secondary' }}">
+                            {% if invoice.customer_type == 'kyc' %}
+                                موثق
+                            {% elif invoice.customer_type == 'reseller' %}
+                                موزع
+                            {% else %}
+                                عادي
+                            {% endif %}
+                        </span>
                     </td>
                     <td>
                         <a href="{{ url_for('admin.order_detail', order_id=invoice.order.id) }}" 
@@ -139,12 +194,10 @@
                                 <i class="fas fa-eye"></i>
                             </a>
                             
-                            {% if invoice.pdf_file_path %}
                             <a href="{{ url_for('main.download_invoice', invoice_id=invoice.id) }}" 
                                class="btn btn-sm btn-success" title="تحميل PDF">
                                 <i class="fas fa-download"></i>
                             </a>
-                            {% endif %}
                             
                             <button onclick="regenerateInvoicePDF({{ invoice.id }})" 
                                     class="btn btn-sm btn-warning" title="إعادة توليد PDF">
@@ -284,6 +337,72 @@
     color: #dc3545;
 }
 
+/* أدوات التحديد المجمع */
+.bulk-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    background: linear-gradient(135deg, #2c2c2c, #3a3a3a);
+    border-radius: 10px;
+    border: 1px solid #555;
+    margin-bottom: 20px;
+}
+
+.bulk-selection {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.bulk-selection input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #ff0033;
+}
+
+.bulk-selection label {
+    color: #fff;
+    font-weight: 600;
+    margin: 0;
+}
+
+#selected-count {
+    color: #ff0033;
+    font-weight: bold;
+    padding: 5px 10px;
+    background: rgba(255, 0, 51, 0.1);
+    border-radius: 5px;
+    border: 1px solid rgba(255, 0, 51, 0.3);
+}
+
+.bulk-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.bulk-buttons .btn {
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.bulk-buttons .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.bulk-buttons .btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+}
+
+.stat-card.danger .stat-icon {
+    color: #dc3545;
+}
+
 .stat-number {
     font-size: 2.5em;
     font-weight: bold;
@@ -320,6 +439,12 @@
     font-weight: bold;
     color: #fff;
     font-size: 0.9rem;
+}
+
+.filter-buttons {
+    display: flex;
+    gap: 10px;
+    align-items: center;
 }
 
 .invoice-number {
@@ -536,11 +661,253 @@
         padding: 6px 10px;
     }
 }
+
+/* إشعارات الإجراءات */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+    padding: 15px 20px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    max-width: 400px;
+    animation: slideInFromRight 0.3s ease-out;
+}
+
+.notification-success {
+    background: linear-gradient(135deg, #28a745, #20c997);
+}
+
+.notification-error {
+    background: linear-gradient(135deg, #dc3545, #c82333);
+}
+
+.notification-warning {
+    background: linear-gradient(135deg, #ffc107, #e0a800);
+    color: #212529;
+}
+
+.notification-close {
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    font-size: 1.2rem;
+    margin-left: auto;
+}
+
+@keyframes slideInFromRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* نافذة إدخال الإيميل */
+.email-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.email-modal {
+    background: linear-gradient(135deg, #2c3e50, #34495e);
+    border-radius: 15px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    border: 2px solid #ff0033;
+    animation: slideInFromTop 0.4s ease-out;
+}
+
+.email-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 25px;
+    border-bottom: 2px solid rgba(255, 0, 51, 0.3);
+    background: linear-gradient(135deg, #ff0033, #cc0029);
+    border-radius: 13px 13px 0 0;
+}
+
+.email-modal-header h3 {
+    color: white;
+    margin: 0;
+    font-size: 1.3rem;
+    font-weight: bold;
+}
+
+.email-modal-close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.8rem;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+}
+
+.email-modal-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: rotate(90deg);
+}
+
+.email-modal-body {
+    padding: 25px;
+}
+
+.email-modal-body label {
+    display: block;
+    color: #fff;
+    margin-bottom: 10px;
+    font-weight: bold;
+    font-size: 1rem;
+}
+
+.email-input {
+    width: 100%;
+    padding: 12px 15px;
+    border: 2px solid #555;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    direction: ltr;
+}
+
+.email-input:focus {
+    outline: none;
+    border-color: #ff0033;
+    background: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 0 10px rgba(255, 0, 51, 0.3);
+}
+
+.email-input::placeholder {
+    color: #ccc;
+}
+
+.email-error {
+    display: none;
+    color: #ff6b6b;
+    margin-top: 8px;
+    font-size: 0.9rem;
+    font-weight: bold;
+    padding: 8px;
+    background: rgba(255, 107, 107, 0.1);
+    border: 1px solid rgba(255, 107, 107, 0.3);
+    border-radius: 5px;
+}
+
+.email-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+    padding: 20px 25px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 0 0 13px 13px;
+}
+
+.email-modal-footer .btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.email-modal-footer .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.bulk-info {
+    background: linear-gradient(135deg, rgba(255, 0, 51, 0.1), rgba(255, 0, 51, 0.05));
+    border: 1px solid rgba(255, 0, 51, 0.3);
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+    color: #fff;
+}
+
+.bulk-info i {
+    color: #ff0033;
+    margin-right: 8px;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideInFromTop {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
 </style>
 {% endblock %}
 
 {% block extra_js %}
 <script>
+// إضافة دالة إظهار الإشعارات
+function showNotification(type, message) {
+    // إنشاء عنصر الإشعار
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'times-circle' : 'exclamation-triangle'}"></i>
+        <span>${message}</span>
+        <button type="button" class="notification-close" onclick="this.parentElement.remove()">
+            <i class="fas fa-times"></i>
+        </button>
+    `;
+    
+    // إضافة الإشعار للصفحة
+    document.body.appendChild(notification);
+    
+    // إزالة الإشعار تلقائياً بعد 5 ثوانٍ
+    setTimeout(() => {
+        if (notification.parentElement) {
+            notification.remove();
+        }
+    }, 5000);
+}
+
 function regenerateInvoicePDF(invoiceId) {
     if (!confirm('هل أنت متأكد من إعادة توليد ملف PDF للفاتورة؟')) {
         return;
@@ -577,37 +944,244 @@ function regenerateInvoicePDF(invoiceId) {
 }
 
 function sendInvoiceEmail(invoiceId) {
-    if (!confirm('هل أنت متأكد من إرسال الفاتورة عبر البريد الإلكتروني؟')) {
+    // إظهار نافذة إدخال الإيميل مع تصميم جميل
+    showEmailModal(invoiceId);
+}
+
+// دالة إظهار نافذة إدخال الإيميل
+function showEmailModal(invoiceId) {
+    // إنشاء النافذة المنبثقة
+    const modal = document.createElement('div');
+    modal.className = 'email-modal-overlay';
+    modal.innerHTML = `
+        <div class="email-modal">
+            <div class="email-modal-header">
+                <h3><i class="fas fa-envelope"></i> إرسال الفاتورة</h3>
+                <button class="email-modal-close" onclick="closeEmailModal()">&times;</button>
+            </div>
+            <div class="email-modal-body">
+                <label for="email-input">البريد الإلكتروني:</label>
+                <input type="email" id="email-input" class="email-input" 
+                       placeholder="أدخل البريد الإلكتروني" 
+                       autocomplete="email">
+                <div class="email-error" id="email-error"></div>
+            </div>
+            <div class="email-modal-footer">
+                <button class="btn btn-secondary" onclick="closeEmailModal()">
+                    <i class="fas fa-times"></i> إلغاء
+                </button>
+                <button class="btn btn-primary" onclick="sendEmailFromModal(${invoiceId})" id="send-email-btn">
+                    <i class="fas fa-paper-plane"></i> إرسال
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // التركيز على حقل الإدخال
+    setTimeout(() => {
+        document.getElementById('email-input').focus();
+    }, 100);
+    
+    // إغلاق النافذة عند الضغط على الخلفية
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            closeEmailModal();
+        }
+    });
+}
+
+// دالة إغلاق النافذة
+function closeEmailModal() {
+    const modal = document.querySelector('.email-modal-overlay');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+// دالة إرسال الإيميل من النافذة
+function sendEmailFromModal(invoiceId) {
+    const emailInput = document.getElementById('email-input');
+    const errorDiv = document.getElementById('email-error');
+    const sendBtn = document.getElementById('send-email-btn');
+    const email = emailInput.value.trim();
+    
+    // إخفاء الأخطاء السابقة
+    errorDiv.textContent = '';
+    errorDiv.style.display = 'none';
+    
+    // التحقق من الإيميل
+    if (!email) {
+        showEmailError('يرجى إدخال البريد الإلكتروني');
         return;
     }
     
-    const btn = event.target.closest('button');
-    const originalText = btn.innerHTML;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإرسال...';
-    btn.disabled = true;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        showEmailError('يرجى إدخال بريد إلكتروني صحيح');
+        return;
+    }
     
+    // إظهار مؤشر التحميل
+    const originalText = sendBtn.innerHTML;
+    sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإرسال...';
+    sendBtn.disabled = true;
+    emailInput.disabled = true;
+    
+    // إرسال الطلب
     fetch(`/admin/invoice/${invoiceId}/send-email`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-        }
+        },
+        body: JSON.stringify({
+            email: email
+        })
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
             showNotification('success', data.message);
+            closeEmailModal();
         } else {
-            showNotification('error', data.message);
+            showEmailError(data.message);
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        showNotification('error', 'حدث خطأ في إرسال البريد الإلكتروني');
+        showEmailError('حدث خطأ في إرسال البريد الإلكتروني');
     })
     .finally(() => {
-        btn.innerHTML = originalText;
-        btn.disabled = false;
+        sendBtn.innerHTML = originalText;
+        sendBtn.disabled = false;
+        emailInput.disabled = false;
     });
+}
+
+// دالة إظهار خطأ في النافذة
+function showEmailError(message) {
+    const errorDiv = document.getElementById('email-error');
+    errorDiv.textContent = message;
+    errorDiv.style.display = 'block';
+}
+
+// دالة إظهار نافذة الإرسال المجمع
+function showBulkEmailModal(selectedIds) {
+    // إنشاء النافذة المنبثقة للإرسال المجمع
+    const modal = document.createElement('div');
+    modal.className = 'email-modal-overlay';
+    modal.innerHTML = `
+        <div class="email-modal">
+            <div class="email-modal-header">
+                <h3><i class="fas fa-envelope-open-text"></i> إرسال ${selectedIds.length} فاتورة</h3>
+                <button class="email-modal-close" onclick="closeEmailModal()">&times;</button>
+            </div>
+            <div class="email-modal-body">
+                <div class="bulk-info">
+                    <p><i class="fas fa-info-circle"></i> سيتم إرسال ${selectedIds.length} فاتورة إلى البريد الإلكتروني المحدد</p>
+                </div>
+                <label for="bulk-email-input">البريد الإلكتروني:</label>
+                <input type="email" id="bulk-email-input" class="email-input" 
+                       placeholder="أدخل البريد الإلكتروني" 
+                       autocomplete="email">
+                <div class="email-error" id="bulk-email-error"></div>
+            </div>
+            <div class="email-modal-footer">
+                <button class="btn btn-secondary" onclick="closeEmailModal()">
+                    <i class="fas fa-times"></i> إلغاء
+                </button>
+                <button class="btn btn-primary" onclick="sendBulkEmailFromModal([${selectedIds.join(',')}])" id="send-bulk-email-btn">
+                    <i class="fas fa-paper-plane"></i> إرسال الكل
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // التركيز على حقل الإدخال
+    setTimeout(() => {
+        document.getElementById('bulk-email-input').focus();
+    }, 100);
+    
+    // إغلاق النافذة عند الضغط على الخلفية
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            closeEmailModal();
+        }
+    });
+}
+
+// دالة إرسال الفواتير المجمعة من النافذة
+function sendBulkEmailFromModal(selectedIds) {
+    const emailInput = document.getElementById('bulk-email-input');
+    const errorDiv = document.getElementById('bulk-email-error');
+    const sendBtn = document.getElementById('send-bulk-email-btn');
+    const email = emailInput.value.trim();
+    
+    // إخفاء الأخطاء السابقة
+    errorDiv.textContent = '';
+    errorDiv.style.display = 'none';
+    
+    // التحقق من الإيميل
+    if (!email) {
+        showBulkEmailError('يرجى إدخال البريد الإلكتروني');
+        return;
+    }
+    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        showBulkEmailError('يرجى إدخال بريد إلكتروني صحيح');
+        return;
+    }
+    
+    // إظهار مؤشر التحميل
+    const originalText = sendBtn.innerHTML;
+    sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإرسال...';
+    sendBtn.disabled = true;
+    emailInput.disabled = true;
+    
+    // إرسال الطلب
+    fetch('/admin/invoices/bulk-email', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            invoice_ids: selectedIds,
+            email: email
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('success', `تم إرسال ${data.sent_count} فاتورة بنجاح إلى ${email}`);
+            if (data.failed_count > 0) {
+                showNotification('warning', `فشل في إرسال ${data.failed_count} فاتورة`);
+            }
+            closeEmailModal();
+            updateBulkActions(); // إعادة تحديث حالة الأزرار
+        } else {
+            showBulkEmailError(data.message || 'حدث خطأ في الإرسال');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showBulkEmailError('حدث خطأ في إرسال الفواتير');
+    })
+    .finally(() => {
+        sendBtn.innerHTML = originalText;
+        sendBtn.disabled = false;
+        emailInput.disabled = false;
+    });
+}
+
+// دالة إظهار خطأ في نافذة الإرسال المجمع
+function showBulkEmailError(message) {
+    const errorDiv = document.getElementById('bulk-email-error');
+    errorDiv.textContent = message;
+    errorDiv.style.display = 'block';
 }
 
 // تأثيرات إضافية عند تحميل الصفحة
@@ -634,7 +1208,117 @@ document.addEventListener('DOMContentLoaded', function() {
             this.style.transform = '';
         });
     });
+    
+    // مراقبة التحديد المجمع
+    const checkboxes = document.querySelectorAll('.invoice-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateBulkActions);
+    });
 });
+
+// التحديد المجمع
+function toggleAllInvoices() {
+    const selectAllCheckbox = document.getElementById('select-all') || document.getElementById('select-all-header');
+    const checkboxes = document.querySelectorAll('.invoice-checkbox');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectAllCheckbox.checked;
+    });
+    
+    updateBulkActions();
+}
+
+function updateBulkActions() {
+    const selectedCheckboxes = document.querySelectorAll('.invoice-checkbox:checked');
+    const selectedCount = selectedCheckboxes.length;
+    
+    // تحديث العداد
+    const countElement = document.getElementById('selected-count');
+    if (countElement) {
+        countElement.textContent = `${selectedCount} فاتورة محددة`;
+    }
+    
+    // تفعيل/إلغاء تفعيل الأزرار
+    const downloadBtn = document.getElementById('download-selected');
+    const emailBtn = document.getElementById('email-selected');
+    
+    if (downloadBtn) downloadBtn.disabled = selectedCount === 0;
+    if (emailBtn) emailBtn.disabled = selectedCount === 0;
+}
+
+// تحميل ملفات PDF المحددة
+function downloadSelectedPDFs() {
+    const selectedCheckboxes = document.querySelectorAll('.invoice-checkbox:checked');
+    const selectedIds = Array.from(selectedCheckboxes).map(cb => cb.value);
+    
+    if (selectedIds.length === 0) {
+        showNotification('warning', 'يرجى تحديد فاتورة واحدة على الأقل');
+        return;
+    }
+    
+    if (!confirm(`هل تريد تحميل ${selectedIds.length} ملف PDF؟`)) {
+        return;
+    }
+    
+    // إظهار مؤشر التحميل
+    const btn = document.getElementById('download-selected');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري التحضير...';
+    btn.disabled = true;
+    
+    // طلب إنشاء ملف ZIP مع جميع ملفات PDF
+    fetch('/admin/invoices/bulk-download', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            invoice_ids: selectedIds
+        })
+    })
+    .then(response => {
+        if (response.ok) {
+            return response.blob();
+        }
+        throw new Error('فشل في تحميل الملفات');
+    })
+    .then(blob => {
+        // إنشاء رابط تحميل
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = `invoices_${new Date().toISOString().slice(0, 10)}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        
+        showNotification('success', 'تم تحميل ملفات PDF بنجاح');
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('error', 'حدث خطأ في تحميل الملفات');
+    })
+    .finally(() => {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+        updateBulkActions(); // إعادة تحديث حالة الأزرار
+    });
+}
+
+// إرسال الفواتير المحددة بالإيميل
+function emailSelectedInvoices() {
+    const selectedCheckboxes = document.querySelectorAll('.invoice-checkbox:checked');
+    const selectedIds = Array.from(selectedCheckboxes).map(cb => cb.value);
+    
+    if (selectedIds.length === 0) {
+        showNotification('warning', 'يرجى تحديد فاتورة واحدة على الأقل');
+        return;
+    }
+    
+    // إظهار نافذة إدخال الإيميل للإرسال المجمع
+    showBulkEmailModal(selectedIds);
+}
 
 // CSS Animation Class
 const style = document.createElement('style');

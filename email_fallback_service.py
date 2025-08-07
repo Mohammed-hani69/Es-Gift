@@ -27,6 +27,7 @@ class FallbackEmailService:
         self.smtp_port = 587
         self.sender_email = "noreply@es-gift.com"
         self.sender_password = "your-app-password"  # يجب تعديل هذا
+        self.sender_name = "ES-GIFT"
         
     def generate_verification_code(self, length: int = 6) -> str:
         """توليد كود التحقق"""
@@ -88,7 +89,7 @@ class FallbackEmailService:
             # إنشاء الرسالة
             msg = MIMEMultipart('alternative')
             msg['Subject'] = subject
-            msg['From'] = self.sender_email
+            msg['From'] = f"{self.sender_name} <{self.sender_email}>"
             msg['To'] = email
             
             # إضافة المحتوى

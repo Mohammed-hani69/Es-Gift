@@ -6,6 +6,8 @@ from sqlalchemy import extract, func
 import os
 import json
 import requests
+import zipfile
+import tempfile
 from werkzeug.security import generate_password_hash
 import matplotlib
 matplotlib.use('Agg')  # استخدام backend غير تفاعلي
@@ -665,6 +667,7 @@ def invoices():
     
     page = request.args.get('page', 1, type=int)
     status_filter = request.args.get('status', '')
+    customer_type_filter = request.args.get('customer_type', '')
     search_query = request.args.get('search', '')
     
     query = Invoice.query
@@ -672,6 +675,9 @@ def invoices():
     # تطبيق الفلاتر
     if status_filter:
         query = query.filter(Invoice.payment_status == status_filter)
+    
+    if customer_type_filter:
+        query = query.filter(Invoice.customer_type == customer_type_filter)
     
     if search_query:
         query = query.filter(
@@ -699,6 +705,7 @@ def invoices():
                          invoices=invoices, 
                          stats=stats,
                          status_filter=status_filter,
+                         customer_type_filter=customer_type_filter,
                          search_query=search_query)
 
 @admin.route('/invoice/<int:invoice_id>')
@@ -723,12 +730,12 @@ def regenerate_invoice_pdf(invoice_id):
         return jsonify({'success': False, 'message': 'غير مصرح'})
     
     try:
-        from modern_invoice_service import ModernInvoiceService
+        from premium_english_invoice_service import PremiumEnglishInvoiceService as ModernInvoiceService
         
         invoice = Invoice.query.get_or_404(invoice_id)
         
         # إعادة توليد ملف PDF بتصميم حديث
-        pdf_path = ModernInvoiceService.generate_modern_pdf(invoice)
+        pdf_path = ModernInvoiceService.generate_enhanced_pdf(invoice)
         if pdf_path:
             invoice.pdf_file_path = pdf_path
             db.session.commit()
@@ -756,17 +763,29 @@ def send_invoice_email(invoice_id):
         return jsonify({'success': False, 'message': 'غير مصرح'})
     
     try:
-        from modern_invoice_service import ModernInvoiceService
+        data = request.get_json()
+        email = data.get('email') if data else None
+        
+        from premium_english_invoice_service import PremiumEnglishInvoiceService as ModernInvoiceService
         
         invoice = Invoice.query.get_or_404(invoice_id)
         
+        # استخدام الإيميل المرسل من الواجهة أو إيميل العميل الافتراضي
+        target_email = email or invoice.customer_email
+        
+        if not target_email:
+            return jsonify({
+                'success': False, 
+                'message': 'لا يوجد بريد إلكتروني محدد للإرسال'
+            })
+        
         # إرسال الفاتورة عبر البريد الإلكتروني
-        success = ModernInvoiceService.send_invoice_email(invoice)
+        success = ModernInvoiceService.send_invoice_email(invoice, target_email)
         
         if success:
             return jsonify({
                 'success': True, 
-                'message': f'تم إرسال الفاتورة بنجاح إلى {invoice.customer_email}'
+                'message': f'تم إرسال الفاتورة بنجاح إلى {target_email}'
             })
         else:
             return jsonify({
@@ -776,39 +795,189 @@ def send_invoice_email(invoice_id):
             
     except Exception as e:
         return jsonify({'success': False, 'message': f'حدث خطأ: {str(e)}'})
-        for item in order.items:
-            for code in item.product.codes.filter_by(order_id=order.id):
-                purchased_codes.append({
-                    'اسم المنتج': item.product.name,
-                    'الكود': code.code,
-                    'الرقم التسلسلي': code.serial_number or '',
-                    'التعليمات': item.product.instructions or '',
-                    'السعر': float(item.price),
-                    'العملة': order.currency
-                })
+
+@admin.route('/invoices/bulk-download', methods=['POST'])
+@login_required
+@requires_page_access('admin.invoices')
+def bulk_download_invoices():
+    """تحميل ملفات PDF للفواتير المحددة في ملف ZIP"""
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'غير مصرح'}), 403
+    
+    try:
+        import tempfile
+        import zipfile
+        import os
+        from datetime import datetime
+        from flask import send_file, after_this_request
         
-        # إنشاء ملف Excel وإرساله
-        excel_path = ExcelReportService.create_order_excel(order, purchased_codes)
-        if excel_path:
-            success = ExcelReportService.send_order_email_with_excel(order, purchased_codes, excel_path)
-            if success:
-                return jsonify({
-                    'success': True, 
-                    'message': 'تم إرسال الفاتورة عبر البريد الإلكتروني بنجاح'
-                })
-            else:
-                return jsonify({
-                    'success': False, 
-                    'message': 'فشل في إرسال البريد الإلكتروني'
-                })
-        else:
-            return jsonify({
-                'success': False, 
-                'message': 'فشل في إنشاء ملف Excel'
-            })
+        data = request.get_json()
+        invoice_ids = data.get('invoice_ids', [])
+        
+        if not invoice_ids:
+            return jsonify({'success': False, 'message': 'لم يتم تحديد أي فواتير'}), 400
+        
+        from premium_english_invoice_service import PremiumEnglishInvoiceService as ModernInvoiceService
+        
+        # إنشاء ملف ZIP مؤقت
+        temp_zip_fd, temp_zip_path = tempfile.mkstemp(suffix='.zip')
+        
+        try:
+            with zipfile.ZipFile(temp_zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                added_files = 0
+                
+                for invoice_id in invoice_ids:
+                    try:
+                        invoice = Invoice.query.get(invoice_id)
+                        if invoice:
+                            # التأكد من وجود ملف PDF أو إنشاؤه
+                            if not invoice.pdf_file_path:
+                                pdf_path = ModernInvoiceService.generate_enhanced_pdf(invoice)
+                                if pdf_path:
+                                    invoice.pdf_file_path = pdf_path
+                                    db.session.commit()
+                            
+                            # إضافة الملف إلى ZIP
+                            if invoice.pdf_file_path:
+                                # بناء المسار الكامل للملف
+                                pdf_full_path = os.path.join(current_app.static_folder, invoice.pdf_file_path)
+                                
+                                if os.path.exists(pdf_full_path):
+                                    filename = f"invoice_{invoice.invoice_number}.pdf"
+                                    zipf.write(pdf_full_path, filename)
+                                    added_files += 1
+                                    print(f"✅ Added file: {filename}")
+                                else:
+                                    # إعادة إنشاء الملف إذا لم يكن موجوداً
+                                    pdf_path = ModernInvoiceService.generate_enhanced_pdf(invoice)
+                                    if pdf_path:
+                                        invoice.pdf_file_path = pdf_path
+                                        db.session.commit()
+                                        pdf_full_path = os.path.join(current_app.static_folder, pdf_path)
+                                        if os.path.exists(pdf_full_path):
+                                            filename = f"invoice_{invoice.invoice_number}.pdf"
+                                            zipf.write(pdf_full_path, filename)
+                                            added_files += 1
+                                            print(f"✅ Regenerated and added: {filename}")
+                    except Exception as e:
+                        current_app.logger.error(f"خطأ في معالجة الفاتورة {invoice_id}: {str(e)}")
+                        print(f"❌ Error processing invoice {invoice_id}: {e}")
+                        continue
+                
+                if added_files == 0:
+                    os.close(temp_zip_fd)
+                    os.unlink(temp_zip_path)
+                    return jsonify({'success': False, 'message': 'لا توجد ملفات PDF متاحة'}), 400
+            
+            os.close(temp_zip_fd)
+            
+            # إرسال ملف ZIP
+            zip_filename = f'ES-GIFT_Invoices_{datetime.now().strftime("%Y%m%d_%H%M%S")}.zip'
+            
+            @after_this_request
+            def cleanup(response):
+                try:
+                    if os.path.exists(temp_zip_path):
+                        os.unlink(temp_zip_path)
+                        print(f"🗑️ Cleaned up temporary ZIP file")
+                except:
+                    pass
+                return response
+            
+            response = send_file(
+                temp_zip_path,
+                as_attachment=True,
+                download_name=zip_filename,
+                mimetype='application/zip'
+            )
+            
+            print(f"✅ ZIP file created with {added_files} invoices: {zip_filename}")
+            return response
+            
+        except Exception as zip_error:
+            try:
+                os.close(temp_zip_fd)
+            except:
+                pass
+            if os.path.exists(temp_zip_path):
+                os.unlink(temp_zip_path)
+            raise zip_error
             
     except Exception as e:
-        return jsonify({'success': False, 'message': f'حدث خطأ: {str(e)}'})
+        current_app.logger.error(f"خطأ في تحميل الفواتير المجمع: {str(e)}")
+        print(f"❌ Bulk download error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'حدث خطأ: {str(e)}'}), 500
+
+@admin.route('/invoices/bulk-email', methods=['POST'])
+@login_required
+@requires_page_access('admin.invoices')
+def bulk_email_invoices():
+    """إرسال الفواتير المحددة عبر البريد الإلكتروني"""
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'غير مصرح'}), 403
+    
+    try:
+        data = request.get_json()
+        invoice_ids = data.get('invoice_ids', [])
+        target_email = data.get('email')  # الإيميل المحدد من المستخدم
+        
+        if not invoice_ids:
+            return jsonify({'success': False, 'message': 'لم يتم تحديد أي فواتير'}), 400
+        
+        if not target_email:
+            return jsonify({'success': False, 'message': 'لم يتم تحديد بريد إلكتروني للإرسال'}), 400
+        
+        from premium_english_invoice_service import PremiumEnglishInvoiceService as ModernInvoiceService
+        
+        sent_count = 0
+        failed_count = 0
+        
+        for invoice_id in invoice_ids:
+            try:
+                invoice = Invoice.query.get(invoice_id)
+                if invoice:
+                    # التأكد من وجود ملف PDF
+                    if not invoice.pdf_file_path:
+                        pdf_path = ModernInvoiceService.generate_enhanced_pdf(invoice)
+                        if pdf_path:
+                            invoice.pdf_file_path = pdf_path
+                            db.session.commit()
+                    elif invoice.pdf_file_path:
+                        # التحقق من وجود الملف
+                        pdf_full_path = os.path.join(current_app.static_folder, invoice.pdf_file_path)
+                        if not os.path.exists(pdf_full_path):
+                            # إعادة إنشاء الملف إذا لم يكن موجوداً
+                            pdf_path = ModernInvoiceService.generate_enhanced_pdf(invoice)
+                            if pdf_path:
+                                invoice.pdf_file_path = pdf_path
+                                db.session.commit()
+                    
+                    # إرسال الفاتورة
+                    success = ModernInvoiceService.send_invoice_email(invoice, target_email)
+                    
+                    if success:
+                        sent_count += 1
+                    else:
+                        failed_count += 1
+                        
+                else:
+                    failed_count += 1
+            except Exception as e:
+                current_app.logger.error(f"خطأ في إرسال الفاتورة {invoice_id}: {str(e)}")
+                failed_count += 1
+        
+        return jsonify({
+            'success': True,
+            'message': f'تم إرسال {sent_count} فاتورة بنجاح',
+            'sent_count': sent_count,
+            'failed_count': failed_count
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f"خطأ في الإرسال المجمع للفواتير: {str(e)}")
+        return jsonify({'success': False, 'message': f'حدث خطأ: {str(e)}'}), 500
 
 @admin.route('/articles')
 @login_required

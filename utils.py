@@ -163,7 +163,7 @@ def _send_email_fallback(to_email, subject, body):
         
         msg = Message(
             subject=subject,
-            sender=current_app.config['MAIL_USERNAME'],
+            sender=current_app.config['MAIL_DEFAULT_SENDER'],
             recipients=[to_email]
         )
         msg.html = body

@@ -297,40 +297,50 @@ def get_user_spending_summary(user_id):
 
 def update_user_limits(user_id, daily_limit=None, monthly_limit=None, notes=None, admin_id=None):
     """تحديث حدود المستخدم"""
-    user_limits = get_user_limits(user_id)
-    if not user_limits:
+    try:
+        user_limits = get_user_limits(user_id)
+        if not user_limits:
+            print(f"لم يتم العثور على حدود للمستخدم {user_id}")
+            return False
+        
+        print(f"تحديث حدود المستخدم {user_id}: يومي={daily_limit}, شهري={monthly_limit}")
+        
+        if daily_limit is not None:
+            user_limits.daily_limit_usd = Decimal(str(daily_limit))
+            user_limits.is_custom = True
+        
+        if monthly_limit is not None:
+            user_limits.monthly_limit_usd = Decimal(str(monthly_limit))
+            user_limits.is_custom = True
+        
+        if notes is not None:
+            user_limits.notes = notes
+        
+        user_limits.updated_at = datetime.utcnow()
+        
+        # تسجيل المعاملة
+        if admin_id:
+            transaction = WalletTransaction(
+                user_id=user_id,
+                transaction_type='limit_update',
+                amount_usd=0.00,
+                amount_original=0.00,
+                currency_code='USD',
+                exchange_rate=1.0,
+                description=f"تحديث الحدود - يومي: {daily_limit}, شهري: {monthly_limit}",
+                reference_type='admin_update',
+                status='completed'
+            )
+            db.session.add(transaction)
+        
+        db.session.commit()
+        print(f"تم تحديث حدود المستخدم {user_id} بنجاح")
+        return True
+        
+    except Exception as e:
+        print(f"خطأ في update_user_limits: {str(e)}")
+        db.session.rollback()
         return False
-    
-    if daily_limit is not None:
-        user_limits.daily_limit_usd = Decimal(str(daily_limit))
-        user_limits.is_custom = True
-    
-    if monthly_limit is not None:
-        user_limits.monthly_limit_usd = Decimal(str(monthly_limit))
-        user_limits.is_custom = True
-    
-    if notes is not None:
-        user_limits.notes = notes
-    
-    user_limits.updated_at = datetime.utcnow()
-    
-    # تسجيل المعاملة
-    if admin_id:
-        transaction = WalletTransaction(
-            user_id=user_id,
-            transaction_type='limit_update',
-            amount_usd=0.00,
-            amount_original=0.00,
-            currency_code='USD',
-            exchange_rate=1.0,
-            description=f"تحديث الحدود - يومي: {daily_limit}, شهري: {monthly_limit}",
-            reference_type='admin_update',
-            status='completed'
-        )
-        db.session.add(transaction)
-    
-    db.session.commit()
-    return True
 
 def get_user_balance(user_id, currency_code='USD'):
     """الحصول على رصيد المستخدم في عملة معينة"""
