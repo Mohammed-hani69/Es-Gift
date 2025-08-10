@@ -690,6 +690,59 @@ def profile():
                          recent_orders=recent_orders,
                          recent_invoices=recent_invoices)
 
+@main.route('/edit-profile', methods=['GET', 'POST'])
+@login_required
+def edit_profile():
+    """تعديل البيانات الشخصية للمستخدم (ما عدا البريد الإلكتروني)"""
+    if request.method == 'POST':
+        try:
+            # جمع البيانات من النموذج
+            full_name = request.form.get('full_name', '').strip()
+            phone = request.form.get('phone', '').strip()
+            nationality = request.form.get('nationality', '').strip()
+            birth_date_str = request.form.get('birth_date', '').strip()
+            
+            # التحقق من صحة البيانات
+            if not full_name:
+                flash('الاسم الكامل مطلوب', 'error')
+                return redirect(url_for('main.edit_profile'))
+            
+            # التحقق من رقم الهاتف (إذا تم إدخاله)
+            if phone:
+                # إزالة المسافات والرموز غير الرقمية
+                phone_clean = re.sub(r'[^\d+]', '', phone)
+                if len(phone_clean) < 7:
+                    flash('رقم الهاتف قصير جداً', 'error')
+                    return redirect(url_for('main.edit_profile'))
+                phone = phone_clean
+            
+            # تحديث البيانات
+            current_user.full_name = full_name
+            current_user.phone = phone if phone else None
+            current_user.nationality = nationality if nationality else None
+            
+            # تحويل تاريخ الميلاد
+            if birth_date_str:
+                try:
+                    current_user.birth_date = datetime.strptime(birth_date_str, '%Y-%m-%d').date()
+                except ValueError:
+                    flash('تاريخ الميلاد غير صحيح', 'error')
+                    return redirect(url_for('main.edit_profile'))
+            
+            # حفظ التغييرات
+            db.session.commit()
+            
+            flash('تم تحديث بياناتك بنجاح', 'success')
+            return redirect(url_for('main.profile'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'حدث خطأ أثناء تحديث البيانات: {str(e)}', 'error')
+            return redirect(url_for('main.edit_profile'))
+    
+    # عرض صفحة التعديل
+    return render_template('edit_profile.html', user=current_user)
+
 @main.route('/my-orders')
 @login_required
 def my_orders():
@@ -2846,3 +2899,100 @@ def order_confirmation(order_id):
         abort(403)
     
     return render_template('order_confirmation.html', order=order)
+
+@main.route('/charge')
+def charge_page():
+    """صفحة الشحن"""
+    return render_template('charge.html')
+
+@main.route('/api/start-charge', methods=['POST'])
+def start_charge():
+    """API لبدء عملية الشحن"""
+    try:
+        data = request.get_json()
+        
+        # التحقق من البيانات المطلوبة
+        required_fields = ['gameType', 'email', 'password', 'chargeCode']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({
+                    'success': False,
+                    'error': f'الحقل {field} مطلوب'
+                }), 400
+        
+        # استدعاء البوت
+        import requests
+        import uuid
+        
+        # إنشاء معرف جلسة فريد
+        session_id = str(uuid.uuid4())[:8]
+        
+        # إرسال طلب للبوت
+        bot_url = 'http://127.0.0.1:5000/api/bot/login'
+        bot_data = {
+            'email': data['email'],
+            'password': data['password'],
+            'game_type': data['gameType'],
+            'charge_code': data['chargeCode'],
+            'session_id': session_id
+        }
+        
+        response = requests.post(bot_url, json=bot_data, timeout=10)
+        
+        if response.status_code == 200:
+            bot_response = response.json()
+            return jsonify({
+                'success': True,
+                'sessionId': session_id,
+                'message': 'تم بدء عملية الشحن بنجاح',
+                'progress': 0,
+                'status': 'running'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'فشل في الاتصال بخدمة البوت'
+            }), 500
+            
+    except requests.exceptions.ConnectionError:
+        return jsonify({
+            'success': False,
+            'error': 'خدمة البوت غير متاحة حالياً'
+        }), 503
+    except Exception as e:
+        logger.error(f"خطأ في بدء عملية الشحن: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'حدث خطأ في النظام'
+        }), 500
+
+@main.route('/api/charge-status/<session_id>')
+def charge_status(session_id):
+    """API لتتبع حالة عملية الشحن"""
+    try:
+        # طلب حالة الجلسة من البوت
+        bot_url = f'http://127.0.0.1:5000/api/session/{session_id}/status'
+        response = requests.get(bot_url, timeout=5)
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return jsonify({
+                'status': 'unknown',
+                'progress': 0,
+                'error': 'لا يمكن الحصول على حالة الجلسة'
+            })
+            
+    except requests.exceptions.ConnectionError:
+        return jsonify({
+            'status': 'error',
+            'progress': 0,
+            'error': 'خدمة البوت غير متاحة'
+        })
+    except Exception as e:
+        logger.error(f"خطأ في تتبع حالة الشحن: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'progress': 0,
+            'error': 'خطأ في النظام'
+        })

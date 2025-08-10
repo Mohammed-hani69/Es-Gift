@@ -224,9 +224,8 @@ class PremiumEnglishInvoiceService:
             # Header with logo and red background
             header_data = []
             
-            # Try to add logo and stamp if they exist
+            # Try to add logo only (no stamp in header)
             logo_path = os.path.join(current_app.static_folder, 'images', 'logo.jpg')
-            stamp_path = os.path.join(current_app.static_folder, 'images', 'es pay llc.jpg')
             
             # Load logo
             logo_element = None
@@ -239,19 +238,9 @@ class PremiumEnglishInvoiceService:
             else:
                 logo_element = '🎁'
             
-            # Load stamp
-            stamp_element = ''
-            if os.path.exists(stamp_path):
-                try:
-                    stamp_element = Image(stamp_path, width=50, height=50)
-                    print("✅ ES Pay LLC stamp loaded successfully")
-                except Exception as e:
-                    print(f"Could not load stamp: {e}")
-                    stamp_element = ''
-            
-            # Create header with logo and stamp
+            # Create header with logo only
             header_data = [
-                [logo_element, 'ES-GIFT', stamp_element],
+                [logo_element, 'ES-GIFT', ''],
                 ['', 'Digital Gift Cards & Payment Services', ''],
                 ['', f'📧 business@es-gift.com  |  📱 +966123456789  |  🌐 www.es-gift.com', '']
             ]
@@ -305,7 +294,7 @@ class PremiumEnglishInvoiceService:
             story.append(invoice_header_table)
             story.append(Spacer(1, 20))
             
-            # Bill to and Company info with stamp
+            # Bill to and Company info (no stamp here)
             company_info_text = (
                 f"ES-GIFT Digital Services\n"
                 f"Kingdom of Saudi Arabia\n"
@@ -314,42 +303,8 @@ class PremiumEnglishInvoiceService:
                 f"www.es-gift.com"
             )
             
-            # Try to add stamp to company info section
-            stamp_path = os.path.join(current_app.static_folder, 'images', 'es pay llc.jpg')
-            company_info_with_stamp = company_info_text
-            
-            if os.path.exists(stamp_path):
-                try:
-                    # Create a small stamp for company info section
-                    company_stamp = Image(stamp_path, width=40, height=40)
-                    
-                    # Create company info with stamp layout
-                    company_info_data = [
-                        [company_info_text, company_stamp]
-                    ]
-                    
-                    company_info_table = Table(company_info_data, colWidths=[2.5*inch, 0.8*inch])
-                    company_info_table.setStyle(TableStyle([
-                        ('FONTNAME', (0, 0), (0, 0), CUSTOM_FONT),
-                        ('FONTSIZE', (0, 0), (0, 0), 10),
-                        ('TEXTCOLOR', (0, 0), (0, 0), black),
-                        ('ALIGN', (0, 0), (0, 0), 'LEFT'),
-                        ('ALIGN', (1, 0), (1, 0), 'CENTER'),
-                        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-                        ('TOPPADDING', (0, 0), (-1, -1), 0),
-                        ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
-                        ('LEFTPADDING', (0, 0), (-1, -1), 0),
-                        ('RIGHTPADDING', (0, 0), (-1, -1), 0),
-                    ]))
-                    
-                    company_info_final = company_info_table
-                    print("✅ ES Pay LLC stamp added to company info section")
-                    
-                except Exception as e:
-                    print(f"Could not load company stamp: {e}")
-                    company_info_final = company_info_text
-            else:
-                company_info_final = company_info_text
+            # Use company info text directly without stamp
+            company_info_final = company_info_text
             
             bill_to_data = [
                 ['BILL TO:', 'COMPANY INFO:'],
@@ -494,10 +449,11 @@ class PremiumEnglishInvoiceService:
             
             # Payment status
             payment_status_text, payment_color, payment_emoji = PremiumEnglishInvoiceService._get_payment_status_info(invoice.payment_status)
+            payment_method_clean = PremiumEnglishInvoiceService._get_payment_method_english(invoice.payment_method)
             
             status_data = [
                 ['PAYMENT STATUS', 'PAYMENT METHOD'],
-                [f'{payment_emoji} {payment_status_text}', f'{invoice.payment_method.upper() if invoice.payment_method else "DIGITAL PAYMENT"}']
+                [f'{payment_emoji} {payment_status_text}', payment_method_clean]
             ]
             
             if invoice.paid_date:
@@ -546,33 +502,37 @@ class PremiumEnglishInvoiceService:
                 fontName=CUSTOM_FONT
             )
             
-            # Add company stamp at the bottom
+            # Add company stamp at the bottom (larger size, centered, no background)
             stamp_path = os.path.join(current_app.static_folder, 'images', 'es pay llc.jpg')
             if os.path.exists(stamp_path):
                 try:
-                    stamp_footer = Image(stamp_path, width=60, height=60)
+                    # Create larger stamp for footer (increased size)
+                    stamp_footer = Image(stamp_path, width=120, height=100)
                     
-                    # Create footer table with stamp
+                    # Create centered footer layout with stamp only
                     footer_data = [
-                        ['Thank you for your business!', stamp_footer],
-                        [f'Invoice generated on {datetime.now().strftime("%d %B %Y at %H:%M")}', ''],
-                        ['ES-GIFT - Your trusted digital gift card partner', '']
+                        ['Thank you for your business!'],
+                        [f'Invoice generated on {datetime.now().strftime("%d %B %Y at %H:%M")}'],
+                        ['ES-GIFT - Your trusted digital gift card partner'],
+                        [''],  # Empty row for spacing
+                        [stamp_footer]  # Stamp in its own centered row
                     ]
                     
-                    footer_table = Table(footer_data, colWidths=[4*inch, 2*inch])
+                    footer_table = Table(footer_data, colWidths=[6*inch])
                     footer_table.setStyle(TableStyle([
-                        ('FONTNAME', (0, 0), (0, -1), CUSTOM_FONT),
-                        ('FONTSIZE', (0, 0), (0, -1), 9),
-                        ('TEXTCOLOR', (0, 0), (0, -1), dark_gray),
-                        ('ALIGN', (0, 0), (0, -1), 'CENTER'),
-                        ('ALIGN', (1, 0), (1, 0), 'CENTER'),
+                        ('FONTNAME', (0, 0), (0, 2), CUSTOM_FONT),
+                        ('FONTSIZE', (0, 0), (0, 2), 9),
+                        ('TEXTCOLOR', (0, 0), (0, 2), dark_gray),
+                        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
                         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                        ('TOPPADDING', (0, 0), (-1, -1), 5),
-                        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+                        ('TOPPADDING', (0, 0), (0, 2), 5),
+                        ('BOTTOMPADDING', (0, 0), (0, 2), 5),
+                        ('TOPPADDING', (0, 4), (0, 4), 15),  # Extra space above stamp
+                        ('BOTTOMPADDING', (0, 4), (0, 4), 10),
                     ]))
                     
                     story.append(footer_table)
-                    print("✅ ES Pay LLC stamp added to footer")
+                    print("✅ ES Pay LLC stamp added to footer (larger, centered, no background)")
                     
                 except Exception as e:
                     print(f"Could not load footer stamp: {e}")
@@ -609,15 +569,78 @@ class PremiumEnglishInvoiceService:
         return type_mapping.get(customer_type, 'Regular Customer')
     
     @staticmethod
+    def _get_payment_method_english(payment_method):
+        """Convert payment method to clean English format"""
+        if not payment_method:
+            return 'DIGITAL PAYMENT'
+        
+        # Clean and convert payment method
+        method = str(payment_method).lower().strip()
+        
+        # Handle different payment method formats
+        if 'card' in method or 'visa' in method or 'mastercard' in method or 'مدى' in method:
+            if 'visa' in method:
+                return 'VISA CARD'
+            elif 'mastercard' in method or 'ماستركارد' in method:
+                return 'MASTERCARD'
+            elif 'مدى' in method:
+                return 'MADA CARD'
+            else:
+                return 'CREDIT CARD'
+        elif 'paypal' in method:
+            return 'PAYPAL'
+        elif 'bank' in method or 'تحويل' in method:
+            return 'BANK TRANSFER'
+        elif 'cash' in method or 'نقد' in method:
+            return 'CASH'
+        elif 'wallet' in method or 'محفظة' in method:
+            return 'DIGITAL WALLET'
+        elif 'apple' in method:
+            return 'APPLE PAY'
+        elif 'google' in method:
+            return 'GOOGLE PAY'
+        elif 'stc' in method:
+            return 'STC PAY'
+        else:
+            # Clean any remaining Arabic/special characters
+            cleaned = method.replace('card_/', '').replace('_/', '').replace('/', ' ').strip()
+            return cleaned.upper() if cleaned else 'DIGITAL PAYMENT'
+
+    @staticmethod
     def _get_payment_status_info(payment_status):
         """Get payment status information with colors and emojis"""
+        if not payment_status:
+            return ('PENDING', colors.HexColor('#FFC107'), '⏳')
+        
+        # Convert to lowercase for better matching
+        status = str(payment_status).lower().strip()
+        
         status_info = {
             'paid': ('PAID', colors.HexColor('#28A745'), '✅'),
+            'completed': ('PAID', colors.HexColor('#28A745'), '✅'),
+            'success': ('PAID', colors.HexColor('#28A745'), '✅'),
+            'successful': ('PAID', colors.HexColor('#28A745'), '✅'),
+            'مكتمل': ('PAID', colors.HexColor('#28A745'), '✅'),
+            'مدفوع': ('PAID', colors.HexColor('#28A745'), '✅'),
+            
             'pending': ('PENDING', colors.HexColor('#FFC107'), '⏳'),
+            'processing': ('PENDING', colors.HexColor('#FFC107'), '⏳'),
+            'waiting': ('PENDING', colors.HexColor('#FFC107'), '⏳'),
+            'قيد الانتظار': ('PENDING', colors.HexColor('#FFC107'), '⏳'),
+            'معلق': ('PENDING', colors.HexColor('#FFC107'), '⏳'),
+            
             'failed': ('FAILED', colors.HexColor('#DC3545'), '❌'),
-            'refunded': ('REFUNDED', colors.HexColor('#6F42C1'), '🔄')
+            'cancelled': ('FAILED', colors.HexColor('#DC3545'), '❌'),
+            'declined': ('FAILED', colors.HexColor('#DC3545'), '❌'),
+            'فشل': ('FAILED', colors.HexColor('#DC3545'), '❌'),
+            'ملغي': ('FAILED', colors.HexColor('#DC3545'), '❌'),
+            
+            'refunded': ('REFUNDED', colors.HexColor('#6F42C1'), '🔄'),
+            'returned': ('REFUNDED', colors.HexColor('#6F42C1'), '🔄'),
+            'مسترد': ('REFUNDED', colors.HexColor('#6F42C1'), '🔄')
         }
-        return status_info.get(payment_status, ('UNKNOWN', colors.gray, '❓'))
+        
+        return status_info.get(status, ('PENDING', colors.HexColor('#FFC107'), '⏳'))
     
     @staticmethod
     def send_invoice_email(invoice, recipient_email=None):
@@ -657,87 +680,203 @@ class PremiumEnglishInvoiceService:
             has_arabic = any('\u0600' <= char <= '\u06FF' for char in (invoice.customer_name + (invoice.notes or '')))
             
             if has_arabic:
-                # Arabic email content
-                subject = f"🎁 فاتورة ES-GIFT - {invoice.invoice_number}"
-                email_content = f"""
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8f9fa; padding: 20px;">
-                    <div style="background: #DC143C; color: white; padding: 20px; text-align: center; border-radius: 10px 10px 0 0;">
-                        <h1 style="margin: 0; font-size: 28px;">🎁 ES-GIFT</h1>
-                        <p style="margin: 5px 0 0 0; font-size: 14px;">بطاقات الهدايا الرقمية الرائدة</p>
-                    </div>
-                    
-                    <div style="background: white; padding: 30px; border-radius: 0 0 10px 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                        <h2 style="color: #2C3E50; margin-bottom: 20px;">عزيزي/عزيزتي {fix_arabic_text(invoice.customer_name)}</h2>
-                        
-                        <p style="font-size: 16px; line-height: 1.6; color: #555;">
-                            نشكركم لاختياركم ES-GIFT. يسعدنا إرسال فاتورتكم.
-                        </p>
-                        
-                        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; border-right: 4px solid #DC143C;">
-                            <h3 style="color: #DC143C; margin-top: 0;">📋 تفاصيل الفاتورة:</h3>
-                            <p><strong>رقم الفاتورة:</strong> {invoice.invoice_number}</p>
-                            <p><strong>رقم الطلب:</strong> {Order.query.get(invoice.order_id).order_number if Order.query.get(invoice.order_id) else 'غير متوفر'}</p>
-                            <p><strong>التاريخ:</strong> {invoice.invoice_date.strftime('%Y-%m-%d')}</p>
-                            <p><strong>المبلغ الإجمالي:</strong> {float(invoice.total_amount):.2f} {invoice.currency}</p>
-                            <p><strong>حالة الدفع:</strong> {PremiumEnglishInvoiceService._get_payment_status_info(invoice.payment_status)[0]}</p>
-                        </div>
-                        
-                        <p style="color: #666; font-size: 14px; margin-top: 30px;">
-                            إذا كان لديكم أي استفسارات، لا تترددوا في التواصل معنا على:
-                            <br>📧 business@es-gift.com
-                            <br>📱 +966123456789
-                        </p>
-                        
-                        <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
-                            <p style="color: #999; font-size: 12px;">
-                                شكراً لكم مرة أخرى لثقتكم في ES-GIFT
-                                <br>🌐 www.es-gift.com
-                            </p>
-                        </div>
-                    </div>
-                </div>
-                """
-            else:
-                # English email content
+                # Arabic email content with new design matching HTML template
                 subject = f"🎁 ES-GIFT Invoice - {invoice.invoice_number}"
                 email_content = f"""
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8f9fa; padding: 20px;">
-                    <div style="background: #DC143C; color: white; padding: 20px; text-align: center; border-radius: 10px 10px 0 0;">
-                        <h1 style="margin: 0; font-size: 28px;">🎁 ES-GIFT</h1>
-                        <p style="margin: 5px 0 0 0; font-size: 14px;">Leading Digital Gift Cards & Payment Services</p>
-                    </div>
-                    
-                    <div style="background: white; padding: 30px; border-radius: 0 0 10px 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                        <h2 style="color: #2C3E50; margin-bottom: 20px;">Dear {invoice.customer_name}</h2>
-                        
-                        <p style="font-size: 16px; line-height: 1.6; color: #555;">
-                            Thank you for choosing ES-GIFT. Your invoice is ready.
-                        </p>
-                        
-                        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #DC143C;">
-                            <h3 style="color: #DC143C; margin-top: 0;">📋 Invoice Details:</h3>
-                            <p><strong>Invoice Number:</strong> {invoice.invoice_number}</p>
-                            <p><strong>Order Number:</strong> {Order.query.get(invoice.order_id).order_number if Order.query.get(invoice.order_id) else 'N/A'}</p>
-                            <p><strong>Date:</strong> {invoice.invoice_date.strftime('%Y-%m-%d')}</p>
-                            <p><strong>Total Amount:</strong> {float(invoice.total_amount):.2f} {invoice.currency}</p>
-                            <p><strong>Payment Status:</strong> {PremiumEnglishInvoiceService._get_payment_status_info(invoice.payment_status)[0]}</p>
-                        </div>
-                        
-                        <p style="color: #666; font-size: 14px; margin-top: 20px;">
-                            If you have any questions, please don't hesitate to contact us:
-                            <br>📧 business@es-gift.com
-                            <br>📱 +966123456789
-                        </p>
-                        
-                        <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
-                            <p style="color: #999; font-size: 12px;">
-                                Thank you again for trusting ES-GIFT
-                                <br>🌐 www.es-gift.com
-                            </p>
-                        </div>
-                    </div>
-                </div>
-                """
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); position: relative;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-direction: row;">
+        <div style="background: #dc143c; color: white; padding: 20px; text-align: center; width: 25%; display: flex; flex-direction: column; height: 100px; justify-content: center;">
+            <h1 style="margin: 0; font-size: 22px">🎁 ES-GIFT</h1>
+            <p style="margin: 8px 0 0 0; font-size: 14px;">Leading Digital Gift Cards</p>
+        </div>
+        <div style="background: #dc143c; color: white; padding: 20px; width: 40%; height: 20px; text-align: center; display: flex; justify-content: center; align-items: center; margin-top: 60px;">
+            <p style="color: #fff; font-size: 30px; font-weight: bold; letter-spacing: 5px;">Sales Invoice</p>
+        </div>
+    </div>
+
+    <div style="background: white; padding: 30px; border-radius: 0 0 10px 10px; text-align: left; display: flex; flex-direction: column; align-items: flex-start;">
+        <div style="color: #2c3e50; margin-bottom: 20px">
+            <span style="font-size: 20px; font-weight: 600">Client ID:</span>
+            <span style="font-size: 20px; font-weight: 600">{invoice.customer_id if hasattr(invoice, 'customer_id') else 'Not Available'}</span>
+        </div>
+
+        <div style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; width: 90%;">
+            <div style="color: #2c3e50; margin-bottom: 20px">
+                <span style="font-size: 20px; font-weight: 600">Client Name:</span>
+                <span style="font-size: 20px; font-weight: 600">{invoice.customer_name}</span>
+            </div>
+            <div style="color: #2c3e50; margin-bottom: 20px">
+                <span style="font-size: 20px; font-weight: 600">Invoice No:</span>
+                <span style="font-size: 20px; font-weight: 600">{invoice.invoice_number}</span>
+            </div>
+        </div>
+
+        <div style="color: #2c3e50; margin-bottom: 20px">
+            <span style="font-size: 20px; font-weight: 600">Date:</span>
+            <span style="font-size: 20px; font-weight: 600">{invoice.invoice_date.strftime('%d-%m-%Y')}</span>
+        </div>
+
+        <table style="width: 100%; border-collapse: collapse; text-align: center; font-family: Arial, sans-serif;">
+            <thead>
+                <tr style="background-color: #dc143c; color: white">
+                    <th style="padding: 8px; font-size: 18px">#</th>
+                    <th style="padding: 8px; font-size: 18px">Description</th>
+                    <th style="padding: 8px; font-size: 18px">Quantity</th>
+                    <th style="padding: 8px; font-size: 18px">Price</th>
+                    <th style="padding: 8px; font-size: 18px">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {"".join(f'''
+                <tr {"style='background-color: #f5f5f5'" if i % 2 != 0 else ""}>
+                    <td style="padding: 8px; font-size: 15px; font-weight: 600">{i+1}</td>
+                    <td style="padding: 8px; font-size: 15px; font-weight: 600">{item['description']}</td>
+                    <td style="padding: 8px; font-size: 15px; font-weight: 600">{item['quantity']}</td>
+                    <td style="padding: 8px; font-size: 15px; font-weight: 600">{float(item['price']):.2f}</td>
+                    <td style="padding: 8px; font-size: 15px; font-weight: 600">{float(item['total']):.2f}</td>
+                </tr>
+                ''' for i, item in enumerate(invoice.items))}
+            </tbody>
+        </table>
+
+        <div style="display: flex; flex-direction: column; align-items: flex-start; width: 100%; margin-top: 20px;">
+            <div style="display: flex; width: 44%; gap: 20px; justify-content: space-around; height: 20px; align-items: center; margin-bottom: 15px;">
+                <p style="font-size: 20px; font-weight: 700; margin-left: 20px">{float(invoice.total_amount):.2f}</p>
+                <p style="font-size: 20px; font-weight: 700">Price</p>
+            </div>
+            <div style="display: flex; width: 44%; justify-content: space-around; height: 20px; align-items: center; margin-bottom: 10px;">
+                <p style="font-size: 20px; font-weight: 700; margin-left: 20px">0.00</p>
+                <p style="font-size: 20px; font-weight: 700">Tax</p>
+            </div>
+            <div style="display: flex; width: 44%; justify-content: space-around; height: 20px; align-items: center; margin-bottom: 10px; background-color: #f5f5f5; padding: 20px 0;">
+                <p style="font-size: 20px; font-weight: 700; margin-left: 20px">{float(invoice.total_amount):.2f}</p>
+                <p style="font-size: 20px; font-weight: 700">Grand Total</p>
+            </div>
+        </div>
+
+        <div style="display: flex; flex-direction: row; justify-content: space-between; width: 80%; margin: 20px 0;">
+            <div>
+                <h3 style="font-size: 25px; font-weight: bolder; color: #dc143c; margin: 10px 0;">Notes</h3>
+                <ul style="padding: 0 20px; margin: 0">
+                    <li style="font-weight: 600; color: #2c3e50">Goods sold are not returnable or exchangeable</li>
+                    <li style="font-weight: 600; color: #2c3e50">Please make sure all invoice items are received</li>
+                </ul>
+            </div>
+            <div>
+                <p style="font-size: 20px; font-weight: 700; color: #dc143c">Seller Signature</p>
+            </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-start; width: 90%">
+            <p style="font-size: 20px; color: #2c3e50; font-weight: 600">Thank you</p>
+        </div>
+    </div>
+
+    <div style="position: absolute; bottom: 0px; right: 40%;">
+        <img src="es.jpg" alt="es-gift" style="width: 100px; height: 100px" />
+    </div>
+</div>
+"""
+
+            else:
+                # English email content with new design matching HTML template
+                subject = f"🎁 ES-GIFT Invoice - {invoice.invoice_number}"
+                email_content = f"""
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); position: relative;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-direction: row;">
+        <div style="background: #dc143c; color: white; padding: 20px; text-align: center; width: 25%; display: flex; flex-direction: column; height: 100px; justify-content: center;">
+            <h1 style="margin: 0; font-size: 22px">🎁 ES-GIFT</h1>
+            <p style="margin: 8px 0 0 0; font-size: 14px;">Leading Digital Gift Cards</p>
+        </div>
+        <div style="background: #dc143c; color: white; padding: 20px; width: 40%; height: 20px; text-align: center; display: flex; justify-content: center; align-items: center; margin-top: 60px;">
+            <p style="color: #fff; font-size: 30px; font-weight: bold; letter-spacing: 5px;">Sales Invoice</p>
+        </div>
+    </div>
+
+    <div style="background: white; padding: 30px; border-radius: 0 0 10px 10px; text-align: left; display: flex; flex-direction: column; align-items: flex-start;">
+        <div style="color: #2c3e50; margin-bottom: 20px">
+            <span style="font-size: 20px; font-weight: 600">Client ID:</span>
+            <span style="font-size: 20px; font-weight: 600">{invoice.customer_id if hasattr(invoice, 'customer_id') else 'Not Available'}</span>
+        </div>
+
+        <div style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; width: 90%;">
+            <div style="color: #2c3e50; margin-bottom: 20px">
+                <span style="font-size: 20px; font-weight: 600">Client Name:</span>
+                <span style="font-size: 20px; font-weight: 600">{invoice.customer_name}</span>
+            </div>
+            <div style="color: #2c3e50; margin-bottom: 20px">
+                <span style="font-size: 20px; font-weight: 600">Invoice No:</span>
+                <span style="font-size: 20px; font-weight: 600">{invoice.invoice_number}</span>
+            </div>
+        </div>
+
+        <div style="color: #2c3e50; margin-bottom: 20px">
+            <span style="font-size: 20px; font-weight: 600">Date:</span>
+            <span style="font-size: 20px; font-weight: 600">{invoice.invoice_date.strftime('%d-%m-%Y')}</span>
+        </div>
+
+        <table style="width: 100%; border-collapse: collapse; text-align: center; font-family: Arial, sans-serif;">
+            <thead>
+                <tr style="background-color: #dc143c; color: white">
+                    <th style="padding: 8px; font-size: 18px">#</th>
+                    <th style="padding: 8px; font-size: 18px">Description</th>
+                    <th style="padding: 8px; font-size: 18px">Quantity</th>
+                    <th style="padding: 8px; font-size: 18px">Price</th>
+                    <th style="padding: 8px; font-size: 18px">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {"".join(f'''
+                <tr {"style='background-color: #f5f5f5'" if i % 2 != 0 else ""}>
+                    <td style="padding: 8px; font-size: 15px; font-weight: 600">{i+1}</td>
+                    <td style="padding: 8px; font-size: 15px; font-weight: 600">{item['description']}</td>
+                    <td style="padding: 8px; font-size: 15px; font-weight: 600">{item['quantity']}</td>
+                    <td style="padding: 8px; font-size: 15px; font-weight: 600">{float(item['price']):.2f}</td>
+                    <td style="padding: 8px; font-size: 15px; font-weight: 600">{float(item['total']):.2f}</td>
+                </tr>
+                ''' for i, item in enumerate(invoice.items))}
+            </tbody>
+        </table>
+
+        <div style="display: flex; flex-direction: column; align-items: flex-start; width: 100%; margin-top: 20px;">
+            <div style="display: flex; width: 44%; gap: 20px; justify-content: space-around; height: 20px; align-items: center; margin-bottom: 15px;">
+                <p style="font-size: 20px; font-weight: 700; margin-left: 20px">{float(invoice.total_amount):.2f}</p>
+                <p style="font-size: 20px; font-weight: 700">Price</p>
+            </div>
+            <div style="display: flex; width: 44%; justify-content: space-around; height: 20px; align-items: center; margin-bottom: 10px;">
+                <p style="font-size: 20px; font-weight: 700; margin-left: 20px">0.00</p>
+                <p style="font-size: 20px; font-weight: 700">Tax</p>
+            </div>
+            <div style="display: flex; width: 44%; justify-content: space-around; height: 20px; align-items: center; margin-bottom: 10px; background-color: #f5f5f5; padding: 20px 0;">
+                <p style="font-size: 20px; font-weight: 700; margin-left: 20px">{float(invoice.total_amount):.2f}</p>
+                <p style="font-size: 20px; font-weight: 700">Grand Total</p>
+            </div>
+        </div>
+
+        <div style="display: flex; flex-direction: row; justify-content: space-between; width: 80%; margin: 20px 0;">
+            <div>
+                <h3 style="font-size: 25px; font-weight: bolder; color: #dc143c; margin: 10px 0;">Notes</h3>
+                <ul style="padding: 0 20px; margin: 0">
+                    <li style="font-weight: 600; color: #2c3e50">Goods sold are not returnable or exchangeable</li>
+                    <li style="font-weight: 600; color: #2c3e50">Please make sure all invoice items are received</li>
+                </ul>
+            </div>
+            <div>
+                <p style="font-size: 20px; font-weight: 700; color: #dc143c">Seller Signature</p>
+            </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-start; width: 90%">
+            <p style="font-size: 20px; color: #2c3e50; font-weight: 600">Thank you</p>
+        </div>
+    </div>
+
+    <div style="position: absolute; bottom: 0px; right: 40%;">
+        <img src="es.jpg" alt="es-gift" style="width: 100px; height: 100px" />
+    </div>
+</div>
+"""
+
             
             # Multi-tier email sending strategy: Hostinger → Email Sender Pro → Flask-Mail → Direct Gmail
             
@@ -814,123 +953,6 @@ class PremiumEnglishInvoiceService:
             except Exception as e:
                 print(f"❌ Direct Gmail also failed: {e}")
                 return False
-                
-        except Exception as e:
-            print(f"❌ Error sending invoice email: {e}")
-            return False
-            if not pdf_path:
-                print("❌ Failed to generate PDF for email")
-                return False
-            
-            # Determine language based on customer name/notes for email content
-            has_arabic = any('\u0600' <= char <= '\u06FF' for char in (invoice.customer_name + (invoice.notes or '')))
-            
-            if has_arabic:
-                # Arabic email content
-                subject = f"🎁 فاتورة ES-GIFT - {invoice.invoice_number}"
-                email_content = f"""
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8f9fa; padding: 20px;">
-                    <div style="background: #DC143C; color: white; padding: 20px; text-align: center; border-radius: 10px 10px 0 0;">
-                        <h1 style="margin: 0; font-size: 28px;">🎁 ES-GIFT</h1>
-                        <p style="margin: 5px 0 0 0; font-size: 14px;">بطاقات الهدايا الرقمية الرائدة</p>
-                    </div>
-                    
-                    <div style="background: white; padding: 30px; border-radius: 0 0 10px 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                        <h2 style="color: #2C3E50; margin-bottom: 20px;">عزيزي/عزيزتي {fix_arabic_text(invoice.customer_name)}</h2>
-                        
-                        <p style="font-size: 16px; line-height: 1.6; color: #555;">
-                            نشكركم لاختياركم ES-GIFT. يسعدنا إرسال فاتورتكم.
-                        </p>
-                        
-                        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; border-right: 4px solid #DC143C;">
-                            <h3 style="color: #DC143C; margin-top: 0;">📋 تفاصيل الفاتورة:</h3>
-                            <p><strong>رقم الفاتورة:</strong> {invoice.invoice_number}</p>
-                            <p><strong>رقم الطلب:</strong> {Order.query.get(invoice.order_id).order_number if Order.query.get(invoice.order_id) else 'غير متوفر'}</p>
-                            <p><strong>التاريخ:</strong> {invoice.invoice_date.strftime('%Y-%m-%d')}</p>
-                            <p><strong>المبلغ الإجمالي:</strong> {float(invoice.total_amount):.2f} {invoice.currency}</p>
-                            <p><strong>حالة الدفع:</strong> {PremiumEnglishInvoiceService._get_payment_status_info(invoice.payment_status)[0]}</p>
-                        </div>
-                        
-                        <p style="color: #666; font-size: 14px; margin-top: 30px;">
-                            يمكنكم تحميل ملف الفاتورة PDF من لوحة التحكم الخاصة بكم.
-                        </p>
-                        
-                        <p style="color: #666; font-size: 14px; margin-top: 20px;">
-                            إذا كان لديكم أي استفسارات، لا تترددوا في التواصل معنا على:
-                            <br>📧 business@es-gift.com
-                            <br>📱 +966123456789
-                        </p>
-                        
-                        <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
-                            <p style="color: #999; font-size: 12px;">
-                                شكراً لكم مرة أخرى لثقتكم في ES-GIFT
-                                <br>🌐 www.es-gift.com
-                            </p>
-                        </div>
-                    </div>
-                </div>
-                """
-            else:
-                # English email content
-                subject = f"🎁 ES-GIFT Invoice - {invoice.invoice_number}"
-                email_content = f"""
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8f9fa; padding: 20px;">
-                    <div style="background: #DC143C; color: white; padding: 20px; text-align: center; border-radius: 10px 10px 0 0;">
-                        <h1 style="margin: 0; font-size: 28px;">🎁 ES-GIFT</h1>
-                        <p style="margin: 5px 0 0 0; font-size: 14px;">Leading Digital Gift Cards & Payment Services</p>
-                    </div>
-                    
-                    <div style="background: white; padding: 30px; border-radius: 0 0 10px 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                        <h2 style="color: #2C3E50; margin-bottom: 20px;">Dear {invoice.customer_name}</h2>
-                        
-                        <p style="font-size: 16px; line-height: 1.6; color: #555;">
-                            Thank you for choosing ES-GIFT. Your invoice is ready.
-                        </p>
-                        
-                        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #DC143C;">
-                            <h3 style="color: #DC143C; margin-top: 0;">📋 Invoice Details:</h3>
-                            <p><strong>Invoice Number:</strong> {invoice.invoice_number}</p>
-                            <p><strong>Order Number:</strong> {Order.query.get(invoice.order_id).order_number if Order.query.get(invoice.order_id) else 'N/A'}</p>
-                            <p><strong>Date:</strong> {invoice.invoice_date.strftime('%Y-%m-%d')}</p>
-                            <p><strong>Total Amount:</strong> {float(invoice.total_amount):.2f} {invoice.currency}</p>
-                            <p><strong>Payment Status:</strong> {PremiumEnglishInvoiceService._get_payment_status_info(invoice.payment_status)[0]}</p>
-                        </div>
-                        
-                        <p style="color: #666; font-size: 14px; margin-top: 30px;">
-                            You can download the PDF invoice from your dashboard.
-                        </p>
-                        
-                        <p style="color: #666; font-size: 14px; margin-top: 20px;">
-                            If you have any questions, please don't hesitate to contact us:
-                            <br>📧 business@es-gift.com
-                            <br>📱 +966123456789
-                        </p>
-                        
-                        <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
-                            <p style="color: #999; font-size: 12px;">
-                                Thank you again for trusting ES-GIFT
-                                <br>🌐 www.es-gift.com
-                            </p>
-                        </div>
-                    </div>
-                </div>
-                """
-            
-            # Send email using Email Sender Pro service
-            success, message = send_custom_email(
-                email=email_to_send,
-                subject=subject,
-                message_content=email_content,
-                message_title="فاتورة ES-GIFT" if has_arabic else "ES-GIFT Invoice"
-            )
-            
-            if success:
-                print(f"✅ Invoice email sent successfully to: {email_to_send}")
-                return True
-            else:
-                print(f"❌ Failed to send invoice email: {message}")
-                # Try fallback method
-                return PremiumEnglishInvoiceService._send_invoice_email_fallback(invoice, email_content, None, email_to_send)
                 
         except Exception as e:
             print(f"❌ Error sending invoice email: {e}")
@@ -1028,12 +1050,16 @@ class PremiumEnglishInvoiceService:
             from email.mime.base import MIMEBase
             from email import encoders
             from email.header import Header
+            import os
+            
+            print("📧 محاولة إرسال مباشر عبر Gmail...")
             
             # Gmail fallback configuration
             smtp_server = "smtp.gmail.com"
             smtp_port = 587
             sender_email = "esgiftscard@gmail.com"
             sender_password = "xopq ikac efpj rdif"
+            sender_name = "ES-GIFT"
             
             has_arabic = any('\u0600' <= char <= '\u06FF' for char in (invoice.customer_name + (invoice.notes or '')))
             subject = f"🎁 {'فاتورة' if has_arabic else 'Invoice'} ES-GIFT - {invoice.invoice_number}"
@@ -1059,6 +1085,7 @@ class PremiumEnglishInvoiceService:
                         f'attachment; filename= "ES-GIFT_Invoice_{invoice.invoice_number}.pdf"'
                     )
                     msg.attach(part)
+                    print(f"📎 تم إرفاق الملف: {pdf_full_path}")
             
             # Send via Gmail SMTP
             with smtplib.SMTP(smtp_server, smtp_port) as server:
@@ -1066,94 +1093,12 @@ class PremiumEnglishInvoiceService:
                 server.login(sender_email, sender_password)
                 server.send_message(msg)
             
-            print(f"✅ Invoice sent successfully via Gmail fallback to: {email_to_send}")
-            return True
-            
-        except Exception as e:
-            print(f"❌ Gmail fallback failed: {e}")
-            return False
-    
-    @staticmethod
-    def _send_gmail_fallback(email_to_send, invoice, email_html, pdf_full_path):
-        """إرسال مباشر عبر Gmail كخيار أخير"""
-        try:
-            import smtplib
-            from email.mime.text import MIMEText
-            from email.mime.multipart import MIMEMultipart
-            from email.mime.base import MIMEBase
-            from email import encoders
-            import os
-            
-            print("📧 محاولة إرسال مباشر عبر Gmail...")
-            
-            # إعدادات Gmail البديلة
-            smtp_server = "smtp.gmail.com"
-            smtp_port = 587
-            smtp_user = "esgiftscard@gmail.com"
-            smtp_pass = "xopq ikac efpj rdif"
-            sender_name = "ES-GIFT"
-            
-            # إنشاء الرسالة
-            msg = MIMEMultipart()
-            msg['From'] = f"{sender_name}"
-            msg['To'] = email_to_send
-            msg['Subject'] = f"🎁 ES-GIFT Invoice - {invoice.invoice_number}"
-            
-            # إضافة محتوى HTML
-            msg.attach(MIMEText(email_html, 'html', 'utf-8'))
-            
-            # إضافة مرفق PDF إن وجد
-            if pdf_full_path and os.path.exists(pdf_full_path):
-                with open(pdf_full_path, 'rb') as attachment:
-                    part = MIMEBase('application', 'octet-stream')
-                    part.set_payload(attachment.read())
-                    encoders.encode_base64(part)
-                    part.add_header(
-                        'Content-Disposition',
-                        f'attachment; filename= ES-GIFT_Invoice_{invoice.invoice_number}.pdf'
-                    )
-                    msg.attach(part)
-                    print(f"📎 تم إرفاق الملف: {pdf_full_path}")
-            
-            # إرسال الرسالة
-            server = smtplib.SMTP(smtp_server, smtp_port)
-            server.starttls()
-            server.login(smtp_user, smtp_pass)
-            server.send_message(msg)
-            server.quit()
-            
             print(f"✅ تم الإرسال المباشر عبر Gmail بنجاح")
             return True
             
         except Exception as e:
             print(f"❌ فشل في الإرسال المباشر عبر Gmail: {e}")
             return False
-    
-    @staticmethod
-    def _send_simple_email_fallback(email_to_send, subject, email_html):
-        """Simple email fallback using basic SMTP"""
-        try:
-            import smtplib
-            from email.mime.text import MIMEText
-            from email.mime.multipart import MIMEMultipart
-            
-            # Create message
-            msg = MIMEMultipart('alternative')
-            msg['Subject'] = subject
-            msg['From'] = 'ES-GIFT <business@es-gift.com>'
-            msg['To'] = email_to_send
-            
-            # Add HTML content
-            html_part = MIMEText(email_html, 'html', 'utf-8')
-            msg.attach(html_part)
-            
-            # Try to send (this is a basic attempt - may not work without proper SMTP config)
-            print(f"Attempting to send email to {email_to_send} using simple fallback")
-            return True  # Return True to avoid blocking the process
-            
-        except Exception as e:
-            print(f"Simple email fallback failed: {e}")
-            return True  # Return True to avoid blocking the invoice generation process
 
 # Create alias for compatibility
 ModernInvoiceService = PremiumEnglishInvoiceService

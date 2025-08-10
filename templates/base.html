@@ -314,6 +314,9 @@
                     </svg>
                     <span>جميع الفئات</span>
                 </a>
+                <a href="{{ url_for('main.charge_page') }}" style="background: linear-gradient(45deg, #ff6b35, #f7931e); color: white; border-radius: 8px; padding: 10px 15px; font-weight: bold;">
+                    ⚡ شحن الألعاب
+                </a>
                 <a href="#">🔥 الأكثر مبيعاً</a>
                 {% for category in main_categories %}
                     <a href="{{ url_for('main.category_products', category_id=category.id, slug=category.name|create_slug) }}">

@@ -1,0 +1,490 @@
+{% extends "base.html" %}
+
+{% block title %}تعديل البيانات الشخصية - Es-Gift{% endblock %}
+
+{% block extra_css %}
+    <style>
+        /* Cairo Font Application */
+        .edit-profile-container, .edit-profile-container * {
+            font-family: 'Cairo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .edit-profile-container {
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+            min-height: 100vh;
+            color: white;
+            padding: 120px 20px 50px;
+            position: relative;
+        }
+
+        .edit-profile-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(ellipse at top center, rgba(255, 0, 51, 0.05) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
+        .edit-profile-content {
+            max-width: 800px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 2;
+        }
+
+        .edit-profile-header {
+            background: linear-gradient(135deg, #ff0033, #ff3366);
+            padding: 30px;
+            border-radius: 20px;
+            margin-bottom: 30px;
+            text-align: center;
+            border: 1px solid rgba(255, 0, 51, 0.3);
+            box-shadow: 0 15px 35px rgba(255, 0, 51, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .edit-profile-header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -10%;
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.1), transparent);
+            border-radius: 50%;
+        }
+
+        .edit-profile-header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            position: relative;
+            z-index: 2;
+        }
+
+        .edit-profile-header p {
+            margin: 10px 0 0 0;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 1.1rem;
+            position: relative;
+            z-index: 2;
+        }
+
+        .edit-profile-form {
+            background: linear-gradient(135deg, #2d2d2d, #3a3a3a);
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255, 0, 51, 0.2);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .edit-profile-form::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -10%;
+            width: 100px;
+            height: 100px;
+            background: radial-gradient(circle, rgba(255, 0, 51, 0.1), transparent);
+            border-radius: 50%;
+        }
+
+        .form-section {
+            position: relative;
+            z-index: 2;
+        }
+
+        .form-section h2 {
+            color: #ff0033;
+            margin-bottom: 25px;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid rgba(255, 0, 51, 0.3);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            color: white;
+            font-weight: bold;
+            margin-bottom: 8px;
+            font-size: 1rem;
+        }
+
+        .form-group label i {
+            color: #ff0033;
+            margin-left: 8px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 15px 20px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            font-size: 1rem;
+            font-family: 'Cairo', sans-serif;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #ff0033;
+            background: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 20px rgba(255, 0, 51, 0.2);
+        }
+
+        .form-control:disabled {
+            background: rgba(255, 255, 255, 0.02);
+            color: #666;
+            cursor: not-allowed;
+        }
+
+        .form-note {
+            color: #999;
+            font-size: 0.9rem;
+            margin-top: 5px;
+            font-style: italic;
+        }
+
+        .required-note {
+            color: #ff0033;
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 30px;
+            padding-top: 25px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            font-family: 'Cairo', sans-serif;
+            min-width: 150px;
+            justify-content: center;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #ff0033, #ff3366);
+            color: white;
+            border: 2px solid #ff0033;
+            box-shadow: 0 5px 15px rgba(255, 0, 51, 0.3);
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #cc0028, #ff2958);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 0, 51, 0.4);
+            color: white;
+            text-decoration: none;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #6c757d, #5a6268);
+            color: white;
+            border: 2px solid #6c757d;
+            box-shadow: 0 5px 15px rgba(108, 117, 125, 0.3);
+        }
+
+        .btn-secondary:hover {
+            background: linear-gradient(135deg, #5a6268, #495057);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(108, 117, 125, 0.4);
+            color: white;
+            text-decoration: none;
+        }
+
+        .flash-message {
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: bold;
+        }
+
+        .flash-message.success {
+            background: rgba(40, 167, 69, 0.2);
+            border: 2px solid #28a745;
+            color: #d4edda;
+        }
+
+        .flash-message.error {
+            background: rgba(220, 53, 69, 0.2);
+            border: 2px solid #dc3545;
+            color: #f8d7da;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .edit-profile-container {
+                padding: 100px 15px 30px;
+            }
+
+            .edit-profile-header h1 {
+                font-size: 2rem;
+            }
+
+            .edit-profile-form {
+                padding: 25px;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+
+            .form-actions {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .btn {
+                width: 100%;
+                max-width: 300px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .edit-profile-header {
+                padding: 20px;
+            }
+
+            .edit-profile-header h1 {
+                font-size: 1.8rem;
+            }
+
+            .edit-profile-form {
+                padding: 20px;
+            }
+
+            .form-control {
+                padding: 12px 15px;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="edit-profile-container">
+    <div class="edit-profile-content">
+        <!-- Header -->
+        <div class="edit-profile-header">
+            <h1><i class="fa-solid fa-user-edit"></i> تعديل البيانات الشخصية</h1>
+            <p>يمكنك تعديل جميع بياناتك الشخصية باستثناء البريد الإلكتروني</p>
+        </div>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash-message {{ category }}">
+                        <i class="fa-solid fa-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' }}"></i>
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Edit Form -->
+        <div class="edit-profile-form">
+            <form method="POST" id="editProfileForm">
+                <div class="form-section">
+                    <h2>
+                        <i class="fa-solid fa-user"></i>
+                        المعلومات الأساسية
+                    </h2>
+
+                    <div class="required-note">
+                        <i class="fa-solid fa-asterisk"></i>
+                        الحقول المميزة بالنجمة مطلوبة
+                    </div>
+
+                    <!-- البريد الإلكتروني (غير قابل للتعديل) -->
+                    <div class="form-group">
+                        <label for="email">
+                            <i class="fa-solid fa-envelope"></i>
+                            البريد الإلكتروني
+                        </label>
+                        <input type="email" id="email" class="form-control" value="{{ user.email }}" disabled>
+                        <div class="form-note">
+                            <i class="fa-solid fa-lock"></i>
+                            لا يمكن تعديل البريد الإلكتروني لأسباب أمنية
+                        </div>
+                    </div>
+
+                    <!-- الاسم الكامل -->
+                    <div class="form-group">
+                        <label for="full_name">
+                            <i class="fa-solid fa-id-card"></i>
+                            الاسم الكامل <span style="color: #ff0033;">*</span>
+                        </label>
+                        <input type="text" id="full_name" name="full_name" class="form-control" 
+                               value="{{ user.full_name or '' }}" required
+                               placeholder="أدخل اسمك الكامل">
+                    </div>
+
+                    <!-- رقم الهاتف والجنسية -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="phone">
+                                <i class="fa-solid fa-phone"></i>
+                                رقم الهاتف
+                            </label>
+                            <input type="tel" id="phone" name="phone" class="form-control" 
+                                   value="{{ user.phone or '' }}"
+                                   placeholder="أدخل رقم الهاتف" dir="ltr">
+                            <div class="form-note">
+                                رقم الهاتف (أي دولة)
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="nationality">
+                                <i class="fa-solid fa-flag"></i>
+                                الجنسية
+                            </label>
+                            <select id="nationality" name="nationality" class="form-control">
+                                <option style="background: #242222ff; color: white;" value="">اختر الجنسية</option>
+                                <option style="background: #242222ff; color: white;" value="السعودية" {{ 'selected' if user.nationality == 'السعودية' }}>السعودية</option>
+                                <option style="background: #242222ff; color: white;" value="الإمارات" {{ 'selected' if user.nationality == 'الإمارات' }}>الإمارات</option>
+                                <option style="background: #242222ff; color: white;" value="الكويت" {{ 'selected' if user.nationality == 'الكويت' }}>الكويت</option>
+                                <option style="background: #242222ff; color: white;" value="قطر" {{ 'selected' if user.nationality == 'قطر' }}>قطر</option>
+                                <option style="background: #242222ff; color: white;" value="البحرين" {{ 'selected' if user.nationality == 'البحرين' }}>البحرين</option>
+                                <option style="background: #242222ff; color: white;" value="عمان" {{ 'selected' if user.nationality == 'عمان' }}>عمان</option>
+                                <option style="background: #242222ff; color: white;" value="الأردن" {{ 'selected' if user.nationality == 'الأردن' }}>الأردن</option>
+                                <option style="background: #242222ff; color: white;" value="لبنان" {{ 'selected' if user.nationality == 'لبنان' }}>لبنان</option>
+                                <option style="background: #242222ff; color: white;" value="سوريا" {{ 'selected' if user.nationality == 'سوريا' }}>سوريا</option>
+                                <option style="background: #242222ff; color: white;" value="العراق" {{ 'selected' if user.nationality == 'العراق' }}>العراق</option>
+                                <option style="background: #242222ff; color: white;" value="فلسطين" {{ 'selected' if user.nationality == 'فلسطين' }}>فلسطين</option>
+                                <option style="background: #242222ff; color: white;" value="مصر" {{ 'selected' if user.nationality == 'مصر' }}>مصر</option>
+                                <option style="background: #242222ff; color: white;" value="ليبيا" {{ 'selected' if user.nationality == 'ليبيا' }}>ليبيا</option>
+                                <option style="background: #242222ff; color: white;" value="تونس" {{ 'selected' if user.nationality == 'تونس' }}>تونس</option>
+                                <option style="background: #242222ff; color: white;" value="الجزائر" {{ 'selected' if user.nationality == 'الجزائر' }}>الجزائر</option>
+                                <option style="background: #242222ff; color: white;" value="المغرب" {{ 'selected' if user.nationality == 'المغرب' }}>المغرب</option>
+                                <option style="background: #242222ff; color: white;" value="السودان" {{ 'selected' if user.nationality == 'السودان' }}>السودان</option>
+                                <option style="background: #242222ff; color: white;" value="اليمن" {{ 'selected' if user.nationality == 'اليمن' }}>اليمن</option>
+                                <option style="background: #242222ff; color: white;" value="أخرى" {{ 'selected' if user.nationality == 'أخرى' }}>أخرى</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- تاريخ الميلاد -->
+                    <div class="form-group">
+                        <label for="birth_date">
+                            <i class="fa-solid fa-birthday-cake"></i>
+                            تاريخ الميلاد
+                        </label>
+                        <input type="date" id="birth_date" name="birth_date" class="form-control" 
+                               value="{{ user.birth_date.strftime('%Y-%m-%d') if user.birth_date else '' }}">
+                        <div class="form-note">
+                            تاريخ الميلاد مطلوب لعملية التحقق من الهوية (KYC)
+                        </div>
+                    </div>
+                </div>
+
+                <!-- أزرار الإجراءات -->
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary" id="saveBtn">
+                        <i class="fa-solid fa-save"></i>
+                        حفظ التغييرات
+                    </button>
+                    <a href="{{ url_for('main.profile') }}" class="btn btn-secondary">
+                        <i class="fa-solid fa-arrow-right"></i>
+                        إلغاء والعودة
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // تنسيق رقم الهاتف - بسيط وعام
+    const phoneInput = document.getElementById('phone');
+    if (phoneInput) {
+        phoneInput.addEventListener('input', function() {
+            // السماح بالأرقام والرموز + و - و مسافات فقط
+            let value = this.value.replace(/[^\d+\-\s]/g, '');
+            this.value = value;
+        });
+    }
+
+    // التحقق من النموذج
+    const form = document.getElementById('editProfileForm');
+    form.addEventListener('submit', function(e) {
+        const fullName = document.getElementById('full_name').value.trim();
+        
+        if (!fullName) {
+            e.preventDefault();
+            alert('الاسم الكامل مطلوب');
+            document.getElementById('full_name').focus();
+            return false;
+        }
+
+        // إضافة حالة التحميل
+        const saveBtn = document.getElementById('saveBtn');
+        saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري الحفظ...';
+        saveBtn.disabled = true;
+    });
+
+    // تأثيرات بصرية للتحسين
+    const inputs = document.querySelectorAll('.form-control:not([disabled])');
+    inputs.forEach(input => {
+        input.addEventListener('focus', function() {
+            this.parentElement.style.transform = 'translateY(-2px)';
+        });
+
+        input.addEventListener('blur', function() {
+            this.parentElement.style.transform = 'translateY(0)';
+        });
+    });
+});
+</script>
+{% endblock %}

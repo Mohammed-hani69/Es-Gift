@@ -451,15 +451,15 @@ def deposit():
         db.session.add(deposit_request)
         db.session.commit()
         
-        # إنشاء فاتورة PDF فوراً عند إنشاء الطلب
+        # إنشاء فاتورة PDF متميزة فوراً عند إنشاء الطلب
         try:
-            from simple_deposit_invoice_service import SimpleDepositInvoiceService
-            service = SimpleDepositInvoiceService()
+            from premium_deposit_invoice_service import PremiumDepositInvoiceService
+            service = PremiumDepositInvoiceService()
             pdf_path = service.generate_deposit_invoice_pdf(deposit_request)
             if pdf_path:
                 deposit_request.invoice_pdf_path = pdf_path
                 db.session.commit()
-                print(f"✅ تم إنشاء فاتورة PDF فوراً للطلب {deposit_request.id}: {pdf_path}")
+                print(f"✅ تم إنشاء فاتورة PDF متميزة فوراً للطلب {deposit_request.id}: {pdf_path}")
         except Exception as e:
             print(f"⚠️ خطأ في إنشاء فاتورة PDF للطلب {deposit_request.id}: {e}")
             # لا نوقف العملية في حالة فشل إنشاء الفاتورة

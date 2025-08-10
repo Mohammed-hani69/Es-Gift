@@ -926,6 +926,52 @@
         .modal-btn:hover {
             transform: translateY(-1px);
         }
+
+        /* Edit Profile Button Styles */
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .edit-profile-btn {
+            background: linear-gradient(135deg, #ff0033, #ff3366);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 5px 15px rgba(255, 0, 51, 0.3);
+        }
+
+        .edit-profile-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 0, 51, 0.4);
+            border-color: rgba(255, 255, 255, 0.2);
+            color: white;
+            text-decoration: none;
+        }
+
+        .edit-profile-btn i {
+            font-size: 1rem;
+        }
+
+        .email-note {
+            color: #999;
+            font-size: 0.8rem;
+            font-style: italic;
+            margin-top: 5px;
+            display: block;
+        }
     </style>
 {% endblock %}
 
@@ -956,11 +1002,18 @@
     <div class="profile-grid">
         <!-- معلومات العميل -->
         <div class="profile-section">
-            <h2><i class="fa-solid fa-user-circle"></i> المعلومات الشخصية</h2>
+            <div class="section-header">
+                <h2><i class="fa-solid fa-user-circle"></i> المعلومات الشخصية</h2>
+                <a href="{{ url_for('main.edit_profile') }}" class="edit-profile-btn">
+                    <i class="fa-solid fa-edit"></i>
+                    تعديل البيانات
+                </a>
+            </div>
             <div class="info-group">
                 <div class="info-item">
                     <label><i class="fa-solid fa-envelope"></i> البريد الإلكتروني:</label>
                     <span>{{ current_user.email }}</span>
+                    <small class="email-note">لا يمكن تعديل البريد الإلكتروني</small>
                 </div>
                 <div class="info-item">
                     <label><i class="fa-solid fa-id-card"></i> الاسم الكامل:</label>
@@ -973,6 +1026,10 @@
                 <div class="info-item">
                     <label><i class="fa-solid fa-flag"></i> الجنسية:</label>
                     <span>{{ current_user.nationality or 'غير محدد' }}</span>
+                </div>
+                <div class="info-item">
+                    <label><i class="fa-solid fa-birthday-cake"></i> تاريخ الميلاد:</label>
+                    <span>{{ current_user.birth_date.strftime('%Y-%m-%d') if current_user.birth_date else 'غير محدد' }}</span>
                 </div>
                 <div class="info-item">
                     <label><i class="fa-solid fa-calendar-plus"></i> تاريخ التسجيل:</label>

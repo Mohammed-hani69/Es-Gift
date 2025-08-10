@@ -159,15 +159,15 @@ def approve_deposit(request_id):
         db.session.add(transaction)
         db.session.commit()
         
-        # إنشاء فاتورة PDF تلقائياً بعد الموافقة
+        # إنشاء فاتورة PDF متميزة تلقائياً بعد الموافقة
         try:
-            from simple_deposit_invoice_service import SimpleDepositInvoiceService
-            service = SimpleDepositInvoiceService()
+            from premium_deposit_invoice_service import PremiumDepositInvoiceService
+            service = PremiumDepositInvoiceService()
             pdf_path = service.generate_deposit_invoice_pdf(deposit_request)
             if pdf_path:
                 deposit_request.invoice_pdf_path = pdf_path
                 db.session.commit()
-                print(f"✅ تم إنشاء فاتورة PDF تلقائياً: {pdf_path}")
+                print(f"✅ تم إنشاء فاتورة PDF متميزة تلقائياً: {pdf_path}")
         except Exception as e:
             print(f"⚠️ خطأ في إنشاء فاتورة PDF تلقائياً: {e}")
             # لا نوقف العملية في حالة فشل إنشاء الفاتورة
@@ -249,12 +249,12 @@ def deposit_request_details(request_id):
 def generate_deposit_invoice(request_id):
     """إنشاء فاتورة PDF لطلب الإيداع"""
     try:
-        from simple_deposit_invoice_service import SimpleDepositInvoiceService
+        from premium_deposit_invoice_service import PremiumDepositInvoiceService
         
         deposit_request = WalletDepositRequest.query.get_or_404(request_id)
         
-        # إنشاء فاتورة PDF
-        service = SimpleDepositInvoiceService()
+        # إنشاء فاتورة PDF متميزة
+        service = PremiumDepositInvoiceService()
         pdf_path = service.generate_deposit_invoice_pdf(deposit_request)
         
         if pdf_path:
