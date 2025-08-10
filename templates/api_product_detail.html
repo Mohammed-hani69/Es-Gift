@@ -1,0 +1,585 @@
+{% extends "base.html" %}
+
+{% block title %}{{ product.name }} - Es-Gift{% endblock %}
+
+{% block content %}
+<div class="product-detail-container">
+    <div class="product-detail-wrapper">
+        <div class="product-image-section">
+            <div class="product-image">
+                <img src="{{ product.image_url or url_for('static', filename='images/default-product.jpg') }}" 
+                     alt="{{ product.name }}" 
+                     onerror="this.src='{{ url_for('static', filename='images/default-product.jpg') }}'">
+                {% if product.instant_delivery %}
+                <div class="instant-delivery-badge">
+                    <i class="fas fa-bolt"></i>
+                    توصيل فوري
+                </div>
+                {% endif %}
+                {% if product.is_api_product %}
+                <div class="api-product-badge">
+                    <i class="fas fa-cloud"></i>
+                    منتج API
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="product-info-section">
+            <div class="product-header">
+                <h1 class="product-title">{{ product.name }}</h1>
+                <div class="product-provider">
+                    <i class="fas fa-store"></i>
+                    بواسطة {{ product.provider }}
+                </div>
+            </div>
+
+            <div class="product-category">
+                <i class="fas fa-tag"></i>
+                {{ product.category }}
+            </div>
+
+            <div class="product-description">
+                <h3>وصف المنتج</h3>
+                <p>{{ product.description }}</p>
+            </div>
+
+            <div class="product-features">
+                <h3>ميزات المنتج</h3>
+                <ul>
+                    {% if product.digital_delivery %}
+                    <li><i class="fas fa-check text-success"></i> توصيل رقمي</li>
+                    {% endif %}
+                    {% if product.instant_delivery %}
+                    <li><i class="fas fa-check text-success"></i> توصيل فوري</li>
+                    {% endif %}
+                    <li><i class="fas fa-check text-success"></i> أكواد أصلية ومضمونة</li>
+                    <li><i class="fas fa-check text-success"></i> دعم فني 24/7</li>
+                </ul>
+            </div>
+
+            {% if product.instructions %}
+            <div class="product-instructions">
+                <h3>تعليمات الاستخدام</h3>
+                <p>{{ product.instructions }}</p>
+            </div>
+            {% endif %}
+
+            <div class="purchase-section">
+                <div class="price-section">
+                    <div class="current-price">
+                        {{ "%.2f"|format(product.display_price) }} {{ product.currency }}
+                    </div>
+                </div>
+
+                <div class="quantity-section">
+                    <label for="quantity">الكمية:</label>
+                    <div class="quantity-controls">
+                        <button type="button" onclick="changeQuantity(-1)">-</button>
+                        <input type="number" id="quantity" value="1" min="1" max="10">
+                        <button type="button" onclick="changeQuantity(1)">+</button>
+                    </div>
+                </div>
+
+                <div class="total-price-section">
+                    <div class="total-label">المجموع:</div>
+                    <div class="total-price" id="totalPrice">{{ "%.2f"|format(product.display_price) }} {{ product.currency }}</div>
+                </div>
+
+                <div class="action-buttons">
+                    {% if current_user.is_authenticated %}
+                        {% if product.stock_status %}
+                        <button class="btn btn-primary add-to-cart-btn" onclick="addToCart()">
+                            <i class="fas fa-shopping-cart"></i>
+                            إضافة إلى السلة
+                        </button>
+                        
+                        <button class="btn btn-success buy-now-btn" onclick="buyNow()">
+                            <i class="fas fa-bolt"></i>
+                            شراء الآن
+                        </button>
+                        {% else %}
+                        <button class="btn btn-secondary" disabled>
+                            <i class="fas fa-times"></i>
+                            غير متوفر
+                        </button>
+                        {% endif %}
+                    {% else %}
+                    <button class="btn btn-warning" onclick="window.location.href='{{ url_for('main.login') }}'">
+                        <i class="fas fa-sign-in-alt"></i>
+                        تسجيل الدخول للشراء
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="security-badges">
+                <div class="security-item">
+                    <i class="fas fa-shield-alt"></i>
+                    <span>دفع آمن</span>
+                </div>
+                <div class="security-item">
+                    <i class="fas fa-lock"></i>
+                    <span>حماية البيانات</span>
+                </div>
+                <div class="security-item">
+                    <i class="fas fa-certificate"></i>
+                    <span>أكواد أصلية</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.product-detail-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    background: #111;
+    color: #fff;
+    min-height: 70vh;
+}
+
+.product-detail-wrapper {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    align-items: start;
+}
+
+.product-image-section {
+    position: relative;
+}
+
+.product-image {
+    position: relative;
+    background: #222;
+    border-radius: 15px;
+    overflow: hidden;
+    aspect-ratio: 1;
+}
+
+.product-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.instant-delivery-badge, .api-product-badge {
+    position: absolute;
+    top: 15px;
+    background: linear-gradient(135deg, #ff0033, #ff6b6b);
+    color: white;
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.instant-delivery-badge {
+    right: 15px;
+}
+
+.api-product-badge {
+    left: 15px;
+    background: linear-gradient(135deg, #28a745, #20c997);
+}
+
+.product-info-section {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+
+.product-header {
+    border-bottom: 2px solid #333;
+    padding-bottom: 20px;
+}
+
+.product-title {
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0 0 10px 0;
+    color: #fff;
+}
+
+.product-provider {
+    color: #ff0033;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.product-category {
+    background: #333;
+    padding: 10px 15px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    width: fit-content;
+}
+
+.product-description h3,
+.product-features h3,
+.product-instructions h3 {
+    color: #ff0033;
+    margin-bottom: 15px;
+    font-size: 1.2rem;
+}
+
+.product-features ul {
+    list-style: none;
+    padding: 0;
+}
+
+.product-features li {
+    padding: 8px 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.purchase-section {
+    background: #222;
+    padding: 25px;
+    border-radius: 15px;
+    border: 2px solid #333;
+}
+
+.price-section {
+    margin-bottom: 20px;
+}
+
+.current-price {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #ff0033;
+}
+
+.quantity-section {
+    margin-bottom: 20px;
+}
+
+.quantity-section label {
+    display: block;
+    margin-bottom: 10px;
+    font-weight: 600;
+}
+
+.quantity-controls {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    width: fit-content;
+}
+
+.quantity-controls button {
+    background: #ff0033;
+    color: white;
+    border: none;
+    width: 40px;
+    height: 40px;
+    cursor: pointer;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.quantity-controls button:first-child {
+    border-radius: 8px 0 0 8px;
+}
+
+.quantity-controls button:last-child {
+    border-radius: 0 8px 8px 0;
+}
+
+.quantity-controls input {
+    width: 60px;
+    height: 40px;
+    text-align: center;
+    border: 2px solid #ff0033;
+    background: #333;
+    color: #fff;
+    border-left: none;
+    border-right: none;
+}
+
+.total-price-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.total-price {
+    color: #ff0033;
+    font-size: 1.5rem;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.btn {
+    padding: 12px 25px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    justify-content: center;
+    min-width: 150px;
+}
+
+.btn-primary {
+    background: #ff0033;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #e6002e;
+    transform: translateY(-2px);
+}
+
+.btn-success {
+    background: #28a745;
+    color: white;
+}
+
+.btn-success:hover {
+    background: #218838;
+    transform: translateY(-2px);
+}
+
+.btn-warning {
+    background: #ffc107;
+    color: #212529;
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+    cursor: not-allowed;
+}
+
+.security-badges {
+    display: flex;
+    justify-content: space-around;
+    background: #333;
+    padding: 20px;
+    border-radius: 10px;
+    margin-top: 20px;
+}
+
+.security-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    color: #28a745;
+}
+
+.security-item i {
+    font-size: 1.5rem;
+}
+
+@media (max-width: 768px) {
+    .product-detail-wrapper {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .product-title {
+        font-size: 1.5rem;
+    }
+    
+    .action-buttons {
+        flex-direction: column;
+    }
+    
+    .btn {
+        min-width: auto;
+    }
+    
+    .security-badges {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .security-item {
+        flex-direction: row;
+        justify-content: center;
+    }
+}
+</style>
+
+<script>
+const productPrice = {{ product.display_price }};
+const productId = '{{ product.external_id }}';
+const isApiProduct = {{ 'true' if product.is_api_product else 'false' }};
+
+function changeQuantity(delta) {
+    const quantityInput = document.getElementById('quantity');
+    let currentQuantity = parseInt(quantityInput.value);
+    const newQuantity = Math.max(1, Math.min(10, currentQuantity + delta));
+    quantityInput.value = newQuantity;
+    updateTotalPrice();
+}
+
+function updateTotalPrice() {
+    const quantity = parseInt(document.getElementById('quantity').value);
+    const totalPrice = (productPrice * quantity).toFixed(2);
+    document.getElementById('totalPrice').textContent = totalPrice + ' {{ product.currency }}';
+}
+
+function addToCart() {
+    {% if current_user.is_authenticated %}
+    const quantity = parseInt(document.getElementById('quantity').value);
+    
+    const button = event.target.closest('button');
+    const originalHTML = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإضافة...';
+    button.disabled = true;
+    
+    fetch('/add-to-cart', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            external_product_id: productId,
+            quantity: quantity,
+            is_api_product: true
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('تمت إضافة المنتج إلى السلة بنجاح ✅', 'success');
+            // تحديث عداد السلة
+            if (typeof updateCartCount === 'function' && data.cart_count !== undefined) {
+                updateCartCount(data.cart_count);
+            }
+        } else {
+            showNotification(data.message || 'حدث خطأ في إضافة المنتج', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('حدث خطأ، يرجى المحاولة مرة أخرى', 'error');
+    })
+    .finally(() => {
+        button.innerHTML = originalHTML;
+        button.disabled = false;
+    });
+    {% else %}
+    showNotification('يجب تسجيل الدخول أولاً', 'warning');
+    window.location.href = '{{ url_for("main.login") }}';
+    {% endif %}
+}
+
+function buyNow() {
+    {% if current_user.is_authenticated %}
+    const quantity = parseInt(document.getElementById('quantity').value);
+    
+    if (confirm(`هل تريد شراء {{ product.name }} بكمية ${quantity}؟`)) {
+        const button = event.target.closest('button');
+        const originalHTML = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الشراء...';
+        button.disabled = true;
+        
+        fetch('/purchase-api-product', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                external_product_id: productId,
+                quantity: quantity
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification('تم الشراء بنجاح! سيتم إرسال الأكواد إلى بريدك الإلكتروني.', 'success');
+                // إعادة توجيه إلى صفحة تأكيد الطلب
+                setTimeout(() => {
+                    window.location.href = `/order-confirmation/${data.order_number}`;
+                }, 2000);
+            } else {
+                showNotification(data.message || 'حدث خطأ في الشراء', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('حدث خطأ، يرجى المحاولة مرة أخرى', 'error');
+        })
+        .finally(() => {
+            button.innerHTML = originalHTML;
+            button.disabled = false;
+        });
+    }
+    {% else %}
+    showNotification('يجب تسجيل الدخول أولاً', 'warning');
+    window.location.href = '{{ url_for("main.login") }}';
+    {% endif %}
+}
+
+function showNotification(message, type) {
+    // إنشاء عنصر الإشعار
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 15px 20px;
+        border-radius: 8px;
+        color: white;
+        font-weight: 600;
+        z-index: 9999;
+        max-width: 400px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    `;
+    
+    // تطبيق ألوان حسب النوع
+    switch(type) {
+        case 'success':
+            notification.style.background = 'linear-gradient(135deg, #28a745, #20c997)';
+            break;
+        case 'error':
+            notification.style.background = 'linear-gradient(135deg, #dc3545, #e74c3c)';
+            break;
+        case 'warning':
+            notification.style.background = 'linear-gradient(135deg, #ffc107, #f39c12)';
+            notification.style.color = '#212529';
+            break;
+        default:
+            notification.style.background = 'linear-gradient(135deg, #007bff, #0056b3)';
+    }
+    
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    // إزالة الإشعار بعد 3 ثوان
+    setTimeout(() => {
+        notification.remove();
+    }, 3000);
+}
+
+// تحديث السعر عند تغيير الكمية
+document.getElementById('quantity').addEventListener('input', updateTotalPrice);
+</script>
+{% endblock %}

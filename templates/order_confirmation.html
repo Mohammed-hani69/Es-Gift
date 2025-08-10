@@ -1,0 +1,434 @@
+{% extends "base.html" %}
+
+{% block title %}تأكيد الطلب - Es-Gift{% endblock %}
+
+{% block content %}
+<div class="order-confirmation-container">
+    <div class="confirmation-card">
+        <div class="success-icon">
+            <i class="fas fa-check-circle"></i>
+        </div>
+        
+        <h1 class="confirmation-title">تم إتمام طلبك بنجاح! 🎉</h1>
+        
+        <div class="order-details">
+            <h2>تفاصيل الطلب</h2>
+            <div class="detail-row">
+                <span class="label">رقم الطلب:</span>
+                <span class="value">{{ order.order_number }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="label">تاريخ الطلب:</span>
+                <span class="value">{{ order.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="label">المبلغ الإجمالي:</span>
+                <span class="value">{{ order.total_amount }} {{ order.currency or 'SAR' }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="label">حالة الطلب:</span>
+                <span class="value status-{{ order.order_status }}">
+                    {% if order.order_status == 'completed' %}
+                        مكتمل
+                    {% elif order.order_status == 'processing' %}
+                        قيد المعالجة
+                    {% elif order.order_status == 'partially_completed' %}
+                        مكتمل جزئياً
+                    {% else %}
+                        {{ order.order_status }}
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+
+        <div class="delivery-info">
+            <div class="delivery-icon">
+                <i class="fas fa-envelope"></i>
+            </div>
+            <div class="delivery-content">
+                <h3>سيتم إرسال الأكواد إلى بريدك الإلكتروني</h3>
+                <p>{{ current_user.email }}</p>
+                <div class="delivery-note">
+                    <i class="fas fa-info-circle"></i>
+                    <span>قد يستغرق وصول البريد بضع دقائق. تحقق من مجلد البريد الوارد والرسائل الغير مرغوب فيها.</span>
+                </div>
+            </div>
+        </div>
+
+        {% if order.excel_file_path %}
+        <div class="excel-download">
+            <h3>تحميل ملف Excel</h3>
+            <p>يمكنك أيضاً تحميل ملف Excel يحتوي على جميع الأكواد:</p>
+            <a href="{{ url_for('main.download_order_excel', order_id=order.id) }}" 
+               class="download-btn">
+                <i class="fas fa-download"></i>
+                تحميل ملف الأكواد
+            </a>
+        </div>
+        {% endif %}
+
+        <div class="next-steps">
+            <h3>الخطوات التالية</h3>
+            <ul>
+                <li><i class="fas fa-check"></i> تحقق من بريدك الإلكتروني</li>
+                <li><i class="fas fa-check"></i> احفظ الأكواد في مكان آمن</li>
+                <li><i class="fas fa-check"></i> اتبع التعليمات المرفقة مع كل كود</li>
+                <li><i class="fas fa-check"></i> استمتع بمشترياتك!</li>
+            </ul>
+        </div>
+
+        <div class="action-buttons">
+            <a href="{{ url_for('main.index') }}" class="btn btn-primary">
+                <i class="fas fa-home"></i>
+                العودة للرئيسية
+            </a>
+            <a href="{{ url_for('main.user_orders') }}" class="btn btn-secondary">
+                <i class="fas fa-list"></i>
+                عرض طلباتي
+            </a>
+        </div>
+
+        <div class="support-info">
+            <div class="support-card">
+                <i class="fas fa-headset"></i>
+                <div>
+                    <h4>تحتاج مساعدة؟</h4>
+                    <p>فريق الدعم متاح 24/7 لمساعدتك</p>
+                    <button class="support-btn" onclick="window.openEsGiftChat()">
+                        تحدث معنا الآن
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.order-confirmation-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 40px 20px;
+    background: #111;
+    color: #fff;
+    min-height: 70vh;
+}
+
+.confirmation-card {
+    background: #222;
+    border-radius: 20px;
+    padding: 40px;
+    text-align: center;
+    border: 2px solid #333;
+}
+
+.success-icon {
+    font-size: 4rem;
+    color: #28a745;
+    margin-bottom: 20px;
+    animation: bounceIn 0.6s ease-out;
+}
+
+@keyframes bounceIn {
+    0% { transform: scale(0.3); opacity: 0; }
+    50% { transform: scale(1.05); }
+    70% { transform: scale(0.9); }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.confirmation-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 30px;
+    background: linear-gradient(135deg, #ff0033, #ff6b6b);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.order-details {
+    background: #333;
+    border-radius: 15px;
+    padding: 25px;
+    margin: 30px 0;
+    text-align: left;
+}
+
+.order-details h2 {
+    color: #ff0033;
+    margin-bottom: 20px;
+    font-size: 1.5rem;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid #444;
+}
+
+.detail-row:last-child {
+    border-bottom: none;
+}
+
+.label {
+    font-weight: 600;
+    color: #ccc;
+}
+
+.value {
+    font-weight: 700;
+    color: #fff;
+}
+
+.status-completed {
+    color: #28a745 !important;
+}
+
+.status-processing {
+    color: #ffc107 !important;
+}
+
+.status-partially_completed {
+    color: #17a2b8 !important;
+}
+
+.delivery-info {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    border-radius: 15px;
+    padding: 25px;
+    margin: 30px 0;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    text-align: left;
+}
+
+.delivery-icon {
+    font-size: 2.5rem;
+    color: white;
+}
+
+.delivery-content h3 {
+    margin: 0 0 10px 0;
+    color: white;
+}
+
+.delivery-content p {
+    margin: 0 0 15px 0;
+    font-weight: 600;
+    color: #e3f2fd;
+}
+
+.delivery-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 0.9rem;
+    color: #bbdefb;
+}
+
+.excel-download {
+    background: #333;
+    border-radius: 15px;
+    padding: 25px;
+    margin: 30px 0;
+}
+
+.excel-download h3 {
+    color: #28a745;
+    margin-bottom: 15px;
+}
+
+.download-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+    padding: 12px 25px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: transform 0.3s ease;
+}
+
+.download-btn:hover {
+    transform: translateY(-2px);
+    color: white;
+    text-decoration: none;
+}
+
+.next-steps {
+    background: #333;
+    border-radius: 15px;
+    padding: 25px;
+    margin: 30px 0;
+    text-align: left;
+}
+
+.next-steps h3 {
+    color: #ff0033;
+    margin-bottom: 20px;
+}
+
+.next-steps ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.next-steps li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    color: #ccc;
+}
+
+.next-steps li i {
+    color: #28a745;
+    width: 20px;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin: 30px 0;
+    flex-wrap: wrap;
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 25px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #ff0033, #ff6b6b);
+    color: white;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    color: white;
+    text-decoration: none;
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #545b62;
+    color: white;
+    text-decoration: none;
+    transform: translateY(-2px);
+}
+
+.support-info {
+    margin-top: 40px;
+}
+
+.support-card {
+    background: linear-gradient(135deg, #17a2b8, #138496);
+    border-radius: 15px;
+    padding: 25px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    text-align: left;
+}
+
+.support-card i {
+    font-size: 2.5rem;
+    color: white;
+}
+
+.support-card h4 {
+    margin: 0 0 5px 0;
+    color: white;
+}
+
+.support-card p {
+    margin: 0 0 15px 0;
+    color: #e0f2f1;
+}
+
+.support-btn {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 2px solid white;
+    padding: 8px 20px;
+    border-radius: 25px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.support-btn:hover {
+    background: white;
+    color: #17a2b8;
+}
+
+@media (max-width: 768px) {
+    .confirmation-card {
+        padding: 20px;
+    }
+    
+    .confirmation-title {
+        font-size: 2rem;
+    }
+    
+    .delivery-info {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .support-card {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .action-buttons {
+        flex-direction: column;
+    }
+    
+    .btn {
+        justify-content: center;
+    }
+}
+</style>
+
+<script>
+// تشغيل احتفالية بسيطة
+document.addEventListener('DOMContentLoaded', function() {
+    // إضافة تأثير الاحتفال
+    setTimeout(() => {
+        if (typeof confetti !== 'undefined') {
+            confetti({
+                particleCount: 100,
+                spread: 70,
+                origin: { y: 0.6 }
+            });
+        }
+    }, 500);
+});
+
+// إذا لم يتم تعريف دالة فتح الشات، قم بإنشائها
+if (typeof window.openEsGiftChat === 'undefined') {
+    window.openEsGiftChat = function() {
+        alert('سيتم فتح نافذة الدردشة قريباً');
+    };
+}
+</script>
+{% endblock %}

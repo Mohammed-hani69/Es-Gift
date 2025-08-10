@@ -16,30 +16,50 @@
     <div class="cart-content">
         <div class="cart-items">
             {% for item in cart_items %}
-            <div class="cart-item" data-product-id="{{ item.product.id }}">
+            <div class="cart-item" data-product-id="{{ item.product.id }}" {% if item.is_api_product %}data-is-api="true"{% endif %}>
                 <div class="item-image">
-                    <img src="/static/uploads/gift-cards/{{ item.product.image_url }}" 
-                         alt="{{ item.product.name }}" onerror="this.src='/static/images/default-product.jpg'">
+                    {% if item.is_api_product %}
+                        <img src="https://via.placeholder.com/100x100?text=API" 
+                             alt="{{ item.product.name }}" onerror="this.src='/static/images/default-product.jpg'">
+                        <div class="api-badge">
+                            <i class="fas fa-cloud"></i>
+                            API
+                        </div>
+                    {% else %}
+                        <img src="/static/uploads/gift-cards/{{ item.product.image_url }}" 
+                             alt="{{ item.product.name }}" onerror="this.src='/static/images/default-product.jpg'">
+                    {% endif %}
                 </div>
                 
                 <div class="item-details">
                     <h3 class="item-name">{{ item.product.name }}</h3>
-                    <p class="item-description">{{ item.product.description[:100] }}...</p>
+                    <p class="item-description">
+                        {% if item.is_api_product %}
+                            منتج رقمي من {{ item.product.provider }} - سيتم إرسال الأكواد فوراً
+                        {% else %}
+                            {{ item.product.description[:100] }}...
+                        {% endif %}
+                    </p>
                     <div class="item-info">
-                        <span class="item-region">{{ item.product.region }}</span>
-                        <span class="item-value">{{ item.product.value }}</span>
+                        {% if item.is_api_product %}
+                            <span class="item-region">{{ item.product.provider }}</span>
+                            <span class="item-value">{{ item.external_product_id }}</span>
+                        {% else %}
+                            <span class="item-region">{{ item.product.region }}</span>
+                            <span class="item-value">{{ item.product.value }}</span>
+                        {% endif %}
                     </div>
                 </div>
                 
                 <div class="item-quantity">
                     <label>الكمية:</label>
                     <div class="quantity-controls">
-                        <button onclick="changeQuantity({{ item.product.id }}, -1)">-</button>
+                        <button onclick="changeQuantity({{ item.product.id }}, -1, {{ 'true' if item.is_api_product else 'false' }})">-</button>
                         <input type="number" value="{{ item.quantity }}" 
                                min="1" max="50"
                                id="quantity-{{ item.product.id }}"
-                               onchange="updateQuantity({{ item.product.id }}, this.value)">
-                        <button onclick="changeQuantity({{ item.product.id }}, 1)">+</button>
+                               onchange="updateQuantity({{ item.product.id }}, this.value, {{ 'true' if item.is_api_product else 'false' }})">
+                        <button onclick="changeQuantity({{ item.product.id }}, 1, {{ 'true' if item.is_api_product else 'false' }})">+</button>
                     </div>
                 </div>
                 
@@ -51,7 +71,7 @@
                 </div>
                 
                 <div class="item-actions">
-                    <button class="remove-item" onclick="removeItem({{ item.product.id }})">
+                    <button class="remove-item" onclick="removeItem({{ item.product.id }}, {{ 'true' if item.is_api_product else 'false' }})">
                         <i class="fa-solid fa-trash"></i>
                     </button>
                 </div>
@@ -262,12 +282,28 @@
     height: 120px;
     border-radius: 10px;
     overflow: hidden;
+    position: relative;
 }
 
 .item-image img {
     width: 100%;
     height: 100%;
     object-fit: cover;
+}
+
+.api-badge {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 3px;
 }
 
 .item-details {
@@ -634,18 +670,18 @@
 </style>
 
 <script>
-function changeQuantity(productId, change) {
+function changeQuantity(productId, change, isApiProduct = false) {
     const quantityInput = document.getElementById(`quantity-${productId}`);
     let currentQuantity = parseInt(quantityInput.value);
     let newQuantity = currentQuantity + change;
     
     if (newQuantity >= 1 && newQuantity <= 50) {
         quantityInput.value = newQuantity;
-        updateQuantity(productId, newQuantity);
+        updateQuantity(productId, newQuantity, isApiProduct);
     }
 }
 
-function updateQuantity(productId, quantity) {
+function updateQuantity(productId, quantity, isApiProduct = false) {
     fetch('/update-cart-quantity', {
         method: 'POST',
         headers: {
@@ -653,7 +689,8 @@ function updateQuantity(productId, quantity) {
         },
         body: JSON.stringify({
             product_id: productId,
-            quantity: quantity
+            quantity: quantity,
+            is_api_product: isApiProduct
         })
     })
     .then(response => response.json())
@@ -674,7 +711,7 @@ function updateQuantity(productId, quantity) {
     });
 }
 
-function removeItem(productId) {
+function removeItem(productId, isApiProduct = false) {
     if (confirm('هل أنت متأكد من إزالة هذا المنتج من السلة؟')) {
         fetch('/remove-from-cart', {
             method: 'POST',
@@ -682,7 +719,8 @@ function removeItem(productId) {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                product_id: productId
+                product_id: productId,
+                is_api_product: isApiProduct
             })
         })
         .then(response => response.json())

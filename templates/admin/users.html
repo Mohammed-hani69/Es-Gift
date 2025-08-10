@@ -60,7 +60,12 @@
                     <option value="reseller">موزع</option>
                 </select>
             </div>
-            <!-- يمكن إضافة مستخدمين جدد من صفحة التسجيل -->
+            <div class="action-buttons">
+                <a href="{{ url_for('admin.admin_create_user') }}" class="btn btn-primary">
+                    <i class="fas fa-user-plus"></i>
+                    إنشاء مستخدم جديد
+                </a>
+            </div>
         </div>
 
         <table class="data-table" id="usersTable">
@@ -676,6 +681,45 @@ document.addEventListener('DOMContentLoaded', function() {
 .data-table tbody tr.selected .badge {
     background: rgba(255, 255, 255, 0.2) !important;
     color: white !important;
+}
+
+/* أنماط زر إنشاء مستخدم جديد */
+.action-buttons .btn-primary {
+    background: linear-gradient(135deg, #ff0033, #cc0029);
+    border: none;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.action-buttons .btn-primary:hover {
+    background: linear-gradient(135deg, #cc0029, #990020);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(255, 0, 51, 0.3);
+    text-decoration: none;
+    color: white;
+}
+
+.action-buttons .btn-primary i {
+    font-size: 14px;
+}
+
+/* تحسين responsive للأزرار */
+@media (max-width: 768px) {
+    .action-buttons {
+        margin-top: 15px;
+    }
+    
+    .action-buttons .btn-primary {
+        width: 100%;
+        justify-content: center;
+    }
 }
 </style>
 {% endblock %}

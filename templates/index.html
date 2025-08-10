@@ -166,7 +166,7 @@
     <div class="onecard-products-container swiper">
         <div class="onecard-products-wrapper swiper-wrapper">
             {% for product in api_products %}
-            <div class="onecard-product-card swiper-slide">
+            <div class="onecard-product-card swiper-slide" onclick="viewOnecardProductDetails('{{ product.external_product_id or product.id }}')">
                 <div class="onecard-product-image">
                     <img src="{{ product.productImage }}" alt="{{ product.name }}" loading="lazy">
 
@@ -186,20 +186,20 @@
                     <h4 class="onecard-product-title">{{ product.name[:25] }}{% if product.name|length > 25 %}...{% endif %}</h4>
                     <p class="onecard-product-category">{{ product.category }}</p>
                     <div class="onecard-price-container">
-                        <span class="onecard-price">{{ "%.0f"|format(product.display_price or product.regular_price) }} {{ current_currency }}</span>
+                        <span class="onecard-price">{{ "%.0f"|format(product.display_price or product.price or 0) }} {{ current_currency }}</span>
                         <span class="onecard-provider">{{ product.provider.upper() }}</span>
                     </div>
                 </div>
-                <div class="onecard-product-actions">
+                <div class="onecard-product-actions" onclick="event.stopPropagation();">
                     {% if current_user.is_authenticated %}
                         {% if product.stock_status %}
                             <button class="onecard-btn onecard-btn-cart" 
-                                    onclick="addOnecardToCart('{{ product.id }}', '{{ product.name }}', {{ product.regular_price or 0 }})" 
+                                    onclick="addOnecardToCart('{{ product.id }}', '{{ product.name }}', {{ product.price or 0 }})" 
                                     title="أضف إلى السلة">
                                 <i class="fas fa-cart-plus"></i>
                             </button>
                             <button class="onecard-btn onecard-btn-buy" 
-                                    onclick="buyOnecardNow('{{ product.id }}', '{{ product.name }}', {{ product.regular_price or 0 }})" 
+                                    onclick="buyOnecardNow('{{ product.external_product_id or product.id }}', '{{ product.name }}', {{ product.price or 0 }})" 
                                     title="شراء فوري">
                                 <i class="fas fa-bolt"></i>
                             </button>
@@ -3802,19 +3802,8 @@ function buyApiProductNow(productId, productName, productPrice) {
 // Functions للمنتجات الجديدة من OneCard
 function viewOnecardProductDetails(externalProductId) {
     {% if current_user.is_authenticated %}
-    fetch(`/api-product-details/${externalProductId}`)
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showProductModal(data.product);
-        } else {
-            showNotification('فشل في جلب تفاصيل المنتج', 'error');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showNotification('حدث خطأ، يرجى المحاولة مرة أخرى', 'error');
-    });
+    // فتح صفحة تفاصيل المنتج في نافذة جديدة أو نفس النافذة
+    window.location.href = `/api-product-detail/${externalProductId}`;
     {% else %}
     showNotification('يجب تسجيل الدخول أولاً', 'warning');
     window.location.href = '{{ url_for("main.login") }}';
@@ -3864,7 +3853,7 @@ function addOnecardToCart(productId, productName, productPrice) {
     {% endif %}
 }
 
-function buyOnecardNow(productId, productName, productPrice) {
+function buyOnecardNow(externalProductId, productName, productPrice) {
     {% if current_user.is_authenticated %}
     if (confirm(`هل تريد شراء "${productName}" بسعر ${productPrice} ريال؟`)) {
         const button = event.target.closest('button');
@@ -3878,7 +3867,7 @@ function buyOnecardNow(productId, productName, productPrice) {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                api_product_id: productId,
+                external_product_id: externalProductId,
                 quantity: 1
             })
         })
@@ -3886,9 +3875,16 @@ function buyOnecardNow(productId, productName, productPrice) {
         .then(data => {
             if (data.success) {
                 showNotification(`تم شراء "${productName}" بنجاح! تحقق من بريدك الإلكتروني للحصول على الأكواد`, 'success');
-                setTimeout(() => {
-                    window.location.href = '/my-orders';
-                }, 2000);
+                // إعادة توجيه لصفحة تأكيد الطلب إذا كان متاحاً
+                if (data.order_id) {
+                    setTimeout(() => {
+                        window.location.href = `/order-confirmation/${data.order_id}`;
+                    }, 2000);
+                } else {
+                    setTimeout(() => {
+                        window.location.href = '/my-orders';
+                    }, 2000);
+                }
             } else {
                 showNotification(data.message || 'فشل في الشراء، يرجى المحاولة مرة أخرى', 'error');
                 button.innerHTML = originalText;
@@ -3899,6 +3895,9 @@ function buyOnecardNow(productId, productName, productPrice) {
             console.error('Error:', error);
             showNotification('حدث خطأ، يرجى المحاولة مرة أخرى', 'error');
             button.innerHTML = originalText;
+            button.disabled = false;
+        });
+    }
             button.disabled = false;
         });
     }
@@ -4104,7 +4103,7 @@ function addOnecardToCart(productId, productName, productPrice) {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-            product_id: productId,
+            external_product_id: productId,
             quantity: 1,
             is_api_product: true
         })
@@ -4156,8 +4155,7 @@ function buyOnecardNow(productId, productName, productPrice) {
         },
         body: JSON.stringify({
             external_product_id: productId,
-            product_name: productName,
-            product_price: productPrice
+            quantity: 1
         })
     })
     .then(response => response.json())

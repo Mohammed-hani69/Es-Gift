@@ -4,11 +4,12 @@
 routes إدارة طلبات المحفظة للأدمن
 """
 
-from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash
+from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash, current_app
 from flask_login import login_required, current_user
 from datetime import datetime
 from decimal import Decimal
 import json
+import os
 
 from models import (db, WalletDepositRequest, UserWallet, WalletTransaction, 
                    Currency, User, UserBalance)
@@ -94,10 +95,8 @@ def approve_deposit(request_id):
         deposit_request = WalletDepositRequest.query.get_or_404(request_id)
         
         if deposit_request.status != 'pending':
-            return jsonify({
-                'success': False, 
-                'message': f'لا يمكن معالجة طلب بحالة {deposit_request.status}'
-            })
+            flash(f'لا يمكن معالجة طلب بحالة {deposit_request.status}', 'error')
+            return redirect(url_for('admin_wallet.deposit_request_details', request_id=request_id))
         
         # الحصول على البيانات من النموذج
         amount_to_add = Decimal(request.form.get('amount', str(deposit_request.amount)))
@@ -107,10 +106,8 @@ def approve_deposit(request_id):
         # التحقق من العملة
         currency = Currency.query.filter_by(code=currency_to_add, is_active=True).first()
         if not currency:
-            return jsonify({
-                'success': False, 
-                'message': 'العملة المحددة غير متاحة'
-            })
+            flash('العملة المحددة غير متاحة', 'error')
+            return redirect(url_for('admin_wallet.deposit_request_details', request_id=request_id))
         
         # الحصول على محفظة المستخدم
         user_wallet = get_or_create_wallet(deposit_request.user)
@@ -162,18 +159,30 @@ def approve_deposit(request_id):
         db.session.add(transaction)
         db.session.commit()
         
-        return jsonify({
-            'success': True,
-            'message': f'تم قبول الطلب وإضافة {amount_to_add} {currency_to_add} إلى محفظة المستخدم'
-        })
+        # إنشاء فاتورة PDF تلقائياً بعد الموافقة
+        try:
+            from simple_deposit_invoice_service import SimpleDepositInvoiceService
+            service = SimpleDepositInvoiceService()
+            pdf_path = service.generate_deposit_invoice_pdf(deposit_request)
+            if pdf_path:
+                deposit_request.invoice_pdf_path = pdf_path
+                db.session.commit()
+                print(f"✅ تم إنشاء فاتورة PDF تلقائياً: {pdf_path}")
+        except Exception as e:
+            print(f"⚠️ خطأ في إنشاء فاتورة PDF تلقائياً: {e}")
+            # لا نوقف العملية في حالة فشل إنشاء الفاتورة
+        
+        # إضافة رسالة نجاح
+        flash(f'تم قبول الطلب وإضافة {amount_to_add} {currency_to_add} إلى محفظة المستخدم', 'success')
+        
+        # إعادة توجيه إلى نفس الصفحة
+        return redirect(url_for('admin_wallet.deposit_request_details', request_id=request_id))
         
     except Exception as e:
         db.session.rollback()
         print(f"خطأ في قبول الإيداع: {e}")
-        return jsonify({
-            'success': False,
-            'message': 'حدث خطأ في معالجة الطلب'
-        })
+        flash('حدث خطأ في معالجة الطلب', 'error')
+        return redirect(url_for('admin_wallet.deposit_request_details', request_id=request_id))
 
 @admin_wallet_bp.route('/reject-deposit/<int:request_id>', methods=['POST'])
 @login_required
@@ -184,20 +193,16 @@ def reject_deposit(request_id):
         deposit_request = WalletDepositRequest.query.get_or_404(request_id)
         
         if deposit_request.status != 'pending':
-            return jsonify({
-                'success': False, 
-                'message': f'لا يمكن معالجة طلب بحالة {deposit_request.status}'
-            })
+            flash(f'لا يمكن معالجة طلب بحالة {deposit_request.status}', 'error')
+            return redirect(url_for('admin_wallet.deposit_request_details', request_id=request_id))
         
         # الحصول على سبب الرفض
         rejection_reason = request.form.get('rejection_reason', '')
         admin_notes = request.form.get('admin_notes', '')
         
         if not rejection_reason:
-            return jsonify({
-                'success': False,
-                'message': 'يجب إدخال سبب الرفض'
-            })
+            flash('يجب إدخال سبب الرفض', 'error')
+            return redirect(url_for('admin_wallet.deposit_request_details', request_id=request_id))
         
         # تحديث طلب الإيداع
         deposit_request.status = 'rejected'
@@ -208,18 +213,17 @@ def reject_deposit(request_id):
         
         db.session.commit()
         
-        return jsonify({
-            'success': True,
-            'message': 'تم رفض الطلب بنجاح'
-        })
+        # إضافة رسالة نجاح
+        flash('تم رفض الطلب بنجاح', 'success')
+        
+        # إعادة توجيه إلى نفس الصفحة
+        return redirect(url_for('admin_wallet.deposit_request_details', request_id=request_id))
         
     except Exception as e:
         db.session.rollback()
         print(f"خطأ في رفض الإيداع: {e}")
-        return jsonify({
-            'success': False,
-            'message': 'حدث خطأ في معالجة الطلب'
-        })
+        flash('حدث خطأ في معالجة الطلب', 'error')
+        return redirect(url_for('admin_wallet.deposit_request_details', request_id=request_id))
 
 @admin_wallet_bp.route('/deposit-request/<int:request_id>')
 @login_required
@@ -238,6 +242,81 @@ def deposit_request_details(request_id):
         print(f"خطأ في عرض تفاصيل الطلب: {e}")
         flash('حدث خطأ في عرض تفاصيل الطلب', 'error')
         return redirect(url_for('admin_wallet.deposit_requests'))
+
+@admin_wallet_bp.route('/deposit-request/<int:request_id>/generate-invoice', methods=['POST'])
+@login_required
+@admin_required
+def generate_deposit_invoice(request_id):
+    """إنشاء فاتورة PDF لطلب الإيداع"""
+    try:
+        from simple_deposit_invoice_service import SimpleDepositInvoiceService
+        
+        deposit_request = WalletDepositRequest.query.get_or_404(request_id)
+        
+        # إنشاء فاتورة PDF
+        service = SimpleDepositInvoiceService()
+        pdf_path = service.generate_deposit_invoice_pdf(deposit_request)
+        
+        if pdf_path:
+            # حفظ مسار الفاتورة في قاعدة البيانات
+            deposit_request.invoice_pdf_path = pdf_path
+            db.session.commit()
+            
+            return jsonify({
+                'success': True,
+                'message': 'تم إنشاء فاتورة PDF بنجاح',
+                'pdf_path': pdf_path
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'فشل في إنشاء فاتورة PDF'
+            })
+            
+    except Exception as e:
+        print(f"خطأ في إنشاء فاتورة طلب الإيداع: {e}")
+        return jsonify({
+            'success': False,
+            'message': 'حدث خطأ في إنشاء الفاتورة'
+        })
+
+@admin_wallet_bp.route('/deposit-request/<int:request_id>/download-invoice')
+@login_required
+@admin_required
+def download_deposit_invoice(request_id):
+    """تحميل فاتورة PDF لطلب الإيداع"""
+    try:
+        from flask import send_file
+        
+        deposit_request = WalletDepositRequest.query.get_or_404(request_id)
+        
+        if not deposit_request.invoice_pdf_path:
+            flash('لا توجد فاتورة PDF متاحة لهذا الطلب', 'error')
+            return redirect(url_for('admin_wallet.deposit_request_details', request_id=request_id))
+        
+        # مسار الملف الكامل
+        if deposit_request.invoice_pdf_path.startswith('static'):
+            # إذا كان المسار يحتوي على static
+            file_path = os.path.join(current_app.root_path, deposit_request.invoice_pdf_path)
+        else:
+            # إذا كان المسار نسبي
+            file_path = os.path.join(current_app.root_path, 'static', deposit_request.invoice_pdf_path)
+        
+        if not os.path.exists(file_path):
+            flash('ملف الفاتورة غير موجود', 'error')
+            return redirect(url_for('admin_wallet.deposit_request_details', request_id=request_id))
+        
+        return send_file(
+            file_path,
+            as_attachment=True,
+            download_name=f'deposit_invoice_{request_id}.pdf',
+            mimetype='application/pdf'
+        )
+        
+    except Exception as e:
+        print(f"خطأ في تحميل فاتورة طلب الإيداع: {e}")
+        flash('حدث خطأ في تحميل الفاتورة', 'error')
+        return redirect(url_for('admin_wallet.deposit_request_details', request_id=request_id))
 
 @admin_wallet_bp.route('/manual-deposit', methods=['GET', 'POST'])
 @login_required

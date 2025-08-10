@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash, current_app, send_file, render_template_string
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
+from werkzeug.security import generate_password_hash
 from datetime import datetime, timedelta
 from sqlalchemy import extract, func
 import os
@@ -8,7 +9,6 @@ import json
 import requests
 import zipfile
 import tempfile
-from werkzeug.security import generate_password_hash
 import matplotlib
 matplotlib.use('Agg')  # استخدام backend غير تفاعلي
 import matplotlib.pyplot as plt
@@ -94,6 +94,129 @@ def users():
     
     users = User.query.all()
     return render_template('admin/users.html', users=users)
+
+@admin.route('/create-user', methods=['GET', 'POST'])
+@login_required
+def admin_create_user():
+    """إنشاء مستخدم جديد بواسطة الأدمن بدون الحاجة لرمز التحقق"""
+    if not current_user.is_admin:
+        flash('غير مصرح لك بالوصول لهذه الصفحة', 'error')
+        return redirect(url_for('main.index'))
+    
+    if request.method == 'GET':
+        return render_template('admin/create_user.html')
+    
+    try:
+        # جلب البيانات من النموذج
+        email = request.form.get('email', '').strip()
+        password = request.form.get('password', '').strip()
+        full_name = request.form.get('full_name', '').strip()
+        phone = request.form.get('phone', '').strip()
+        customer_type = request.form.get('customer_type', 'regular')
+        is_admin = 'is_admin' in request.form
+        
+        # التحقق من صحة البيانات
+        if not email or not password:
+            flash('البريد الإلكتروني وكلمة المرور مطلوبان', 'error')
+            return render_template('admin/create_user.html')
+        
+        # التحقق من صحة البريد الإلكتروني
+        import re
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_pattern, email):
+            flash('البريد الإلكتروني غير صحيح', 'error')
+            return render_template('admin/create_user.html')
+        
+        # التحقق من طول كلمة المرور
+        if len(password) < 6:
+            flash('كلمة المرور يجب أن تكون 6 أحرف على الأقل', 'error')
+            return render_template('admin/create_user.html')
+        
+        # التحقق من عدم وجود المستخدم مسبقاً
+        existing_user = User.query.filter_by(email=email).first()
+        if existing_user:
+            flash('البريد الإلكتروني مسجل مسبقاً', 'error')
+            return render_template('admin/create_user.html')
+        
+        # إنشاء المستخدم الجديد
+        from werkzeug.security import generate_password_hash
+        
+        # إنشاء username فريد من البريد الإلكتروني
+        username = email.split('@')[0]
+        counter = 1
+        original_username = username
+        while User.query.filter_by(username=username).first():
+            username = f"{original_username}{counter}"
+            counter += 1
+        
+        new_user = User(
+            username=username,
+            email=email,
+            password_hash=generate_password_hash(password),
+            full_name=full_name if full_name else None,
+            phone=phone if phone else None,
+            customer_type=customer_type,
+            is_admin=is_admin,
+            is_verified=True,  # تفعيل الحساب مباشرة بدون رمز التحقق
+            created_at=datetime.utcnow()
+        )
+        
+        db.session.add(new_user)
+        db.session.flush()  # للحصول على user.id قبل commit
+        
+        # إنشاء حدود المستخدم والمحفظة
+        try:
+            from wallet_utils import create_user_limits, get_or_create_wallet
+            
+            # إنشاء حدود المستخدم
+            user_limits = create_user_limits(new_user)
+            
+            # إنشاء محفظة المستخدم
+            wallet = get_or_create_wallet(new_user)
+            
+            db.session.commit()
+            
+            success_message = f'تم إنشاء حساب المستخدم "{email}" بنجاح!'
+            if is_admin:
+                success_message += ' (صلاحيات مدير)'
+            
+            flash(success_message, 'success')
+            
+            # في حالة طلب JSON (AJAX)
+            if request.headers.get('Content-Type') == 'application/json' or request.is_json:
+                return jsonify({
+                    'success': True,
+                    'message': success_message,
+                    'user': {
+                        'id': new_user.id,
+                        'email': new_user.email,
+                        'full_name': new_user.full_name,
+                        'customer_type': new_user.customer_type,
+                        'is_admin': new_user.is_admin
+                    }
+                })
+            
+            return redirect(url_for('admin.users'))
+            
+        except Exception as wallet_error:
+            db.session.rollback()
+            error_msg = f'تم إنشاء المستخدم ولكن فشل في إعداد المحفظة: {str(wallet_error)}'
+            flash(error_msg, 'warning')
+            
+            if request.headers.get('Content-Type') == 'application/json' or request.is_json:
+                return jsonify({'success': False, 'message': error_msg})
+            
+            return render_template('admin/create_user.html')
+    
+    except Exception as e:
+        db.session.rollback()
+        error_msg = f'حدث خطأ أثناء إنشاء المستخدم: {str(e)}'
+        
+        if request.headers.get('Content-Type') == 'application/json' or request.is_json:
+            return jsonify({'success': False, 'message': error_msg})
+        
+        flash(error_msg, 'error')
+        return render_template('admin/create_user.html')
 
 @admin.route('/kyc-requests')
 @login_required
@@ -468,6 +591,120 @@ def update_order_status(order_id):
         db.session.rollback()
         return jsonify({'success': False, 'message': f'حدث خطأ: {str(e)}'})
 
+@admin.route('/update-order-status-form/<int:order_id>', methods=['POST'])
+@login_required
+def update_order_status_form(order_id):
+    """تحديث حالة الطلب من النموذج مع إمكانية إضافة الأكواد"""
+    if not current_user.is_admin:
+        flash('غير مصرح لك بالوصول لهذه الصفحة', 'error')
+        return redirect(url_for('main.index'))
+    
+    try:
+        order = Order.query.get_or_404(order_id)
+        new_status = request.form.get('status')
+        
+        if new_status not in ['pending', 'completed', 'cancelled', 'processing']:
+            flash('حالة غير صحيحة', 'error')
+            return redirect(url_for('admin.order_detail', order_id=order_id))
+        
+        # إذا كانت الحالة الجديدة "مكتمل" نحتاج للتحقق من الأكواد
+        if new_status == 'completed':
+            # التحقق من وجود أكواد للمنتجات التي تحتاجها
+            codes_added = False
+            missing_codes = False
+            
+            for item in order.items:
+                # حساب الأكواد الموجودة لهذا المنتج
+                existing_codes_count = ProductCode.query.filter_by(
+                    product_id=item.product_id,
+                    order_id=order_id
+                ).count()
+                
+                # التحقق من الأكواد الجديدة المرسلة
+                codes_field = f'product_{item.product_id}_codes'
+                new_codes_text = request.form.get(codes_field, '').strip()
+                
+                if new_codes_text:
+                    # إضافة الأكواد الجديدة
+                    codes_list = [code.strip() for code in new_codes_text.split('\n') if code.strip()]
+                    
+                    for code_text in codes_list:
+                        # التحقق من عدم تكرار الكود
+                        existing_code = ProductCode.query.filter_by(code=code_text).first()
+                        if not existing_code:
+                            new_code = ProductCode(
+                                product_id=item.product_id,
+                                code=code_text,
+                                order_id=order_id,
+                                is_used=True,
+                                used_at=datetime.utcnow()
+                            )
+                            db.session.add(new_code)
+                            codes_added = True
+                        else:
+                            flash(f'الكود {code_text} موجود مسبقاً', 'warning')
+                
+                # التحقق من اكتمال الأكواد
+                total_codes_after = ProductCode.query.filter_by(
+                    product_id=item.product_id,
+                    order_id=order_id
+                ).count() + len([code.strip() for code in new_codes_text.split('\n') if code.strip()]) if new_codes_text else existing_codes_count
+                if total_codes_after < item.quantity:
+                    missing_codes = True
+            
+            # إذا كانت هناك أكواد ناقصة، تغيير الحالة إلى معلق
+            if missing_codes:
+                order.order_status = 'pending_codes'
+                flash('تم حفظ الأكواد المتاحة. الطلب لا يزال معلقاً لوجود أكواد ناقصة', 'warning')
+            else:
+                order.order_status = new_status
+                
+                # إرسال البريد الإلكتروني مع الأكواد إذا كان الطلب مكتملاً
+                if codes_added:
+                    try:
+                        from order_email_service import ProductCodeEmailService
+                        email_service = ProductCodeEmailService()
+                        
+                        order_data = {
+                            'order_number': order.order_number,
+                            'customer_name': order.user.full_name or order.user.email,
+                            'customer_email': order.user.email,
+                            'order_date': order.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                            'product_name': 'منتجات رقمية متنوعة',
+                            'quantity': sum(item.quantity for item in order.items),
+                            'total_amount': float(order.total_amount),
+                            'currency': order.currency
+                        }
+                        
+                        # جمع جميع الأكواد للطلب
+                        product_codes = ProductCode.query.filter_by(order_id=order_id).all()
+                        codes_list = [code.code for code in product_codes]
+                        
+                        success, message, excel_file_path = email_service.send_product_codes_email(order_data, codes_list)
+                        
+                        if success and excel_file_path:
+                            order.excel_file_path = excel_file_path
+                            flash('تم تحديث حالة الطلب وإرسال الأكواد بالبريد الإلكتروني بنجاح', 'success')
+                        else:
+                            flash(f'تم تحديث حالة الطلب ولكن فشل إرسال البريد: {message}', 'warning')
+                            
+                    except Exception as e:
+                        flash(f'تم تحديث حالة الطلب ولكن فشل إرسال البريد: {str(e)}', 'warning')
+                else:
+                    flash('تم تحديث حالة الطلب بنجاح', 'success')
+        else:
+            # للحالات الأخرى (معلق، ملغي)
+            order.order_status = new_status
+            flash('تم تحديث حالة الطلب بنجاح', 'success')
+        
+        db.session.commit()
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'حدث خطأ: {str(e)}', 'error')
+    
+    return redirect(url_for('admin.order_detail', order_id=order_id))
+
 @admin.route('/pending-orders')
 @login_required
 @requires_page_access('admin.orders')
@@ -677,7 +914,10 @@ def invoices():
         query = query.filter(Invoice.payment_status == status_filter)
     
     if customer_type_filter:
-        query = query.filter(Invoice.customer_type == customer_type_filter)
+        if customer_type_filter == 'regular_kyc':
+            query = query.filter(Invoice.customer_type.in_(['regular', 'kyc']))
+        else:
+            query = query.filter(Invoice.customer_type == customer_type_filter)
     
     if search_query:
         query = query.filter(

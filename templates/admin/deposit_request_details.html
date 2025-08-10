@@ -98,6 +98,132 @@
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
 }
+
+/* تنسيقات النماذج */
+.form-section {
+    margin-top: 20px;
+}
+
+.form-section .card {
+    border: none;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.form-section .form-group {
+    margin-bottom: 15px;
+}
+
+.form-section .form-label {
+    font-weight: 600;
+    margin-bottom: 5px;
+    display: block;
+}
+
+.form-section .form-control {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    width: 100%;
+}
+
+.form-section .form-actions {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.form-section .btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.form-section .btn-success {
+    background-color: #28a745;
+    color: white;
+}
+
+.form-section .btn-danger {
+    background-color: #dc3545;
+    color: white;
+}
+
+.form-section .btn-secondary {
+    background-color: #6c757d;
+    color: white;
+}
+
+.form-section .btn:hover {
+    opacity: 0.9;
+}
+
+/* CSS للمودالات */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.modal-header {
+    padding: 20px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: var(--primary-color);
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+.modal-footer {
+    padding: 15px 20px;
+    border-top: 1px solid #eee;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.close {
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    color: #999;
+    background: none;
+    border: none;
+}
+
+.close:hover {
+    color: #333;
+}
 </style>
 {% endblock %}
 
@@ -308,14 +434,39 @@
             </h3>
             
             <div class="action-buttons">
-                <button type="button" class="btn btn-success" onclick="approveRequest()">
-                    <i class="fas fa-check"></i>
-                    موافقة على الطلب
-                </button>
-                <button type="button" class="btn btn-danger" onclick="rejectRequest()">
-                    <i class="fas fa-times"></i>
-                    رفض الطلب
-                </button>
+                <!-- نموذج الموافقة -->
+                <form method="POST" action="{{ url_for('admin_wallet.approve_deposit', request_id=request.id) }}" style="display: inline-block;">
+                    <button type="button" class="btn btn-success" onclick="showApproveForm(this)">
+                        <i class="fas fa-check"></i>
+                        موافقة على الطلب
+                    </button>
+                </form>
+                
+                <!-- نموذج الرفض -->
+                <form method="POST" action="{{ url_for('admin_wallet.reject_deposit', request_id=request.id) }}" style="display: inline-block;" 
+                      onsubmit="return confirm('هل أنت متأكد من رفض هذا الطلب؟')">
+                    <input type="hidden" name="rejection_reason" value="تم رفض الطلب من قبل الإدارة">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-times"></i>
+                        رفض الطلب
+                    </button>
+                </form>
+                
+                <!-- أزرار الفواتير متاحة للطلبات المعلقة أيضاً -->
+                <div class="invoice-buttons" style="margin-top: 15px;">
+                    {% if request.invoice_pdf_path %}
+                    <a href="{{ url_for('admin_wallet.download_deposit_invoice', request_id=request.id) }}" 
+                       class="btn btn-primary" target="_blank">
+                        <i class="fas fa-download"></i>
+                        تحميل فاتورة PDF
+                    </a>
+                    {% endif %}
+                    
+                    <button type="button" class="btn btn-info" onclick="generateInvoice()">
+                        <i class="fas fa-file-pdf"></i>
+                        {% if request.invoice_pdf_path %}إعادة إنشاء{% else %}إنشاء{% endif %} فاتورة PDF
+                    </button>
+                </div>
             </div>
         </div>
         {% else %}
@@ -325,34 +476,52 @@
                 حالة الطلب
             </h3>
             
-            <p style="color: var(--text-muted); margin: 15px 0;">
-                تم معالجة هذا الطلب بالفعل ولا يمكن تعديله.
-            </p>
+            <div style="margin: 15px 0;">
+                <p style="color: var(--text-muted);">
+                    تم معالجة هذا الطلب بالفعل ولا يمكن تعديله.
+                </p>
+                
+                <!-- أزرار الفواتير -->
+                <div class="invoice-actions" style="margin-top: 20px;">
+                    {% if request.invoice_pdf_path %}
+                    <a href="{{ url_for('admin_wallet.download_deposit_invoice', request_id=request.id) }}" 
+                       class="btn btn-primary" target="_blank">
+                        <i class="fas fa-download"></i>
+                        تحميل فاتورة PDF
+                    </a>
+                    {% endif %}
+                    
+                    <button type="button" class="btn btn-info" onclick="generateInvoice()">
+                        <i class="fas fa-file-pdf"></i>
+                        {% if request.invoice_pdf_path %}إعادة إنشاء{% else %}إنشاء{% endif %} فاتورة PDF
+                    </button>
+                </div>
+            </div>
         </div>
         {% endif %}
     </div>
 </div>
 
 <!-- مودال الموافقة -->
-<div id="approveModal" class="modal" style="display: none;">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h5 class="modal-title">
+<!-- نموذج الموافقة المخفي -->
+<div id="approveFormSection" class="form-section" style="display: none;">
+    <div class="card">
+        <div class="card-header bg-success text-white">
+            <h5 class="card-title mb-0">
                 <i class="fas fa-check-circle"></i>
                 موافقة على طلب الإيداع
             </h5>
-            <button type="button" class="btn-close" onclick="closeApproveModal()"></button>
         </div>
-        <div class="modal-body">
+        <div class="card-body">
             <div class="alert alert-info">
                 <i class="fas fa-info-circle"></i>
                 سيتم إضافة المبلغ المحدد إلى محفظة المستخدم فوراً. تأكد من صحة المبلغ والعملة قبل المتابعة.
             </div>
             
-            <form id="approveForm">
+            <form method="POST" action="{{ url_for('admin_wallet.approve_deposit', request_id=request.id) }}">
                 <div class="form-group">
                     <label class="form-label">المبلغ المراد إضافته:</label>
-                    <input type="number" id="approveAmount" name="amount" 
+                    <input type="number" name="amount" 
                            value="{{ request.amount }}" 
                            required min="0.01" step="0.01" 
                            placeholder="أدخل المبلغ" class="form-control">
@@ -360,7 +529,7 @@
                 
                 <div class="form-group">
                     <label class="form-label">العملة:</label>
-                    <select id="approveCurrency" name="currency" required class="form-control">
+                    <select name="currency" required class="form-control">
                         {% for currency in currencies %}
                         <option value="{{ currency.code }}" 
                                 {{ 'selected' if currency.code == request.currency_code else '' }}>
@@ -372,180 +541,82 @@
                 
                 <div class="form-group">
                     <label class="form-label">ملاحظات الإدارة (اختياري):</label>
-                    <textarea id="approveNotes" name="admin_notes" rows="3" 
+                    <textarea name="admin_notes" rows="3" 
                               placeholder="أي ملاحظات إضافية..." class="form-control"></textarea>
                 </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="hideApproveForm()">
+                        <i class="fas fa-times"></i>
+                        إلغاء
+                    </button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-check"></i>
+                        تأكيد الموافقة
+                    </button>
+                </div>
             </form>
-        </div>
-        <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" onclick="closeApproveModal()">
-                <i class="fas fa-times"></i>
-                إلغاء
-            </button>
-            <button type="button" class="btn btn-success" onclick="submitApproval()">
-                <i class="fas fa-check"></i>
-                تأكيد الموافقة
-            </button>
         </div>
     </div>
 </div>
-
-<!-- مودال الرفض -->
-<div id="rejectModal" class="modal" style="display: none;">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h5 class="modal-title">
-                <i class="fas fa-times-circle"></i>
-                رفض طلب الإيداع
-            </h5>
-            <button type="button" class="btn-close" onclick="closeRejectModal()"></button>
-        </div>
-        <div class="modal-body">
-            <form id="rejectForm">
-                <div class="form-group">
-                    <label class="form-label">سبب الرفض <span style="color: var(--danger-color);">*</span>:</label>
-                    <textarea id="rejectReason" name="rejection_reason" rows="3" required
-                              placeholder="يرجى توضيح سبب رفض الطلب..." class="form-control"></textarea>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">ملاحظات إضافية (اختياري):</label>
-                    <textarea id="rejectNotes" name="admin_notes" rows="2" 
-                              placeholder="أي ملاحظات إضافية..." class="form-control"></textarea>
-                </div>
-            </form>
-        </div>
-        <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" onclick="closeRejectModal()">
-                <i class="fas fa-times"></i>
-                إلغاء
-            </button>
-            <button type="button" class="btn btn-danger" onclick="submitRejection()">
-                <i class="fas fa-ban"></i>
-                تأكيد الرفض
             </button>
         </div>
     </div>
 </div>
 
 <script>
-// دالة إظهار الإشعارات
-function showNotification(message, type = 'info') {
-    // استخدام نظام الإشعارات الموجود في الأدمن
-    if (typeof showAlert !== 'undefined') {
-        showAlert(message, type);
-    } else {
-        alert(message);
-    }
+// وظائف بسيطة لإظهار وإخفاء النماذج
+function showApproveForm(button) {
+    // إخفاء الأزرار
+    button.closest('.action-buttons').style.display = 'none';
+    // إظهار نموذج الموافقة
+    document.getElementById('approveFormSection').style.display = 'block';
 }
 
-// مودال الموافقة
-function approveRequest() {
-    document.getElementById('approveModal').style.display = 'block';
+function hideApproveForm() {
+    // إخفاء نموذج الموافقة
+    document.getElementById('approveFormSection').style.display = 'none';
+    // إظهار الأزرار مرة أخرى
+    document.querySelector('.action-buttons').style.display = 'flex';
 }
 
-function closeApproveModal() {
-    document.getElementById('approveModal').style.display = 'none';
-    document.getElementById('approveForm').reset();
-}
-
-function submitApproval() {
-    const formData = new FormData(document.getElementById('approveForm'));
-    const data = Object.fromEntries(formData.entries());
-    
-    if (!data.amount || parseFloat(data.amount) <= 0) {
-        showNotification('يرجى إدخال مبلغ صحيح', 'error');
+// إنشاء فاتورة PDF
+function generateInvoice() {
+    console.log('generateInvoice called');
+    if (!confirm('هل تريد إنشاء فاتورة PDF لهذا الطلب؟')) {
         return;
     }
     
-    // إضافة مؤشر التحميل
-    const submitButton = document.querySelector('#approveModal .btn-success');
-    const originalText = submitButton.innerHTML;
-    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الموافقة...';
-    submitButton.disabled = true;
+    const button = event.target;
+    const originalText = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإنشاء...';
+    button.disabled = true;
     
-    fetch(`/admin/wallet/approve-deposit/{{ request.id }}`, {
+    fetch(`/admin/wallet/deposit-request/{{ request.id }}/generate-invoice`, {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams(data)
+            'Content-Type': 'application/json',
+        }
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showNotification(data.message, 'success');
-            closeApproveModal();
-            // إعادة تحميل فورية للصفحة
-            location.reload();
+            alert('تم إنشاء فاتورة PDF بنجاح');
+            // إعادة تحميل الصفحة لإظهار رابط التحميل
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
         } else {
-            // إعادة الزر لحالته الأصلية في حالة الخطأ
-            submitButton.innerHTML = originalText;
-            submitButton.disabled = false;
-            showNotification(data.message, 'error');
+            alert(data.message || 'فشل في إنشاء فاتورة PDF');
+            button.innerHTML = originalText;
+            button.disabled = false;
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        // إعادة الزر لحالته الأصلية في حالة الخطأ
-        submitButton.innerHTML = originalText;
-        submitButton.disabled = false;
-        showNotification('حدث خطأ أثناء معالجة الطلب', 'error');
-    });
-}
-
-// مودال الرفض
-function rejectRequest() {
-    document.getElementById('rejectModal').style.display = 'block';
-}
-
-function closeRejectModal() {
-    document.getElementById('rejectModal').style.display = 'none';
-    document.getElementById('rejectForm').reset();
-}
-
-function submitRejection() {
-    const formData = new FormData(document.getElementById('rejectForm'));
-    const data = Object.fromEntries(formData.entries());
-    
-    if (!data.rejection_reason || data.rejection_reason.trim() === '') {
-        showNotification('يرجى إدخال سبب الرفض', 'error');
-        return;
-    }
-    
-    // إضافة مؤشر التحميل
-    const submitButton = document.querySelector('#rejectModal .btn-danger');
-    const originalText = submitButton.innerHTML;
-    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الرفض...';
-    submitButton.disabled = true;
-    
-    fetch(`/admin/wallet/reject-deposit/{{ request.id }}`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams(data)
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showNotification(data.message, 'success');
-            closeRejectModal();
-            // إعادة تحميل فورية للصفحة
-            location.reload();
-        } else {
-            // إعادة الزر لحالته الأصلية في حالة الخطأ
-            submitButton.innerHTML = originalText;
-            submitButton.disabled = false;
-            showNotification(data.message, 'error');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        // إعادة الزر لحالته الأصلية في حالة الخطأ
-        submitButton.innerHTML = originalText;
-        submitButton.disabled = false;
-        showNotification('حدث خطأ أثناء معالجة الطلب', 'error');
+        alert('حدث خطأ في إنشاء الفاتورة');
+        button.innerHTML = originalText;
+        button.disabled = false;
     });
 }
 
@@ -625,20 +696,6 @@ function downloadImage(imageSrc, filename) {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-}
-
-// إغلاق المودال عند النقر خارجه
-window.onclick = function(event) {
-    const approveModal = document.getElementById('approveModal');
-    const rejectModal = document.getElementById('rejectModal');
-    
-    if (event.target === approveModal) {
-        closeApproveModal();
-    }
-    
-    if (event.target === rejectModal) {
-        closeRejectModal();
-    }
 }
 </script>
 

@@ -169,20 +169,278 @@
 
     <div class="content-card">
         <h3>تحديث حالة الطلب</h3>
-        <form method="POST" action="{{ url_for('admin.update_order_status', order_id=order.id) }}">
+        <form method="POST" action="{{ url_for('admin.update_order_status_form', order_id=order.id) }}" id="updateOrderForm">
             <div class="form-group">
                 <label class="form-label">حالة الطلب:</label>
-                <select name="status" class="form-control" style="width: 300px;">
+                <select name="status" class="form-control" style="width: 300px;" id="orderStatus" onchange="toggleCodesSection()">
                     <option value="pending" {{ 'selected' if order.order_status == 'pending' }}>معلق</option>
                     <option value="completed" {{ 'selected' if order.order_status == 'completed' }}>مكتمل</option>
                     <option value="cancelled" {{ 'selected' if order.order_status == 'cancelled' }}>ملغي</option>
                 </select>
             </div>
+
+            <!-- قسم إضافة الأكواد -->
+            <div id="codesSection" style="display: none; margin-top: 20px;">
+                <h4><i class="fas fa-code"></i> إضافة أكواد المنتجات</h4>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>تعليمات:</strong> أدخل كود واحد في كل سطر. سيتم إرسال الأكواد تلقائياً بالبريد الإلكتروني عند إكمال الطلب.
+                </div>
+                
+                {% set has_incomplete_products = false %}
+                {% for item in order.items %}
+                    {% set existing_codes = order.codes|selectattr('product_id', 'equalto', item.product_id)|list %}
+                    {% set needed_codes = item.quantity - existing_codes|length %}
+                    {% if needed_codes > 0 %}
+                        {% set has_incomplete_products = true %}
+                    {% endif %}
+                {% endfor %}
+                
+                {% if not has_incomplete_products %}
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle"></i>
+                    <strong>جميع المنتجات مكتملة الأكواد!</strong> يمكنك تغيير حالة الطلب إلى "مكتمل" مباشرة.
+                </div>
+                {% endif %}
+                
+                {% for item in order.items %}
+                    {% set existing_codes = order.codes|selectattr('product_id', 'equalto', item.product_id)|list %}
+                    {% set needed_codes = item.quantity - existing_codes|length %}
+                    
+                    <div class="product-codes-section" style="border: 1px solid #ddd; padding: 15px; margin-bottom: 15px; border-radius: 5px; background-color: #f8f9fa;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <h5 style="margin: 0;"><i class="fas fa-gift"></i> {{ item.product.name }}</h5>
+                            <span class="badge badge-info">السعر: {{ item.price }} {{ order.currency }}</span>
+                        </div>
+                        
+                        <div class="row" style="margin-bottom: 10px;">
+                            <div class="col-md-3">
+                                <small class="text-muted">الكمية المطلوبة:</small>
+                                <div class="badge badge-primary">{{ item.quantity }}</div>
+                            </div>
+                            <div class="col-md-3">
+                                <small class="text-muted">الأكواد الموجودة:</small>
+                                <div class="badge badge-success">{{ existing_codes|length }}</div>
+                            </div>
+                            <div class="col-md-3">
+                                <small class="text-muted">الأكواد المطلوبة:</small>
+                                <div class="badge {{ 'badge-warning' if needed_codes > 0 else 'badge-success' }}">{{ needed_codes }}</div>
+                            </div>
+                            <div class="col-md-3">
+                                <small class="text-muted">الحالة:</small>
+                                {% if needed_codes == 0 %}
+                                    <div class="badge badge-success">مكتمل</div>
+                                {% else %}
+                                    <div class="badge badge-warning">ناقص</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        {% if existing_codes %}
+                        <div style="margin-bottom: 10px;">
+                            <small class="text-muted"><strong>الأكواد الموجودة:</strong></small>
+                            <div style="max-height: 100px; overflow-y: auto; background: white; padding: 5px; border: 1px solid #e0e0e0; border-radius: 3px;">
+                                {% for code in existing_codes %}
+                                    <div style="font-family: monospace; font-size: 12px; border-bottom: 1px solid #f0f0f0; padding: 2px;">
+                                        <i class="fas fa-check-circle text-success"></i> {{ code.code }}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if needed_codes > 0 %}
+                        <div class="form-group">
+                            <label class="form-label"><strong>أدخل الأكواد الجديدة ({{ needed_codes }} كود مطلوب):</strong></label>
+                            <textarea name="product_{{ item.product_id }}_codes" 
+                                    class="form-control" 
+                                    rows="{{ needed_codes if needed_codes <= 5 else 5 }}"
+                                    placeholder="أدخل الأكواد، كود واحد في كل سطر&#10;مثال:&#10;ABC123DEF456&#10;XYZ789GHI012"
+                                    style="font-family: monospace; font-size: 14px;"></textarea>
+                            <small class="text-muted">
+                                <i class="fas fa-lightbulb"></i>
+                                نصيحة: يمكنك نسخ ولصق عدة أكواد دفعة واحدة
+                            </small>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-success" style="margin: 0;">
+                            <i class="fas fa-check-circle"></i> 
+                            هذا المنتج مكتمل الأكواد
+                        </div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+
             <button type="submit" class="btn btn-primary">
                 <i class="fas fa-save"></i>
                 حفظ التغييرات
             </button>
         </form>
     </div>
+
+    <script>
+    function toggleCodesSection() {
+        const orderStatus = document.getElementById('orderStatus').value;
+        const codesSection = document.getElementById('codesSection');
+        
+        // إظهار قسم الأكواد عند تغيير الحالة إلى "مكتمل" 
+        if (orderStatus === 'completed') {
+            codesSection.style.display = 'block';
+            
+            // التحقق من وجود منتجات تحتاج أكواد
+            const hasIncompleteProducts = codesSection.querySelector('textarea');
+            
+            if (hasIncompleteProducts) {
+                // إضافة تنبيه للمستخدم
+                if (!codesSection.classList.contains('alert-shown')) {
+                    codesSection.style.backgroundColor = '#fff3cd';
+                    codesSection.style.border = '1px solid #ffeaa7';
+                    codesSection.style.padding = '15px';
+                    codesSection.style.borderRadius = '5px';
+                    codesSection.classList.add('alert-shown');
+                    
+                    const alertDiv = document.createElement('div');
+                    alertDiv.style.color = '#856404';
+                    alertDiv.style.marginBottom = '10px';
+                    alertDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> يرجى إضافة الأكواد المطلوبة لإكمال الطلب';
+                    codesSection.insertBefore(alertDiv, codesSection.firstChild);
+                }
+            } else {
+                // جميع المنتجات مكتملة الأكواد
+                if (!codesSection.classList.contains('complete-alert-shown')) {
+                    codesSection.style.backgroundColor = '#d4edda';
+                    codesSection.style.border = '1px solid #c3e6cb';
+                    codesSection.style.padding = '15px';
+                    codesSection.style.borderRadius = '5px';
+                    codesSection.classList.add('complete-alert-shown');
+                    
+                    const alertDiv = document.createElement('div');
+                    alertDiv.style.color = '#155724';
+                    alertDiv.style.marginBottom = '10px';
+                    alertDiv.innerHTML = '<i class="fas fa-check-circle"></i> جميع المنتجات مكتملة الأكواد. يمكنك إكمال الطلب الآن.';
+                    codesSection.insertBefore(alertDiv, codesSection.firstChild);
+                }
+            }
+        } else {
+            codesSection.style.display = 'none';
+            codesSection.style.backgroundColor = '';
+            codesSection.style.border = '';
+            codesSection.classList.remove('alert-shown', 'complete-alert-shown');
+            
+            // إزالة التنبيهات
+            const alertDivs = codesSection.querySelectorAll('div[style*="color: #856404"], div[style*="color: #155724"]');
+            alertDivs.forEach(div => div.remove());
+        }
+    }
+
+    // تشغيل الفحص عند تحميل الصفحة
+    document.addEventListener('DOMContentLoaded', function() {
+        toggleCodesSection();
+    });
+
+    // التحقق من النموذج قبل الإرسال
+    document.getElementById('updateOrderForm').addEventListener('submit', function(e) {
+        const orderStatus = document.getElementById('orderStatus').value;
+        
+        if (orderStatus === 'completed') {
+            const textareas = document.querySelectorAll('#codesSection textarea');
+            let hasEmptyRequiredFields = false;
+            
+            textareas.forEach(function(textarea) {
+                if (textarea.value.trim() === '') {
+                    hasEmptyRequiredFields = true;
+                }
+            });
+            
+            if (hasEmptyRequiredFields) {
+                const confirmSubmit = confirm('هناك أكواد مطلوبة لم يتم إدخالها. هل تريد المتابعة؟ سيتم تعيين حالة الطلب كـ "معلق - في انتظار الأكواد"');
+                if (!confirmSubmit) {
+                    e.preventDefault();
+                }
+            }
+        }
+    });
+    </script>
+
+    <style>
+    .product-codes-section {
+        transition: all 0.3s ease;
+    }
+    
+    .product-codes-section:hover {
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .badge {
+        font-size: 12px;
+        padding: 4px 8px;
+    }
+    
+    .alert {
+        margin-bottom: 15px;
+        padding: 10px;
+        border-radius: 5px;
+    }
+    
+    .alert-info {
+        background-color: #d1ecf1;
+        border-color: #bee5eb;
+        color: #0c5460;
+    }
+    
+    .alert-success {
+        background-color: #d4edda;
+        border-color: #c3e6cb;
+        color: #155724;
+    }
+    
+    .badge-primary {
+        background-color: #007bff;
+    }
+    
+    .badge-success {
+        background-color: #28a745;
+    }
+    
+    .badge-warning {
+        background-color: #ffc107;
+        color: #212529;
+    }
+    
+    .badge-info {
+        background-color: #17a2b8;
+    }
+    
+    .text-success {
+        color: #28a745 !important;
+    }
+    
+    .text-muted {
+        color: #6c757d !important;
+    }
+    
+    .row {
+        display: flex;
+        flex-wrap: wrap;
+        margin-right: -15px;
+        margin-left: -15px;
+    }
+    
+    .col-md-3 {
+        flex: 0 0 25%;
+        max-width: 25%;
+        padding-right: 15px;
+        padding-left: 15px;
+    }
+    
+    @media (max-width: 768px) {
+        .col-md-3 {
+            flex: 0 0 50%;
+            max-width: 50%;
+            margin-bottom: 10px;
+        }
+    }
+    </style>
 </div>
 {% endblock %}

@@ -378,12 +378,14 @@ def deposit():
         
         # التحقق من صحة البيانات
         if amount <= 0:
-            return jsonify({'success': False, 'message': 'يجب أن يكون المبلغ أكبر من صفر'})
+            flash('يجب أن يكون المبلغ أكبر من صفر', 'error')
+            return redirect(url_for('wallet.deposit'))
         
         # التحقق من العملة
         currency = Currency.query.filter_by(code=currency_code, is_active=True).first()
         if not currency:
-            return jsonify({'success': False, 'message': 'العملة المحددة غير متاحة'})
+            flash('العملة المحددة غير متاحة', 'error')
+            return redirect(url_for('wallet.deposit'))
         
         # التعامل مع رفع ملف إثبات المعاملة
         transaction_proof_filename = None
@@ -413,7 +415,8 @@ def deposit():
                     file_path = os.path.join(upload_folder, transaction_proof_filename)
                     file.save(file_path)
                 else:
-                    return jsonify({'success': False, 'message': 'نوع الملف غير مدعوم. يرجى رفع صورة (PNG, JPG, JPEG, GIF)'})
+                    flash('نوع الملف غير مدعوم. يرجى رفع صورة (PNG, JPG, JPEG, GIF)', 'error')
+                    return redirect(url_for('wallet.deposit'))
         
         # تحويل المبلغ إلى الدولار للإحصائيات
         if currency_code != 'USD':
@@ -448,22 +451,36 @@ def deposit():
         db.session.add(deposit_request)
         db.session.commit()
         
+        # إنشاء فاتورة PDF فوراً عند إنشاء الطلب
+        try:
+            from simple_deposit_invoice_service import SimpleDepositInvoiceService
+            service = SimpleDepositInvoiceService()
+            pdf_path = service.generate_deposit_invoice_pdf(deposit_request)
+            if pdf_path:
+                deposit_request.invoice_pdf_path = pdf_path
+                db.session.commit()
+                print(f"✅ تم إنشاء فاتورة PDF فوراً للطلب {deposit_request.id}: {pdf_path}")
+        except Exception as e:
+            print(f"⚠️ خطأ في إنشاء فاتورة PDF للطلب {deposit_request.id}: {e}")
+            # لا نوقف العملية في حالة فشل إنشاء الفاتورة
+        
         # رسالة مختلفة حسب طريقة الدفع
         if payment_method == 'bank_transfer':
             message = 'تم إرسال طلب الإيداع بنجاح! يرجى التحويل للحساب البنكي المذكور وسيتم مراجعة طلبك خلال 1-3 أيام عمل.'
         else:
             message = 'تم إرسال طلب الإيداع بنجاح! سيتم مراجعة إثبات التحويل من قبل الإدارة خلال 24 ساعة.'
         
-        return jsonify({
-            'success': True, 
-            'message': message,
-            'redirect': url_for('wallet.deposit_requests')
-        })
+        # إضافة flash message
+        flash(message, 'success')
+        
+        # إعادة توجيه إلى صفحة الملف الشخصي
+        return redirect(url_for('main.profile'))
         
     except Exception as e:
         db.session.rollback()
         print(f"خطأ في الإيداع: {e}")
-        return jsonify({'success': False, 'message': 'حدث خطأ في معالجة طلب الإيداع'})
+        flash('حدث خطأ في معالجة طلب الإيداع', 'error')
+        return redirect(url_for('wallet.deposit'))
 
 @wallet_bp.route('/deposit-requests')
 @login_required
@@ -486,76 +503,6 @@ def deposit_requests():
         print(f"خطأ في عرض طلبات الإيداع: {e}")
         flash('حدث خطأ في عرض طلبات الإيداع', 'error')
         return redirect(url_for('wallet.wallet_dashboard'))
-        data = request.get_json()
-        amount = Decimal(str(data.get('amount', 0)))
-        currency = data.get('currency', 'USD')
-        payment_method = data.get('payment_method')
-        notes = data.get('notes', '')
-        
-        if amount <= 0:
-            return jsonify({
-                'success': False,
-                'message': 'يجب أن يكون المبلغ أكبر من صفر'
-            }), 400
-        
-        # التحقق من بوابة الدفع
-        gateway = PaymentGateway.query.filter_by(id=payment_method, is_active=True).first()
-        if not gateway:
-            return jsonify({
-                'success': False,
-                'message': 'بوابة دفع غير صالحة'
-            }), 400
-        
-        # الحصول على المحفظة
-        wallet = get_or_create_wallet(current_user)
-        
-        # تحويل المبلغ إلى الدولار للإحصائيات
-        amount_usd = Decimal(str(convert_currency(float(amount), currency, 'USD')))
-        
-        # تحويل المبلغ إلى عملة المحفظة
-        if currency != wallet.currency:
-            amount_wallet_currency = Decimal(str(convert_currency(float(amount), currency, wallet.currency)))
-        else:
-            amount_wallet_currency = amount
-        
-        # حفظ الرصيد السابق
-        balance_before = wallet.balance
-        
-        # تحديث الرصيد
-        wallet.balance += amount_wallet_currency
-        wallet.total_deposits += amount_usd
-        wallet.updated_at = datetime.utcnow()
-        
-        # إنشاء معاملة
-        transaction = WalletTransaction(
-            user_id=current_user.id,
-            transaction_type='deposit',
-            amount=amount,
-            currency=currency,
-            amount_usd=amount_usd,
-            description=f'إيداع عبر {gateway.name}',
-            reference_id=f'DEP_{datetime.now().strftime("%Y%m%d%H%M%S")}_{current_user.id}',
-            balance_before=balance_before,
-            balance_after=wallet.balance,
-            notes=notes
-        )
-        
-        db.session.add(transaction)
-        db.session.commit()
-        
-        return jsonify({
-            'success': True,
-            'message': f'تم إيداع {amount} {currency} بنجاح',
-            'new_balance': f"{wallet.balance} {wallet.currency}",
-            'transaction_id': transaction.reference_id
-        })
-        
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({
-            'success': False,
-            'message': f'خطأ في الإيداع: {str(e)}'
-        }), 500
 
 @wallet_bp.route('/transactions')
 @login_required

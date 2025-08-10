@@ -661,6 +661,7 @@ class WalletDepositRequest(db.Model):
     processed_at = db.Column(db.DateTime)  # تاريخ المعالجة
     wallet_amount_added = db.Column(db.Numeric(12, 2))  # المبلغ المضاف للمحفظة
     wallet_currency_added = db.Column(db.String(3))  # العملة المضافة للمحفظة
+    invoice_pdf_path = db.Column(db.String(300))  # مسار فاتورة PDF
     
     # معلومات إضافية
     user_type = db.Column(db.String(20))  # نوع المستخدم وقت الطلب

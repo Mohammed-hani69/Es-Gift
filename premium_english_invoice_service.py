@@ -224,31 +224,37 @@ class PremiumEnglishInvoiceService:
             # Header with logo and red background
             header_data = []
             
-            # Try to add logo if it exists
+            # Try to add logo and stamp if they exist
             logo_path = os.path.join(current_app.static_folder, 'images', 'logo.jpg')
+            stamp_path = os.path.join(current_app.static_folder, 'images', 'es pay llc.jpg')
+            
+            # Load logo
+            logo_element = None
             if os.path.exists(logo_path):
                 try:
-                    logo = Image(logo_path, width=60, height=60)
-                    header_data = [
-                        [logo, 'ES-GIFT', ''],
-                        ['', 'Digital Gift Cards & Payment Services', ''],
-                        ['', f'📧 business@es-gift.com  |  📱 +966123456789  |  🌐 www.es-gift.com', '']
-                    ]
+                    logo_element = Image(logo_path, width=60, height=60)
                 except Exception as e:
                     print(f"Could not load logo: {e}")
-                    # Fallback without logo
-                    header_data = [
-                        ['🎁', 'ES-GIFT', ''],
-                        ['', 'Digital Gift Cards & Payment Services', ''],
-                        ['', f'📧 business@es-gift.com  |  📱 +966123456789  |  🌐 www.es-gift.com', '']
-                    ]
+                    logo_element = '🎁'
             else:
-                # Fallback without logo
-                header_data = [
-                    ['🎁', 'ES-GIFT', ''],
-                    ['', 'Digital Gift Cards & Payment Services', ''],
-                    ['', f'📧 business@es-gift.com  |  📱 +966123456789  |  🌐 www.es-gift.com', '']
-                ]
+                logo_element = '🎁'
+            
+            # Load stamp
+            stamp_element = ''
+            if os.path.exists(stamp_path):
+                try:
+                    stamp_element = Image(stamp_path, width=50, height=50)
+                    print("✅ ES Pay LLC stamp loaded successfully")
+                except Exception as e:
+                    print(f"Could not load stamp: {e}")
+                    stamp_element = ''
+            
+            # Create header with logo and stamp
+            header_data = [
+                [logo_element, 'ES-GIFT', stamp_element],
+                ['', 'Digital Gift Cards & Payment Services', ''],
+                ['', f'📧 business@es-gift.com  |  📱 +966123456789  |  🌐 www.es-gift.com', '']
+            ]
             
             header_table = Table(header_data, colWidths=[1*inch, 5*inch, 1*inch])
             header_table.setStyle(TableStyle([
@@ -271,10 +277,13 @@ class PremiumEnglishInvoiceService:
             story.append(header_table)
             story.append(Spacer(1, 20))
             
-            # Invoice title and number section
+            # Invoice title and number section - Get related order
+            order = Order.query.get(invoice.order_id)
+            
             invoice_header_data = [
                 ['INVOICE', f'# {invoice.invoice_number}'],
-                [f'Date: {invoice.invoice_date.strftime("%d %B %Y")}', f'Due: {invoice.due_date.strftime("%d %B %Y") if invoice.due_date else "Upon Receipt"}']
+                [f'Date: {invoice.invoice_date.strftime("%d %B %Y")}', f'Due: {invoice.due_date.strftime("%d %B %Y") if invoice.due_date else "Upon Receipt"}'],
+                [f'Order Number: {order.order_number if order else "N/A"}', '']
             ]
             
             invoice_header_table = Table(invoice_header_data, colWidths=[3*inch, 3*inch])
@@ -282,10 +291,10 @@ class PremiumEnglishInvoiceService:
                 ('FONTNAME', (0, 0), (-1, -1), CUSTOM_FONT),
                 ('FONTSIZE', (0, 0), (0, 0), 24),
                 ('FONTSIZE', (1, 0), (1, 0), 18),
-                ('FONTSIZE', (0, 1), (-1, 1), 12),
+                ('FONTSIZE', (0, 1), (-1, 2), 12),
                 ('TEXTCOLOR', (0, 0), (0, 0), primary_red),
                 ('TEXTCOLOR', (1, 0), (1, 0), black),
-                ('TEXTCOLOR', (0, 1), (-1, 1), dark_gray),
+                ('TEXTCOLOR', (0, 1), (-1, 2), dark_gray),
                 ('ALIGN', (0, 0), (0, -1), 'LEFT'),
                 ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
                 ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
@@ -296,7 +305,52 @@ class PremiumEnglishInvoiceService:
             story.append(invoice_header_table)
             story.append(Spacer(1, 20))
             
-            # Bill to and Company info
+            # Bill to and Company info with stamp
+            company_info_text = (
+                f"ES-GIFT Digital Services\n"
+                f"Kingdom of Saudi Arabia\n"
+                f"business@es-gift.com\n"
+                f"+966 12 345 6789\n"
+                f"www.es-gift.com"
+            )
+            
+            # Try to add stamp to company info section
+            stamp_path = os.path.join(current_app.static_folder, 'images', 'es pay llc.jpg')
+            company_info_with_stamp = company_info_text
+            
+            if os.path.exists(stamp_path):
+                try:
+                    # Create a small stamp for company info section
+                    company_stamp = Image(stamp_path, width=40, height=40)
+                    
+                    # Create company info with stamp layout
+                    company_info_data = [
+                        [company_info_text, company_stamp]
+                    ]
+                    
+                    company_info_table = Table(company_info_data, colWidths=[2.5*inch, 0.8*inch])
+                    company_info_table.setStyle(TableStyle([
+                        ('FONTNAME', (0, 0), (0, 0), CUSTOM_FONT),
+                        ('FONTSIZE', (0, 0), (0, 0), 10),
+                        ('TEXTCOLOR', (0, 0), (0, 0), black),
+                        ('ALIGN', (0, 0), (0, 0), 'LEFT'),
+                        ('ALIGN', (1, 0), (1, 0), 'CENTER'),
+                        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                        ('TOPPADDING', (0, 0), (-1, -1), 0),
+                        ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+                        ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                        ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                    ]))
+                    
+                    company_info_final = company_info_table
+                    print("✅ ES Pay LLC stamp added to company info section")
+                    
+                except Exception as e:
+                    print(f"Could not load company stamp: {e}")
+                    company_info_final = company_info_text
+            else:
+                company_info_final = company_info_text
+            
             bill_to_data = [
                 ['BILL TO:', 'COMPANY INFO:'],
                 [
@@ -305,11 +359,7 @@ class PremiumEnglishInvoiceService:
                     f"{invoice.customer_phone or 'Phone not provided'}\n"
                     f"Customer Type: {PremiumEnglishInvoiceService._get_customer_type_english(invoice.customer_type)}",
                     
-                    f"ES-GIFT Digital Services\n"
-                    f"Kingdom of Saudi Arabia\n"
-                    f"business@es-gift.com\n"
-                    f"+966 12 345 6789\n"
-                    f"www.es-gift.com"
+                    company_info_final
                 ]
             ]
             
@@ -479,7 +529,7 @@ class PremiumEnglishInvoiceService:
                 story.append(notes_para)
                 story.append(Spacer(1, 15))
             
-            # Professional footer
+            # Professional footer with stamp
             story.append(Spacer(1, 20))
             
             footer_line = Drawing(550, 2)
@@ -496,9 +546,45 @@ class PremiumEnglishInvoiceService:
                 fontName=CUSTOM_FONT
             )
             
-            story.append(Paragraph("Thank you for your business!", footer_style))
-            story.append(Paragraph(f"Invoice generated on {datetime.now().strftime('%d %B %Y at %H:%M')}", footer_style))
-            story.append(Paragraph("ES-GIFT - Your trusted digital gift card partner", footer_style))
+            # Add company stamp at the bottom
+            stamp_path = os.path.join(current_app.static_folder, 'images', 'es pay llc.jpg')
+            if os.path.exists(stamp_path):
+                try:
+                    stamp_footer = Image(stamp_path, width=60, height=60)
+                    
+                    # Create footer table with stamp
+                    footer_data = [
+                        ['Thank you for your business!', stamp_footer],
+                        [f'Invoice generated on {datetime.now().strftime("%d %B %Y at %H:%M")}', ''],
+                        ['ES-GIFT - Your trusted digital gift card partner', '']
+                    ]
+                    
+                    footer_table = Table(footer_data, colWidths=[4*inch, 2*inch])
+                    footer_table.setStyle(TableStyle([
+                        ('FONTNAME', (0, 0), (0, -1), CUSTOM_FONT),
+                        ('FONTSIZE', (0, 0), (0, -1), 9),
+                        ('TEXTCOLOR', (0, 0), (0, -1), dark_gray),
+                        ('ALIGN', (0, 0), (0, -1), 'CENTER'),
+                        ('ALIGN', (1, 0), (1, 0), 'CENTER'),
+                        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                        ('TOPPADDING', (0, 0), (-1, -1), 5),
+                        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+                    ]))
+                    
+                    story.append(footer_table)
+                    print("✅ ES Pay LLC stamp added to footer")
+                    
+                except Exception as e:
+                    print(f"Could not load footer stamp: {e}")
+                    # Fallback to regular footer
+                    story.append(Paragraph("Thank you for your business!", footer_style))
+                    story.append(Paragraph(f"Invoice generated on {datetime.now().strftime('%d %B %Y at %H:%M')}", footer_style))
+                    story.append(Paragraph("ES-GIFT - Your trusted digital gift card partner", footer_style))
+            else:
+                # Fallback to regular footer
+                story.append(Paragraph("Thank you for your business!", footer_style))
+                story.append(Paragraph(f"Invoice generated on {datetime.now().strftime('%d %B %Y at %H:%M')}", footer_style))
+                story.append(Paragraph("ES-GIFT - Your trusted digital gift card partner", footer_style))
             
             # Build the document with background
             doc.build(story, onFirstPage=add_background, onLaterPages=add_background)
@@ -590,6 +676,7 @@ class PremiumEnglishInvoiceService:
                         <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; border-right: 4px solid #DC143C;">
                             <h3 style="color: #DC143C; margin-top: 0;">📋 تفاصيل الفاتورة:</h3>
                             <p><strong>رقم الفاتورة:</strong> {invoice.invoice_number}</p>
+                            <p><strong>رقم الطلب:</strong> {Order.query.get(invoice.order_id).order_number if Order.query.get(invoice.order_id) else 'غير متوفر'}</p>
                             <p><strong>التاريخ:</strong> {invoice.invoice_date.strftime('%Y-%m-%d')}</p>
                             <p><strong>المبلغ الإجمالي:</strong> {float(invoice.total_amount):.2f} {invoice.currency}</p>
                             <p><strong>حالة الدفع:</strong> {PremiumEnglishInvoiceService._get_payment_status_info(invoice.payment_status)[0]}</p>
@@ -630,6 +717,7 @@ class PremiumEnglishInvoiceService:
                         <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #DC143C;">
                             <h3 style="color: #DC143C; margin-top: 0;">📋 Invoice Details:</h3>
                             <p><strong>Invoice Number:</strong> {invoice.invoice_number}</p>
+                            <p><strong>Order Number:</strong> {Order.query.get(invoice.order_id).order_number if Order.query.get(invoice.order_id) else 'N/A'}</p>
                             <p><strong>Date:</strong> {invoice.invoice_date.strftime('%Y-%m-%d')}</p>
                             <p><strong>Total Amount:</strong> {float(invoice.total_amount):.2f} {invoice.currency}</p>
                             <p><strong>Payment Status:</strong> {PremiumEnglishInvoiceService._get_payment_status_info(invoice.payment_status)[0]}</p>
@@ -757,6 +845,7 @@ class PremiumEnglishInvoiceService:
                         <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; border-right: 4px solid #DC143C;">
                             <h3 style="color: #DC143C; margin-top: 0;">📋 تفاصيل الفاتورة:</h3>
                             <p><strong>رقم الفاتورة:</strong> {invoice.invoice_number}</p>
+                            <p><strong>رقم الطلب:</strong> {Order.query.get(invoice.order_id).order_number if Order.query.get(invoice.order_id) else 'غير متوفر'}</p>
                             <p><strong>التاريخ:</strong> {invoice.invoice_date.strftime('%Y-%m-%d')}</p>
                             <p><strong>المبلغ الإجمالي:</strong> {float(invoice.total_amount):.2f} {invoice.currency}</p>
                             <p><strong>حالة الدفع:</strong> {PremiumEnglishInvoiceService._get_payment_status_info(invoice.payment_status)[0]}</p>
@@ -801,6 +890,7 @@ class PremiumEnglishInvoiceService:
                         <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #DC143C;">
                             <h3 style="color: #DC143C; margin-top: 0;">📋 Invoice Details:</h3>
                             <p><strong>Invoice Number:</strong> {invoice.invoice_number}</p>
+                            <p><strong>Order Number:</strong> {Order.query.get(invoice.order_id).order_number if Order.query.get(invoice.order_id) else 'N/A'}</p>
                             <p><strong>Date:</strong> {invoice.invoice_date.strftime('%Y-%m-%d')}</p>
                             <p><strong>Total Amount:</strong> {float(invoice.total_amount):.2f} {invoice.currency}</p>
                             <p><strong>Payment Status:</strong> {PremiumEnglishInvoiceService._get_payment_status_info(invoice.payment_status)[0]}</p>

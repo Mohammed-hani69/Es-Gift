@@ -39,6 +39,8 @@ python app.py
 ```
 
 ### النشر على الخادم:
+
+#### Linux/Unix:
 ```bash
 # 1. فحص جاهزية النشر
 python check_deployment.py
@@ -48,6 +50,18 @@ python check_deployment.py
 
 # 3. التشغيل
 gunicorn -w 4 -b 127.0.0.1:8000 wsgi:application
+```
+
+#### Windows:
+```bash
+# 1. فحص جاهزية النشر
+python check_deployment.py
+
+# 2. تثبيت Waitress
+pip install waitress
+
+# 3. التشغيل
+waitress-serve --port=8000 wsgi:application
 ```
 
 ### 🔧 أوامر مفيدة:
@@ -130,7 +144,7 @@ python test_run.py
 git add .
 
 # 2. عمل commit مع رسالة توضيحية (غيّر الرسالة لما يناسب التحديث)
-git commit -m "v 1.3.8"
+git commit -m "v 1.3.9"
 
 # 3. رفع التحديثات إلى الريموت (GitHub)
 git push origin main
@@ -249,12 +263,23 @@ python app.py
 6. تشغيل التطبيق باستخدام Gunicorn
 
 ### أوامر النشر:
+
+#### للخوادم Linux/Unix:
 ```bash
 # تثبيت Gunicorn
 pip install gunicorn
 
 # تشغيل التطبيق
-gunicorn --bind 0.0.0.0:5000 app:app
+gunicorn -w 4 -b 127.0.0.1:8000 wsgi:application
+```
+
+#### لـ Windows (التطوير والاختبار):
+```bash
+# تثبيت Waitress (بديل Gunicorn لـ Windows)
+pip install waitress
+
+# تشغيل التطبيق
+waitress-serve --port=8000 wsgi:application
 ```
 
 ## 🐛 استكشاف الأخطاء
@@ -269,25 +294,44 @@ gunicorn --bind 0.0.0.0:5000 app:app
 gunicorn -w 4 -b 127.0.0.1:8000 wsgi:application
 ```
 
-**2. خطأ `ModuleNotFoundError: No module named 'run_es_gift'`**
+**2. خطأ `ModuleNotFoundError: No module named 'fcntl'` على Windows**
+```bash
+# المشكلة: Gunicorn لا يعمل على Windows
+# الحل: استخدم Waitress بدلاً من Gunicorn
+pip install waitress
+waitress-serve --port=8000 wsgi:application
+```
+
+**3. خطأ `ModuleNotFoundError: No module named 'run_es_gift'`**
 ```bash
 # الحل: تأكد من وجود wsgi.py صحيح
 python check_deployment.py  # للفحص
 ```
 
-**3. فحص جاهزية النشر:**
+**4. فحص جاهزية النشر:**
 ```bash
 python check_deployment.py
 python test_app.py
 ```
 
-**4. تشغيل آمن للإنتاج:**
+**5. تشغيل آمن للإنتاج:**
+
+Linux/Unix:
 ```bash
 # فحص الإعدادات أولاً
 gunicorn --check-config wsgi:application
 
 # ثم التشغيل
 gunicorn -w 4 -b 127.0.0.1:8000 wsgi:application
+```
+
+Windows:
+```bash
+# تشغيل مباشر للتطوير
+python app.py
+
+# أو استخدام Waitress للإنتاج
+waitress-serve --port=8000 wsgi:application
 ```
 
 #### 🗄️ مشاكل قاعدة البيانات:

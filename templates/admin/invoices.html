@@ -75,6 +75,7 @@
                     <option value="">جميع الأنواع</option>
                     <option value="regular" {% if customer_type_filter == 'regular' %}selected{% endif %}>عادي</option>
                     <option value="kyc" {% if customer_type_filter == 'kyc' %}selected{% endif %}>موثق</option>
+                    <option value="regular_kyc" {% if customer_type_filter == 'regular_kyc' %}selected{% endif %}>عاديين وموثقين</option>
                     <option value="reseller" {% if customer_type_filter == 'reseller' %}selected{% endif %}>موزع</option>
                 </select>
             </div>

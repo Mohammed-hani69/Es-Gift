@@ -301,6 +301,29 @@
     box-shadow: none;
 }
 
+.cancel-button {
+    width: 100%;
+    background: linear-gradient(135deg, #6c757d, #495057);
+    color: white;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.cancel-button:hover {
+    background: linear-gradient(135deg, #5a6268, #343a40);
+    transform: translateY(-1px);
+    box-shadow: 0 3px 15px rgba(108, 117, 125, 0.3);
+}
+
 .security-info {
     text-align: center;
     margin-top: 20px;
@@ -546,6 +569,11 @@
                 <button class="pay-button" id="payButton" onclick="processPayment()" disabled>
                     <i class="fas fa-lock"></i>
                     تأكيد الدفع
+                </button>
+                
+                <button class="cancel-button" onclick="cancelOrder()" style="margin-top: 15px;">
+                    <i class="fas fa-times"></i>
+                    إلغاء الطلب والعودة للسلة
                 </button>
                 
                 <div class="security-info">
@@ -1116,5 +1144,44 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 100);
     }
 });
+
+// Cancel order function
+async function cancelOrder() {
+    if (!confirm('هل أنت متأكد من إلغاء هذا الطلب؟ سيتم حفظ منتجاتك في السلة.')) {
+        return;
+    }
+    
+    showLoading(true);
+    
+    try {
+        const response = await fetch(`/cancel-order/{{ order.id }}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showMessage('تم إلغاء الطلب بنجاح. جاري التوجيه للسلة...', 'success');
+            
+            setTimeout(() => {
+                if (result.redirect) {
+                    window.location.href = result.redirect;
+                } else {
+                    window.location.href = '/cart';
+                }
+            }, 2000);
+        } else {
+            showMessage(result.message || 'حدث خطأ أثناء إلغاء الطلب');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showMessage('حدث خطأ في الاتصال. يرجى المحاولة مرة أخرى.');
+    } finally {
+        showLoading(false);
+    }
+}
 </script>
 {% endblock %}
