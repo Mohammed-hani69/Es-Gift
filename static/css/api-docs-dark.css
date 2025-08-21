@@ -1,0 +1,218 @@
+/* تصميم أساسي أسود وأحمر */
+.api-docs {
+    background-color: #1a1a1a;
+    color: #ffffff;
+    max-width: 1000px;
+    margin: 2rem auto;
+    border-radius: 15px;
+    box-shadow: 0 0 30px rgba(255, 0, 0, 0.1);
+    padding: 2rem;
+}
+
+/* العنوان الرئيسي */
+.api-docs__title {
+    color: #ffffff;
+    border-bottom: 4px solid #ff0000;
+    display: inline-block;
+    padding-bottom: 10px;
+}
+
+.api-docs__header p {
+    color: #cccccc !important;
+}
+
+/* الإحصائيات */
+.api-docs__stat-item {
+    background-color: #2a2a2a;
+    border-radius: 8px;
+    padding: 15px !important;
+    transition: transform 0.3s ease;
+    margin: 0 10px;
+    flex: 1;
+    max-width: 200px;
+}
+
+.api-docs__stat-item:hover {
+    transform: translateY(-5px);
+    background-color: #333333;
+}
+
+.api-docs__stat-item i {
+    color: #ff0000 !important;
+}
+
+.api-docs__stat-item h4 {
+    color: #ffffff;
+}
+
+.api-docs__stat-item small {
+    color: #cccccc !important;
+}
+
+/* البطاقات */
+.api-docs__section {
+    background-color: #2a2a2a !important;
+    border: 1px solid #333333 !important;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 2rem;
+}
+
+.api-docs__section-header {
+    background: #ff0000 !important;
+    color: #ffffff;
+}
+
+.api-docs__subsection-title {
+    color: #ffffff;
+    border-bottom: 2px solid #ff0000;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+}
+
+/* الجدول */
+.api-docs__table {
+    background-color: #2a2a2a;
+    color: #ffffff;
+    font-size: 0.95rem;
+    margin: 1rem 0;
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+}
+
+.api-docs__table-wrapper {
+    margin: 1.5rem -1rem;
+    padding: 0 1rem;
+    max-width: 100%;
+}
+
+.api-docs__table thead tr {
+    background-color: #333333 !important;
+}
+
+.api-docs__th {
+    color: #ffffff !important;
+    border-bottom: 2px solid #ff0000 !important;
+}
+
+.api-docs__table tbody tr {
+    border-bottom: 1px solid #333333;
+}
+
+.api-docs__table tbody tr:hover {
+    background-color: #333333;
+}
+
+/* شارات الطرق */
+.api-docs__method-badge.bg-success {
+    background-color: #ff0000 !important;
+    color: #ffffff;
+}
+
+.badge.bg-success {
+    background-color: #ff0000 !important;
+}
+
+.badge.bg-warning {
+    background-color: #ff0000 !important;
+    color: #ffffff;
+}
+
+/* الكود */
+.api-docs__endpoint {
+    color: #ff0000 !important;
+    background-color: #333333;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+pre {
+    background-color: #333333 !important;
+    border: 1px solid #444444;
+    border-radius: 8px;
+    max-width: 100%;
+    overflow-x: auto;
+    margin: 1rem 0;
+}
+
+pre code {
+    color: #ffffff !important;
+    font-family: 'Fira Code', monospace;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+/* زر نسخ الكود */
+.api-docs__copy-btn {
+    background-color: #333333;
+    color: #ffffff;
+    border: 1px solid #444444;
+    transition: all 0.3s ease;
+}
+
+.api-docs__copy-btn:hover {
+    background-color: #ff0000;
+    color: #ffffff;
+    border-color: #ff0000;
+}
+
+/* القوائم */
+.api-docs ul {
+    list-style-type: none;
+    padding-right: 0;
+}
+
+.api-docs li {
+    margin-bottom: 8px;
+    color: #cccccc;
+}
+
+.api-docs li code {
+    color: #ff0000;
+    background-color: #333333;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+/* التكامل */
+.api-docs__integration-card {
+    background-color: #2a2a2a !important;
+    border: 1px solid #333333 !important;
+}
+
+.api-docs__integration-header {
+    background: #ff0000 !important;
+    color: #ffffff;
+}
+
+.api-docs__integration-item {
+    background-color: #333333 !important;
+    color: #ffffff !important;
+    transition: all 0.3s ease;
+}
+
+.api-docs__integration-item:hover {
+    background-color: #444444 !important;
+    transform: translateX(-5px);
+}
+
+.api-docs__integration-item i {
+    color: #ff0000;
+}
+
+/* تأثيرات الحركة */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.api-docs__section {
+    animation: fadeIn 0.5s ease forwards;
+}

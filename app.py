@@ -11,6 +11,8 @@ from models import db, User
 from utils import to_json_filter
 from routes import main
 from admin_routes import admin
+from api_product_routes import api_products
+from flask import render_template
 
 def create_app():
     """إنشاء وتكوين التطبيق"""
@@ -183,6 +185,11 @@ def create_app():
     # تسجيل Blueprints
     app.register_blueprint(main)
     app.register_blueprint(admin)
+    app.register_blueprint(api_products)
+    
+    @app.route('/api/documentation')
+    def api_documentation():
+        return render_template('api_documentation.html')
     
     # تسجيل blueprint المحفظة
     from wallet_routes import wallet_bp
@@ -232,4 +239,4 @@ def create_app():
 
 app = create_app()
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=3000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)

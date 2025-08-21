@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>واجهة برمجة التطبيقات (API) - Es-Gift</title>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Fira Code Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    
+    <style>
+    :root {
+        --primary-red: #ff0033;
+        --dark-bg: #222222;
+        --darker-bg: #111111;
+        --light-text: #ffffff;
+        --gray-text: #cccccc;
+    }
+
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    /* الأيقونات المتحركة في الخلفية */
+    .floating-icons {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 0;
+        overflow: hidden;
+    }
+
+    .floating-icon {
+        position: absolute;
+        opacity: 0.1;
+        animation-timing-function: linear;
+        animation-iteration-count: infinite;
+    }
+
+    .floating-icon img {
+        width: 100%;
+        height: 100%;
+        filter: brightness(2) contrast(1) invert(1);
+    }
+
+    @keyframes floatUp {
+        0% { transform: translateY(100vh) rotate(0deg); }
+        100% { transform: translateY(-100vh) rotate(360deg); }
+    }
+
+    @keyframes floatDiagonal {
+        0% { transform: translate(-100px, 100vh) rotate(0deg); }
+        100% { transform: translate(100vw, -100vh) rotate(360deg); }
+    }
+
+    body {
+        background-color: var(--darker-bg);
+        color: var(--light-text);
+        font-family: 'Tajawal', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        line-height: 1.6;
+        min-height: 100vh;
+        margin: 0;
+        padding: 0;
+        overflow-x: hidden;
+    }
+
+    /* زر العودة للرئيسية */
+    .home-btn {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: linear-gradient(135deg, #ff0033, #ff3366);
+        color: white;
+        padding: 10px 20px;
+        border-radius: 50px;
+        text-decoration: none;
+        font-weight: bold;
+        z-index: 1000;
+        box-shadow: 0 4px 15px rgba(255, 0, 51, 0.3);
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .home-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(255, 0, 51, 0.4);
+        color: white;
+    }
+
+    .container {
+        width: 100%;
+        max-width: 100%;
+        padding: 0 20px;
+        margin: 0 auto;
+    }
+
+    .api-docs {
+        padding: 2rem 0;
+        position: relative;
+        z-index: 1;
+    }
+
+    .api-docs__header {
+        text-align: center;
+        margin-bottom: 3rem;
+        position: relative;
+        padding: 2rem;
+        background: linear-gradient(180deg, rgba(34,34,34,0.8) 0%, rgba(17,17,17,0.9) 100%);
+        border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+    
+    .code-block {
+        background-color: var(--darker-bg);
+        padding: 1rem;
+        border-radius: 8px;
+        font-family: 'Fira Code', monospace;
+        overflow-x: auto;
+        margin: 1rem 0;
+        border: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    .method-tag {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 4px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        margin-right: 0.5rem;
+    }
+    
+    .method-tag.post { background-color: #28a745; color: white; }
+    .method-tag.get { background-color: #007bff; color: white; }
+    .required-tag {
+        background-color: var(--primary-red);
+        color: white;
+        padding: 0.1rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        margin-right: 0.5rem;
+    }
+
+    .api-docs__title {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: var(--light-text);
+        margin-bottom: 1rem;
+        border-bottom: 4px solid var(--primary-red);
+        display: inline-block;
+        padding-bottom: 0.5rem;
+    }
+
+    .text-muted {
+        color: var(--gray-text) !important;
+    }
+
+    .api-docs__stats {
+        display: flex;
+        justify-content: center;
+        gap: 2rem;
+        flex-wrap: wrap;
+        margin: 2rem 0;
+    }
+
+    .api-docs__stat-item {
+        background-color: var(--dark-bg);
+        padding: 1.5rem;
+        border-radius: 8px;
+        text-align: center;
+        min-width: 200px;
+        transition: transform 0.3s ease;
+    }
+
+    .api-docs__stat-item:hover {
+        transform: translateY(-5px);
+    }
+
+    .api-docs__stat-item i {
+        color: var(--primary-red);
+        font-size: 2rem;
+        margin-bottom: 1rem;
+    }
+
+    .api-docs__section {
+        background: linear-gradient(180deg, var(--dark-bg) 0%, rgba(34,34,34,0.95) 100%);
+        border-radius: 20px;
+        margin-bottom: 2rem;
+        overflow: hidden;
+        box-shadow: 0 15px 30px rgba(0,0,0,0.3);
+        border: 1px solid rgba(255,255,255,0.1);
+        backdrop-filter: blur(10px);
+        transform: translateY(50px);
+        opacity: 0;
+        transition: all 0.6s ease-out;
+    }
+
+    .api-docs__section-header {
+        background-color: var(--primary-red);
+        color: var(--light-text);
+        padding: 1rem;
+    }
+
+    .api-docs__section-content {
+        padding: 1.5rem;
+    }
+
+    .api-docs__table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 1rem 0;
+    }
+
+    .api-docs__table th,
+    .api-docs__table td {
+        padding: 1rem;
+        text-align: right;
+        border-bottom: 1px solid #333;
+    }
+
+    .api-docs__table th {
+        background-color: var(--dark-bg);
+        color: var(--light-text);
+        font-weight: bold;
+    }
+
+    .api-docs__table tr:hover {
+        background-color: rgba(255, 0, 0, 0.1);
+    }
+
+    .badge {
+        background-color: var(--primary-red);
+        color: var(--light-text);
+        padding: 0.5rem 1rem;
+        border-radius: 50px;
+        font-size: 0.9rem;
+    }
+
+    code {
+        background-color: #333;
+        color: var(--primary-red);
+        padding: 0.2rem 0.4rem;
+        border-radius: 4px;
+        font-family: 'Fira Code', monospace;
+    }
+
+    pre {
+        background-color: #333;
+        padding: 1rem;
+        border-radius: 8px;
+        overflow-x: auto;
+        margin: 1rem 0;
+    }
+
+    pre code {
+        color: var(--light-text);
+        background: none;
+        padding: 0;
+    }
+
+    .api-docs__copy-btn {
+        background-color: #333;
+        color: var(--light-text);
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .api-docs__copy-btn:hover {
+        background-color: var(--primary-red);
+    }
+
+    .api-docs__integration-card {
+        background-color: var(--dark-bg);
+        border-radius: 10px;
+        overflow: hidden;
+        margin-top: 2rem;
+    }
+
+    .api-docs__integration-header {
+        background-color: var(--primary-red);
+        padding: 1rem;
+        color: var(--light-text);
+    }
+
+    .api-docs__integration-content {
+        padding: 1.5rem;
+    }
+
+    .api-docs__integration-list {
+        list-style: none;
+        padding: 0;
+    }
+
+    .api-docs__integration-item {
+        padding: 1rem;
+        background-color: rgba(255, 0, 0, 0.1);
+        margin-bottom: 0.5rem;
+        border-radius: 8px;
+        transition: transform 0.3s ease;
+    }
+
+    .api-docs__integration-item:hover {
+        transform: translateX(-5px);
+        background-color: rgba(255, 0, 0, 0.2);
+    }
+
+    .api-docs__integration-item i {
+        color: var(--primary-red);
+        margin-left: 0.5rem;
+    }
+
+    @media (max-width: 768px) {
+        .api-docs__stats {
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .api-docs__stat-item {
+            width: 100%;
+            max-width: 300px;
+        }
+
+        .api-docs__table {
+            display: block;
+            overflow-x: auto;
+        }
+    }
+    
+    </style>
+</head>
+<body>
+<!-- زر العودة للرئيسية -->
+<a href="/" class="home-btn">
+    <i class="fas fa-home"></i>
+    العودة للرئيسية
+</a>
+
+<!-- الأيقونات المتحركة في الخلفية -->
+<div class="floating-icons" id="floatingIcons"></div>
+
+<div class="container">
+    <div class="api-docs">
+        <div class="api-docs__section">
+            <div class="api-docs__section-header">
+                <h2><i class="fas fa-lock"></i> المصادقة Authentication</h2>
+            </div>
+            <div class="api-docs__section-content">
+                <h3>خطوات المصادقة</h3>
+                <div class="api-docs__integration-list">
+                    <div class="api-docs__integration-item">
+                        <h4>1. تسجيل الدخول</h4>
+                        <div class="code-block">
+                            <span class="method-tag post">POST</span>
+                            <code>/api/v1/login</code>
+                            <pre>
+{
+    "email": "your-email@example.com",
+    "password": "your-password"
+}
+                            </pre>
+                        </div>
+                        <p>سيتم إرجاع token للمصادقة في حال نجاح تسجيل الدخول.</p>
+                    </div>
+
+                    <div class="api-docs__integration-item">
+                        <h4>2. استخدام Token في الطلبات</h4>
+                        <p>يجب إضافة التوكن في رأس الطلب (Header) لجميع الطلبات التي تتطلب مصادقة:</p>
+                        <div class="code-block">
+                            <code>Authorization: Bearer &lt;your-token&gt;</code>
+                        </div>
+                    </div>
+
+                    <div class="api-docs__integration-item">
+                        <h4>مثال على طلب مصادق:</h4>
+                        <div class="code-block">
+                            <span class="method-tag post">POST</span>
+                            <code>/api/v1/orders</code>
+                            <pre>
+// Headers
+{
+    "Authorization": "Bearer your-token-here",
+    "Content-Type": "application/json"
+}
+
+// Body
+{
+    "items": [
+        {
+            "product_id": 1,
+            "quantity": 2
+        }
+    ]
+}
+                            </pre>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="alert alert-info mt-4">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>ملاحظة هامة:</strong> جميع الطلبات التي تتطلب مصادقة ستعيد رمز خطأ 401 في حال عدم وجود توكن صحيح.
+                </div>
+
+                <h3 class="mt-4">أمثلة على الربط بلغات البرمجة المختلفة</h3>
+                
+                <!-- Python Example -->
+                <div class="api-docs__integration-item">
+                    <h4><i class="fab fa-python"></i> مثال بلغة Python</h4>
+                    <div class="code-block">
+                        <button class="btn btn-outline-secondary mb-2" onclick="copyCode(this)">
+                            <i class="far fa-copy me-1"></i> نسخ الكود
+                        </button>
+                        <pre><code>import requests
+
+# تسجيل الدخول والحصول على التوكن
+def login():
+    login_url = "https://your-domain.com/api/v1/login"
+    credentials = {
+        "email": "your-email@example.com",
+        "password": "your-password"
+    }
+    
+    response = requests.post(login_url, json=credentials)
+    if response.status_code == 200:
+        return response.json()["token"]
+    return None
+
+# إنشاء طلب جديد
+def create_order(token):
+    orders_url = "https://your-domain.com/api/v1/orders"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
+    order_data = {
+        "items": [
+            {
+                "product_id": 1,
+                "quantity": 2
+            }
+        ]
+    }
+    
+    response = requests.post(orders_url, headers=headers, json=order_data)
+    return response.json()
+
+# استخدام الدوال
+token = login()
+if token:
+    order_result = create_order(token)
+    print(order_result)</code></pre>
+                    </div>
+                </div>
+
+                <!-- PHP Example -->
+                <div class="api-docs__integration-item">
+                    <h4><i class="fab fa-php"></i> مثال بلغة PHP</h4>
+                    <div class="code-block">
+                        <button class="btn btn-outline-secondary mb-2" onclick="copyCode(this)">
+                            <i class="far fa-copy me-1"></i> نسخ الكود
+                        </button>
+                        <pre><code>&lt;?php
+
+// تسجيل الدخول والحصول على التوكن
+function login() {
+    $login_url = "https://your-domain.com/api/v1/login";
+    $credentials = array(
+        "email" => "your-email@example.com",
+        "password" => "your-password"
+    );
+    
+    $ch = curl_init($login_url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($credentials));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
+    
+    $response = curl_exec($ch);
+    curl_close($ch);
+    
+    $result = json_decode($response, true);
+    return isset($result['token']) ? $result['token'] : null;
+}
+
+// إنشاء طلب جديد
+function create_order($token) {
+    $orders_url = "https://your-domain.com/api/v1/orders";
+    $order_data = array(
+        "items" => array(
+            array(
+                "product_id" => 1,
+                "quantity" => 2
+            )
+        )
+    );
+    
+    $ch = curl_init($orders_url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($order_data));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+        'Content-Type: application/json',
+        'Authorization: Bearer ' . $token
+    ));
+    
+    $response = curl_exec($ch);
+    curl_close($ch);
+    
+    return json_decode($response, true);
+}
+
+// استخدام الدوال
+$token = login();
+if ($token) {
+    $order_result = create_order($token);
+    print_r($order_result);
+}
+?></code></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+  function copyCode(button) {
+    const pre = button.parentElement.nextElementSibling;
+    const code = pre.querySelector("code");
+    const text = code.textContent;
+
+    navigator.clipboard.writeText(text).then(() => {
+      const icon = button.querySelector("i");
+      const originalClass = icon.className;
+      icon.className = "fas fa-check text-success";
+      button.classList.add("btn-success", "text-white");
+      button.textContent = " تم النسخ!";
+
+      setTimeout(() => {
+        icon.className = originalClass;
+        button.classList.remove("btn-success", "text-white");
+        button.innerHTML = '<i class="far fa-copy me-1"></i> نسخ الكود';
+      }, 2000);
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    // إضافة الأيقونات المتحركة
+    const icons = ['gift', 'star', 'heart', 'shopping-cart', 'trophy'];
+    const floatingIcons = document.getElementById('floatingIcons');
+    
+    function createIcon() {
+        const icon = document.createElement('div');
+        icon.className = 'floating-icon';
+        const randomIcon = icons[Math.floor(Math.random() * icons.length)];
+        
+        icon.innerHTML = `<i class="fas fa-${randomIcon}"></i>`;
+        
+        // حجم عشوائي
+        const size = Math.random() * 30 + 20;
+        icon.style.fontSize = `${size}px`;
+        
+        // موقع عشوائي
+        const startX = Math.random() * window.innerWidth;
+        icon.style.left = `${startX}px`;
+        
+        // مدة الحركة
+        const duration = Math.random() * 8 + 4;
+        icon.style.animation = `floatUp ${duration}s linear infinite`;
+        
+        floatingIcons.appendChild(icon);
+        
+        // إزالة الأيقونة بعد انتهاء الحركة
+        setTimeout(() => {
+            icon.remove();
+        }, duration * 1000);
+    }
+
+    // إنشاء أيقونات جديدة كل فترة
+    setInterval(createIcon, 2000);
+    for(let i = 0; i < 10; i++) createIcon();
+
+    // إضافة تأثيرات التمرير
+    const sections = document.querySelectorAll(".api-docs__section");
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("visible");
+            entry.target.style.transform = "translateY(0)";
+            entry.target.style.opacity = "1";
+          }
+        });
+      },
+      { threshold: 0.1 }
+    );
+
+    sections.forEach((section) => {
+      section.style.transform = "translateY(50px)";
+      section.style.opacity = "0";
+      section.style.transition = "all 0.6s ease-out";
+      observer.observe(section);
+    });
+  });
+</script>
+<main>
+<div class="api-docs container py-5">
+  <div class="api-docs__header text-center mb-5">
+    <h1 class="api-docs__title display-4 mb-3 fw-bold">
+      واجهة برمجة التطبيقات (API)
+    </h1>
+    <p class="text-muted mb-4">قم بدمج خدماتنا مع تطبيقك بسهولة</p>
+    <div class="api-docs__stats d-flex justify-content-center gap-4 mb-4">
+      <div class="api-docs__stat-item text-center px-4">
+        <i class="fas fa-bolt fa-2x mb-2 text-warning"></i>
+        <h4 class="h6 mb-0">سرعة الاستجابة</h4>
+        <small class="text-muted">أقل من 100ms</small>
+      </div>
+      <div class="api-docs__stat-item text-center px-4">
+        <i class="fas fa-shield-alt fa-2x mb-2 text-success"></i>
+        <h4 class="h6 mb-0">حماية متقدمة</h4>
+        <small class="text-muted">تشفير SSL/TLS</small>
+      </div>
+      <div class="api-docs__stat-item text-center px-4">
+        <i class="fas fa-clock fa-2x mb-2 text-info"></i>
+        <h4 class="h6 mb-0">توفر الخدمة</h4>
+        <small class="text-muted">99.9% متوفر</small>
+      </div>
+    </div>
+  </div>
+
+  <div class="api-docs__section card mb-4 shadow-lg rounded-3">
+    <div
+      class="api-docs__section-header card-header bg-gradient text-white"
+      style="background-color: #4a90e2"
+    >
+      <h2 class="api-docs__section-title h4 mb-0 fw-bold">
+        نقاط النهاية المتاحة
+      </h2>
+    </div>
+    <div class="api-docs__section-content card-body">
+      <h3 class="api-docs__subsection-title h5 fw-bold">المنتجات</h3>
+      <div class="api-docs__table-wrapper table-responsive">
+        <table class="api-docs__table table table-hover">
+          <thead>
+            <tr class="bg-light">
+              <th class="api-docs__th text-center" width="120">الطريقة</th>
+              <th class="api-docs__th" width="250">المسار</th>
+              <th class="api-docs__th">الوصف</th>
+              <th class="api-docs__th">المعلمات</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <span
+                  class="api-docs__method-badge badge bg-success rounded-pill px-3"
+                  >GET</span
+                >
+              </td>
+              <td>
+                <code class="api-docs__endpoint text-primary fw-bold"
+                  >/api/v1/products</code
+                >
+              </td>
+              <td class="api-docs__description">الحصول على قائمة المنتجات</td>
+              <td>
+                <ul>
+                  <li><code>page</code>: رقم الصفحة (افتراضي: 1)</li>
+                  <li>
+                    <code>per_page</code>: عدد العناصر لكل صفحة (افتراضي: 10)
+                  </li>
+                  <li><code>category_id</code>: معرف الفئة (اختياري)</li>
+                </ul>
+              </td>
+            </tr>
+            <tr>
+              <td><span class="badge bg-success">GET</span></td>
+              <td><code class="text-primary">/api/v1/products/{id}</code></td>
+              <td>الحصول على تفاصيل منتج محدد</td>
+              <td>
+                <ul>
+                  <li><code>id</code>: معرف المنتج</li>
+                </ul>
+              </td>
+            </tr>
+            <tr>
+              <td><span class="badge bg-success">GET</span></td>
+              <td><code class="text-primary">/api/v1/categories</code></td>
+              <td>الحصول على قائمة الفئات</td>
+              <td><em class="text-muted">لا يوجد</em></td>
+            </tr>
+            <tr>
+              <td><span class="badge bg-warning">POST</span></td>
+              <td><code class="text-primary">/api/v1/orders</code></td>
+              <td>إنشاء طلب جديد</td>
+              <td>
+                <pre><code>{
+  "items": [
+    {
+      "product_id": 1,
+      "quantity": 2
+    }
+  ]
+}</code></pre>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 class="api-docs__integration-title h5 mt-5 mb-4 fw-bold">
+        أمثلة للتكامل
+      </h3>
+      <div class="api-docs__code-example mt-4">
+        <div
+          class="api-docs__code-header d-flex align-items-center mb-3 border-bottom pb-2"
+        >
+          <i class="api-docs__lang-icon fab fa-js fa-lg text-warning me-2"></i>
+          <h4 class="api-docs__lang-title h6 mb-0 fw-bold">
+            مثال باستخدام JavaScript
+          </h4>
+        </div>
+        <div class="api-docs__code-actions mb-2">
+          <button
+            class="api-docs__copy-btn btn btn-sm btn-light"
+            onclick="copyCode(this)"
+          >
+            <i class="far fa-copy me-1"></i> نسخ الكود
+          </button>
+        </div>
+        <pre
+          class="api-docs__code-block bg-light p-4 rounded-3 shadow-sm"
+        ><code class="language-javascript">// الحصول على قائمة المنتجات
+fetch('/api/v1/products')
+  .then(response => response.json())
+  .then(data => console.log(data));
+
+// إنشاء طلب جديد
+fetch('/api/v1/orders', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    items: [
+      {
+        product_id: 1,
+        quantity: 2
+      }
+    ]
+  })
+})
+.then(response => response.json())
+.then(data => console.log(data));</code></pre>
+      </div>
+
+      <div
+        class="api-docs__integration-card card mt-5 border-0 shadow-lg rounded-3"
+      >
+        <div
+          class="api-docs__integration-header card-header bg-gradient text-white"
+          style="background-color: #38b2ac"
+        >
+          <h3 class="api-docs__integration-title h5 mb-0 fw-bold">
+            التكامل مع منصات التجارة الإلكترونية
+          </h3>
+        </div>
+        <div class="api-docs__integration-content card-body">
+          <p class="api-docs__integration-intro lead mb-4">
+            يمكن استخدام واجهة برمجة التطبيقات (API) للتكامل مع:
+          </p>
+          <ul class="api-docs__integration-list list-group list-group-flush">
+            <li
+              class="api-docs__integration-item list-group-item border-0 py-3"
+            >
+              <i class="fas fa-shopping-cart text-success me-2"></i>
+              منصة سلة - من خلال ربط المنتجات والمخزون تلقائياً
+            </li>
+            <li
+              class="api-docs__integration-item list-group-item border-0 py-3"
+            >
+              <i class="fab fa-shopify text-primary me-2"></i>
+              شوبيفاي - باستخدام Webhooks للمزامنة المباشرة
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bootstrap Bundle with Popper -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
