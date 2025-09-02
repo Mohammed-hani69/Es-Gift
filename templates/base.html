@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Es-Gift - متجر الألعاب الرقمية{% endblock %}</title>
+    <link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='images/logo.jpg') }}">
     <!-- Cairo Font -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -450,10 +451,10 @@
 
         <div class="bottom-text">
             <p>
-                هذا الموقع مملوك ويتم تشغيله بواسطة شركة Es-Pay. إن استخدام هذا الموقع بشكل قبولا
-                <span style="cursor: pointer; color: #ff0033; text-decoration: underline; margin: 0 2px;">للشروط والأحكام</span>
-                <span style="cursor: pointer; color: #ff0033; text-decoration: underline; margin: 0 2px;">وسياسة الخصوصية</span>
-                <span style="cursor: pointer; color: #ff0033; text-decoration: underline; margin: 0 2px;">وسياسة الاسترداد</span>
+                هذا الموقع مملوك ويتم تشغيله بواسطة مؤسسة مروان خوجه. إن استخدام هذا الموقع بشكل قبولا
+                <a href="{{ url_for('main.terms_of_service') }}" style="cursor: pointer; color: #ff0033; text-decoration: underline; margin: 0 2px;">للشروط والأحكام</a>
+                <a href="{{ url_for('main.privacy_policy') }}" style="cursor: pointer; color: #ff0033; text-decoration: underline; margin: 0 2px;">وسياسة الخصوصية</a>
+                
                 . جميع حقوق النشر والعلامات التجارية مملوكة لأصحابها.
             </p>
         </div>
@@ -797,7 +798,7 @@
                 return true;
             }
             
-            console.warn('⚠️ نظام الشات غير متاح حالياً');
+            console.warn('⚠ نظام الشات غير متاح حالياً');
             return false;
         };
     </script>
