@@ -1425,15 +1425,6 @@ def add_main_offer():
             flash('نوع الملف غير مدعوم. يرجى استخدام PNG, JPG, JPEG, GIF, أو WEBP', 'error')
             return redirect(url_for('admin.homepage_management'))
         
-        # التحقق من حجم الملف (5 ميجابايت كحد أقصى)
-        image_file.seek(0, 2)  # الذهاب إلى نهاية الملف
-        file_size = image_file.tell()
-        image_file.seek(0)  # العودة إلى بداية الملف
-        
-        if file_size > 5 * 1024 * 1024:  # 5 ميجابايت
-            flash('حجم الصورة كبير جداً. الحد الأقصى 5 ميجابايت', 'error')
-            return redirect(url_for('admin.homepage_management'))
-        
         # إنشاء اسم ملف فريد
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_')
         filename = timestamp + filename
@@ -1510,14 +1501,7 @@ def edit_main_offer(offer_id):
                     flash('نوع الملف غير مدعوم. يرجى استخدام PNG, JPG, JPEG, GIF, أو WEBP', 'error')
                     return redirect(url_for('admin.homepage_management'))
                 
-                # التحقق من حجم الملف (5 ميجابايت كحد أقصى)
-                file.seek(0, 2)  # الذهاب إلى نهاية الملف
-                file_size = file.tell()
-                file.seek(0)  # العودة إلى بداية الملف
-                
-                if file_size > 5 * 1024 * 1024:  # 5 ميجابايت
-                    flash('حجم الصورة كبير جداً. الحد الأقصى 5 ميجابايت', 'error')
-                    return redirect(url_for('admin.homepage_management'))
+
                 
                 # حذف الصورة القديمة
                 if offer.image_url:

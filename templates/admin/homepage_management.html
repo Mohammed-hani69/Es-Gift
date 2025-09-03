@@ -151,7 +151,7 @@
             <div class="form-group">
                 <label for="offerImage">صورة العرض:</label>
                 <input type="file" id="offerImage" name="image" class="form-control" accept="image/*" required>
-                <small>الحد الأقصى لحجم الصورة: 5 ميجابايت. الصيغ المدعومة: PNG, JPG, JPEG, GIF, WEBP</small>
+                <small>الصيغ المدعومة: PNG, JPG, JPEG, GIF, WEBP</small>
             </div>
             
             <div class="form-group">
@@ -201,7 +201,7 @@
                 <label for="editOfferImageFile">{% if edit_offer %}تغيير الصورة (اختياري):{% else %}صورة العرض:{% endif %}</label>
                 <input type="file" id="editOfferImageFile" name="image" class="form-control" accept="image/*" {% if not edit_offer %}required{% endif %}>
                 {% if edit_offer %}<small>اتركه فارغاً للاحتفاظ بالصورة الحالية</small>{% endif %}
-                <small>الحد الأقصى لحجم الصورة: 5 ميجابايت. الصيغ المدعومة: PNG, JPG, JPEG, GIF, WEBP</small>
+                <small>الصيغ المدعومة: PNG, JPG, JPEG, GIF, WEBP</small>
             </div>
             
             <div class="form-group">
